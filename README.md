@@ -1,0 +1,498 @@
+# Medi-Care Online Appointment System
+
+> A modern, secure healthcare appointment and clinic management platform connecting **Patients**, **Doctors**, and **Administrators** in one unified ecosystem.
+
+![Build Status](https://img.shields.io/badge/Status-Fully%20Functional-brightgreen?style=flat-square)
+![Frontend](https://img.shields.io/badge/Frontend-React%2019%20%7C%20TypeScript%20%7C%20Vite%20%7C%20Tailwind-blue?style=flat-square)
+![Backend](https://img.shields.io/badge/Backend-PHP%20%7C%20Custom%20MVC%20%7C%20PDO-purple?style=flat-square)
+![Database](https://img.shields.io/badge/Database-MySQL-orange?style=flat-square)
+![Authentication](https://img.shields.io/badge/Auth-JWT%20%2B%20RBAC-red?style=flat-square)
+![License](https://img.shields.io/badge/License-MIT-lightgrey?style=flat-square)
+
+---
+
+## 1. Project Status
+
+The **Medi-Care Online Appointment System** is fully implemented, verified, and operational:
+
+- **Backend**: Built with modern PHP using a clean Layered MVC architecture, custom HTTP routing, JSON REST responses, robust JWT authentication, role guards, and transactional database repositories.
+- **Frontend**: Single Page Application (SPA) powered by React 19, TypeScript, Vite, Tailwind CSS, TanStack React Query, and Lucide React icons.
+- **Database**: Normalized MySQL relational schema with foreign key integrity, indexing, automated schema migration, and a comprehensive database seeder.
+
+The application is turnkey and ready to run locally for development, evaluation, and demonstration.
+
+---
+
+## 2. Features by Role
+
+### 👤 Patient / User Portal
+- **Authentication & Security**: Account registration, secure login with JWT sessions, token expiration handling, and clean logout.
+- **Browse Specialties & Doctors**: Real-time search by doctor name, specialization, or medical department with detailed qualification and consultation fee display.
+- **Doctor Profiles & Schedules**: View doctor credentials, biography, room number, fees, and weekly consultation availability.
+- **Slot Discovery & Booking**: Interactive booking modal fetching available slots for any chosen date while dynamically locking out conflicting appointments.
+- **Appointment Management**: View upcoming visits, appointment history, status indicators (`PENDING`, `APPROVED`, `COMPLETED`, `CANCELLED`), and self-service appointment cancellation.
+- **Clinical History**: Access doctor consultation notes, diagnoses, and medical prescriptions recorded during completed appointments.
+
+### 🩺 Doctor Clinical Portal
+- **Registration & Verification Flow**: Self-registration for doctors with professional profile information (specialization, qualifications, experience, room number, consultation fee) placed in a `pending` state until reviewed.
+- **Clinical Dashboard**: Real-time overview of today's schedule, pending appointments, active patient count, and upcoming consultations.
+- **Schedule Management**: Weekly schedule builder to configure working days, shift hours (`start_time` - `end_time`), slot duration (default 30 mins), and toggle daily availability.
+- **Appointment Processing**: Review patient requests, approve appointments, mark visits as completed, or reject/cancel conflicts.
+- **Consultation Records & EMR Notes**: Record patient diagnosis, prescriptions, and clinical visit notes linked directly to the appointment.
+- **Doctor Profile Settings**: Update biography, contact phone, consultation fees, department assignment, and room/office location.
+
+### 🛡️ Administrator Control Center
+- **Protected Administrative Access**: Admin accounts are pre-seeded via configuration and cannot be registered publicly via client endpoints.
+- **Real-Time Analytics & Stats**: High-level KPIs tracking total active doctors, pending doctor approval requests, registered patients, today's appointments, upcoming bookings, and active departments.
+- **Doctor Credentialing & Approval Queue**: Dedicated review inbox to examine doctor registration requests, review qualifications and departments, with single-click Approve (`active`) or Reject (`rejected`) actions.
+- **Doctor Directory Management**: Filter and manage doctors across all statuses (`active`, `pending`, `rejected`, `inactive`) with account status toggles.
+- **Patient Management**: Central directory of all registered patients, contact details, account status, and appointment visit history counts.
+- **Department Administration**: Full CRUD capabilities to create, edit, activate, or deactivate clinical departments and icons.
+- **Central Appointment Oversight**: Comprehensive monitoring of all hospital appointments with multi-criteria filtering by date and status.
+- **Hospital Reports & Breakdown**: Visual breakdowns of appointments categorized by status and doctors distributed across departments.
+
+---
+
+## 3. Tech Stack
+
+| Layer | Technologies & Libraries | Purpose |
+| :--- | :--- | :--- |
+| **Frontend Framework** | React 19, TypeScript (~5.7), Vite 6 | High-performance SPA with strict type safety and fast HMR |
+| **Styling & UI** | Tailwind CSS 3.4, PostCSS, Lucide React, clsx, tailwind-merge | Modern clinical UI, responsive layouts, accessible components |
+| **Routing & Navigation** | React Router DOM v7 | Nested routing, layout wrappers, and protected role-based guards |
+| **State & API Client** | TanStack React Query v5, Axios | Server-state caching, automatic refetching, JWT interceptors |
+| **Backend Framework** | PHP 8.1+ / 8.2+ (Custom MVC) | Modular routing, middleware pipeline, service/repository layers |
+| **Persistence / ORM** | MySQL 8.x / MariaDB, PHP PDO | Normalized relational schema, prepared statements, transactions |
+| **Authentication** | Custom HMAC-SHA256 JWT, Bcrypt | Stateless Bearer token auth, role authorization, secure password hashing |
+| **Local Environment** | XAMPP (Apache + MySQL), Composer, Node.js | Cross-platform local server hosting and package dependency management |
+
+---
+
+## 4. Architecture & Design Patterns
+
+### Backend: Layered Clean MVC Architecture
+The backend follows a clear separation of concerns to guarantee testability and maintainability:
+
+```mermaid
+flowchart LR
+    Client([HTTP Request]) --> Router[Core Router]
+    Router --> Middleware[Auth & Role Middleware]
+    Middleware --> Controller[Module Controller]
+    Controller --> Service[Domain Service]
+    Repository --> DB[(MySQL Database)]
+    Service --> Repository[Repository Layer]
+    Repository --> Model[Data / Entity Mapping]
+    Model --> Service
+    Service --> Controller
+    Controller --> Response[JSON Response]
+    Response --> Client
+```
+
+- **Router (`App\Core\Router`)**: Resolves incoming HTTP method and URI paths, handles CORS pre-flight headers, extracts path parameters (e.g. `{id}`), and executes route-specific middleware chains.
+- **Middleware Pipeline (`App\Middleware`)**:
+  - `CorsMiddleware`: Manages cross-origin resource sharing, allowable headers, and 204 OPTIONS preflights.
+  - `AuthMiddleware`: Validates Bearer JWT tokens, verifies user active status in the database, and attaches the authenticated user context to the request.
+  - `RoleMiddleware`: Enforces fine-grained Role-Based Access Control (`patient`, `doctor`, `admin`) and verifies doctor activation status.
+- **Controllers (`App\Modules\*` )**: Thin HTTP handlers that extract request bodies, query parameters, invoke appropriate service methods, and output standardized JSON responses (`App\Core\Response`).
+- **Services (`App\Modules\*` )**: Encapsulate core business rules (e.g. preventing duplicate appointment times, calculating available 30-minute intervals, validating registration data, and orchestrating status transitions).
+- **Repositories (`App\Modules\*` )**: Dedicated data-access objects abstracting SQL queries, utilizing PDO prepared statements to safeguard against SQL injection.
+- **Database (`App\Config\Database`)**: Singleton PDO connection manager with automated `.env` environment variable loading and database initialization.
+
+### Frontend: Feature-Based Modular Architecture
+The frontend codebase is partitioned into self-contained feature slices:
+
+```
+frontend/src/
+├── app/               # Application-level bootstrapping
+│   ├── providers/     # QueryClientProvider, AuthProvider context
+│   └── router/        # AppRouter, ProtectedRoute, RoleRoute definitions
+├── components/        # Reusable global design system
+│   ├── layout/        # Navbar, Sidebar, AdminLayout, DoctorLayout, DashboardLayout
+│   └── ui/            # Button, Input, Modal, Card, Table, Badge, Toast, States
+├── features/          # Domain-driven feature modules
+│   ├── admin/         # Admin API services, queries, and mutations
+│   ├── appointments/  # Booking modals, appointment listings, slot hooks
+│   ├── auth/          # Auth context, login/register API calls, token persistence
+│   ├── departments/   # Department listings, queries, and types
+│   └── doctors/       # Doctor directory hooks, schedule management
+├── lib/               # Shared utilities (Axios instance, QueryClient, date formatters)
+└── pages/             # Route-level view components (Public, Patient, Doctor, Admin)
+```
+
+---
+
+## 5. Authentication & Security
+
+1. **Stateless JWT Authentication**:
+   - Access tokens are cryptographically signed using HMAC-SHA256 with the server's `JWT_SECRET`.
+   - Token payload encapsulates `sub` (User ID), `email`, and `role`.
+   - Configurable expiration (default 24 hours / 86400 seconds via `JWT_EXPIRY`).
+2. **Password Protection**:
+   - Secure one-way password hashing using `PASSWORD_BCRYPT` with dynamic salt generation.
+   - Verified via native `password_verify` on authentication.
+3. **Role-Based Access Control (RBAC)**:
+   - Routes and resources strictly segregated into `patient`, `doctor`, and `admin` scopes.
+   - Frontend route guards (`ProtectedRoute`, `RoleRoute`) prevent unauthorized client-side views.
+   - Backend controller middleware guarantees zero unauthorized data leaks at the API layer.
+4. **Doctor Credentialing & Approval Gate**:
+   ```
+   Doctor Registers -> Status: 'pending' (Token withheld) -> Admin Reviews Application
+         ├── Admin Approves -> Status: 'active' -> Doctor can login & manage clinic
+         └── Admin Rejects  -> Status: 'rejected' -> Login blocked with notification
+   ```
+5. **Admin Safeguards**:
+   - Administrative registration is completely disabled over the public registration endpoint.
+   - Admin credentials are provisioned securely through environment variables and seed scripts.
+
+---
+
+## 6. Project Structure
+
+```
+Medi-Care Online Appointment System/
+├── backend/
+│   ├── config/                     # Configuration definitions
+│   ├── migrations/
+│   │   ├── schema.sql              # Relational database schema
+│   │   └── seed.php                # Database migration runner & data seeder
+│   ├── public/
+│   │   └── index.php               # Single entry point / API dispatcher
+│   ├── src/
+│   │   ├── Config/
+│   │   │   └── Database.php        # PDO connection & .env parser
+│   │   ├── Core/
+│   │   │   ├── Jwt.php             # JWT encode/decode implementation
+│   │   │   ├── Request.php         # HTTP Request abstraction
+│   │   │   ├── Response.php        # Standardized JSON response emitter
+│   │   │   └── Router.php          # RESTful route matcher & dispatcher
+│   │   ├── Middleware/
+│   │   │   ├── AuthMiddleware.php  # Token validation & user session loader
+│   │   │   ├── CorsMiddleware.php  # CORS header configuration
+│   │   │   └── RoleMiddleware.php  # Role-based authorization guard
+│   │   ├── Modules/
+│   │   │   ├── Admin/              # Admin stats, doctor approvals, reports
+│   │   │   ├── Appointment/        # Booking, cancellation, status, consultation
+│   │   │   ├── Auth/               # Login, registration, profile retrieval
+│   │   │   ├── Department/         # Department management
+│   │   │   └── Doctor/             # Doctor profiles, schedules, search
+│   │   └── Routes/
+│   │       ├── api.php             # API route definitions
+│   │       └── ApiRoutes.php       # Static route registry
+│   ├── vendor/
+│   │   └── autoload.php            # PSR-4 Autoloader
+│   ├── .env.example                # Backend configuration template
+│   └── .gitignore
+│
+├── frontend/
+│   ├── public/                     # Static assets & favicon
+│   ├── src/
+│   │   ├── app/                    # Routing, AuthProvider, React Query
+│   │   ├── components/             # Reusable UI & Layout components
+│   │   ├── features/               # Feature-based business logic & hooks
+│   │   ├── lib/                    # Axios client & helper utilities
+│   │   ├── pages/                  # Page views (Patient, Doctor, Admin, Auth)
+│   │   ├── styles/                 # Tailwind CSS styles
+│   │   ├── main.tsx                # Application mounting entry point
+│   │   └── vite-env.d.ts
+│   ├── index.html
+│   ├── package.json                # Frontend dependencies and scripts
+│   ├── postcss.config.js
+│   ├── tailwind.config.js          # Tailwind CSS theme configuration
+│   ├── tsconfig.json               # TypeScript configuration
+│   └── vite.config.ts              # Vite server & API proxy config
+│
+└── README.md
+```
+
+---
+
+## 7. Prerequisites
+
+Before running the application, make sure the following software is installed on your workstation:
+
+- **XAMPP** (or standalone Apache & MySQL / MariaDB)
+- **PHP**: Version `8.1` or higher (PHP 8.2 recommended, with `pdo_mysql`, `mbstring`, `json`, and `openssl` extensions enabled)
+- **Composer**: Dependency manager for PHP (or use the built-in PSR-4 autoloader)
+- **Node.js**: Version `18.x` or `20.x` LTS
+- **npm**: Version `9.x` or higher
+
+---
+
+## 8. Installation & Setup
+
+### Step 1: Clone the Repository
+```bash
+git clone https://github.com/shaamyll/Medicare-online-appointment-system.git
+cd "Medicare-online-appointment-system"
+```
+
+---
+
+### Step 2: Configure and Run the Backend
+
+1. **Navigate to the backend directory**:
+   ```bash
+   cd backend
+   ```
+
+2. **Set up Environment Variables**:
+   Copy the example environment file to `.env`:
+   ```bash
+   # On Windows (PowerShell)
+   Copy-Item .env.example .env
+
+   # On Linux/macOS
+   cp .env.example .env
+   ```
+
+3. **Configure Database & Secrets**:
+   Open `backend/.env` and update your MySQL connection details and a secure JWT key (see [Environment Variables](#9-environment-variables)).
+
+4. **Start MySQL in XAMPP**:
+   Open the **XAMPP Control Panel** and start the **MySQL** module (default port `3306`).
+
+5. **Run Migrations & Database Seeder**:
+   Execute the migration script to automatically create the database `medicare_appointment_db`, generate the SQL schema tables, and insert initial seed data (departments, doctors, patients, and the admin account):
+   ```bash
+   php migrations/seed.php
+   ```
+   *Expected output:*
+   ```text
+   Running migrations...
+   Schema migrated successfully.
+   Seeded Admin: admin@medicare.com / ********
+   Seeded departments.
+   Seeded Approved Doctor: dr.sarah@medicare.com / ********
+   Seeded Pending Doctor Request: dr.michael@medicare.com
+   Seeded Demo Patient: patient@medicare.com / ********
+   Database seeding finished successfully!
+   ```
+
+6. **Start the Backend Server**:
+   You can serve the backend via PHP's built-in development server pointing to `public/`:
+   ```bash
+   php -S localhost:8000 -t public
+   ```
+   Alternatively, place the project inside your XAMPP `htdocs` directory and serve via Apache.
+
+---
+
+### Step 3: Configure and Run the Frontend
+
+1. **Navigate to the frontend directory**:
+   ```bash
+   cd ../frontend
+   ```
+
+2. **Install Dependencies**:
+   ```bash
+   npm install
+   ```
+
+3. **Configure API Base URL (Optional)**:
+   By default, Vite is configured with a proxy in `vite.config.ts` redirecting all `/api` requests to `http://localhost:8000`. If you wish to specify an explicit endpoint, create a `.env` file in `frontend/`:
+   ```bash
+   VITE_API_URL=http://localhost:8000/api
+   ```
+
+4. **Start the Frontend Development Server**:
+   ```bash
+   npm run dev
+   ```
+
+5. **Access the Web Application**:
+   Open your browser and navigate to:
+   ```
+   http://localhost:5173
+   ```
+
+---
+
+## 9. Environment Variables
+
+The backend uses a root `.env` file loaded automatically by `App\Config\Database::loadEnv()`.
+
+| Variable | Description | Example / Default |
+| :--- | :--- | :--- |
+| `DB_HOST` | Host address of the MySQL database server | `127.0.0.1` |
+| `DB_PORT` | Port number for the MySQL database connection | `3306` |
+| `DB_NAME` | Name of the application database | `medicare_appointment_db` |
+| `DB_USER` | MySQL database username | `root` |
+| `DB_PASS` | MySQL database password (placeholder) | `<your-db-password>` |
+| `JWT_SECRET` | Secret key used to sign and verify HMAC-SHA256 JWTs | `<your-jwt-secret>` |
+| `JWT_EXPIRY` | Token time-to-live in seconds (e.g. 86400 = 24 hours) | `86400` |
+| `ADMIN_NAME` | Initial administrator full name used by the seeder | `Hospital Administrator` |
+| `ADMIN_EMAIL` | Initial administrator login email used by the seeder | `admin@medicare.com` |
+| `ADMIN_PASSWORD`| Initial administrator password used by the seeder | `<your-admin-seed-password>` |
+
+> [!NOTE]
+> Never commit active secrets or database passwords to version control. Keep `.env` included in your `.gitignore`.
+
+---
+
+## 10. Default Admin & Demo Access
+
+For security, the administrator role cannot be registered from public forms. It is initialized strictly through `migrations/seed.php` using the values defined in `backend/.env`.
+
+### 🔐 Administrative Access
+- **Admin Login Portal**: `http://localhost:5173/admin/login`
+- **Dashboard Redirect**: Upon successful authentication, administrators are redirected directly to `http://localhost:5173/admin/dashboard`.
+- **Credentials**: Specified by `ADMIN_EMAIL` and `ADMIN_PASSWORD` in your `backend/.env` file.
+- **Modifying Admin Credentials**: You can modify `ADMIN_EMAIL` and `ADMIN_PASSWORD` in `backend/.env` prior to running `php migrations/seed.php`. To update after seeding, update the `users` table record or change the password in the database.
+
+### 🧪 Pre-Seeded Demo Accounts for Testing
+The seeder creates working demo accounts for each role so you can test all workflows immediately:
+
+| Role | Email | Password (from seeder) | Purpose |
+| :--- | :--- | :--- | :--- |
+| **Admin** | `admin@medicare.com` | *From `backend/.env`* | System metrics, doctor approvals, department CRUD |
+| **Approved Doctor** | `dr.sarah@medicare.com` | `Doctor123!` | Test schedule management, appointment approvals, consultation notes |
+| **Pending Doctor** | `dr.michael@medicare.com` | `Doctor123!` | Test admin approval/rejection flow |
+| **Patient** | `patient@medicare.com` | `Patient123!` | Test doctor search, slot picking, booking, and cancellation |
+
+---
+
+## 11. User Flows & Application Routes
+
+### Client-Side Routes (Frontend)
+
+| Path | Access Level | Layout / Component | Description |
+| :--- | :--- | :--- | :--- |
+| `/` | Public | `LandingPage` | Home hero, service highlights, department overview, call-to-actions |
+| `/login` | Public | `LoginPage` | Patient and Doctor login portal |
+| `/register` | Public | `RegisterPage` | Patient registration or Doctor application submission |
+| `/admin/login` | Public | `AdminLoginPage` | Dedicated administrative authentication portal |
+| `/dashboard` | Patient | `DashboardLayout` | Patient overview, upcoming appointments, quick doctor search |
+| `/dashboard/appointments` | Patient | `PatientAppointmentsPage` | View appointment status, book new slot, cancel visits, read notes |
+| `/dashboard/doctors` | Patient | `DoctorsBrowsePage` | Directory of approved doctors with search & department filters |
+| `/doctor/dashboard` | Doctor | `DoctorLayout` | Clinical summary, today's schedule, patient count |
+| `/doctor/appointments`| Doctor | `DoctorAppointmentsPage` | Manage bookings, approve/reject, add diagnosis & prescriptions |
+| `/doctor/schedule` | Doctor | `DoctorSchedulePage` | Configure working days, start/end hours, and appointment durations |
+| `/doctor/patients` | Doctor | `DoctorPatientsPage` | View assigned patients and their past consultations |
+| `/doctor/profile` | Doctor | `DoctorProfilePage` | Update specialization, consultation fees, biography, and room number |
+| `/admin/dashboard` | Admin | `AdminLayout` | Overview metrics, quick actions, recent hospital appointments |
+| `/admin/doctors` | Admin | `AdminDoctorsPage` | Doctor roster management and account status toggles |
+| `/admin/doctor-requests`| Admin | `AdminDoctorRequestsPage` | Review and approve/reject pending doctor applications |
+| `/admin/patients` | Admin | `AdminPatientsPage` | Directory of registered hospital patients |
+| `/admin/departments`| Admin | `AdminDepartmentsPage` | Create, update, and manage medical departments |
+| `/admin/appointments`| Admin | `AdminAppointmentsPage` | Global oversight and filters for all hospital bookings |
+| `/admin/settings` | Admin | `AdminSettingsPage` | Administrative environment and configuration overview |
+
+---
+
+## 12. API Reference Overview
+
+All API endpoints are prefixed with `/api` (or accessed directly depending on router dispatch).
+
+### 🔑 Authentication & Profile
+| Method | Endpoint | Role Required | Description |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/auth/login` | Public | Authenticate with email/password; returns JWT token & user object |
+| `POST` | `/api/auth/register` | Public | Register a patient or submit doctor application (`pending` status) |
+| `GET` | `/api/auth/me` | Authenticated | Retrieve current user profile and doctor metadata |
+| `GET` | `/api/health` | Public | Verify backend availability and system timestamp |
+
+### 🏥 Departments & Doctors
+| Method | Endpoint | Role Required | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/departments` | Public | List all active departments (`?all=true` for admin) |
+| `GET` | `/api/departments/{id}` | Public | Retrieve a single department by ID |
+| `POST` | `/api/departments` | Admin | Create a new department |
+| `PUT` | `/api/departments/{id}` | Admin | Update department name, description, or icon |
+| `DELETE`| `/api/departments/{id}` | Admin | Delete / deactivate a department |
+| `GET` | `/api/doctors` | Public | Browse approved doctors (filters: `departmentId`, `search`) |
+| `GET` | `/api/doctors/{id}` | Public | Detailed doctor profile including weekly schedule |
+
+### 📅 Appointments & Scheduling
+| Method | Endpoint | Role Required | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/appointments/slots` | Public / All | Get generated 30-min slots for a doctor & date (`?doctorId=&date=`) |
+| `GET` | `/api/appointments` | Authenticated | Retrieve appointments (scoped to patient, doctor, or all for admin) |
+| `POST` | `/api/appointments` | Patient | Book a specific appointment slot |
+| `POST` | `/api/appointments/{id}/cancel` | Authenticated | Cancel an appointment (Patient, Doctor, or Admin) |
+| `PATCH`| `/api/appointments/{id}/status` | Doctor | Update appointment status (`approved`, `completed`, `cancelled`, `rejected`) |
+| `POST` | `/api/appointments/{id}/consultation` | Doctor | Save diagnosis, prescription, and consultation notes |
+
+### 🩺 Doctor Workspace
+| Method | Endpoint | Role Required | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/doctor/schedule` | Doctor | Retrieve the authenticated doctor's weekly timetable |
+| `PUT` | `/api/doctor/schedule` | Doctor | Save/update weekly schedule availability |
+| `GET` | `/api/doctor/profile` | Doctor | Retrieve authenticated doctor's profile |
+| `PUT` | `/api/doctor/profile` | Doctor | Update bio, room number, fee, qualification, specialization |
+
+### 🛡️ Administrator Operations
+| Method | Endpoint | Role Required | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/admin/stats` | Admin | Aggregate dashboard counters and recent appointments |
+| `GET` | `/api/admin/doctors` | Admin | List all doctors (supports filter `?status=`) |
+| `GET` | `/api/admin/doctor-requests`| Admin | Retrieve pending doctor registrations awaiting approval |
+| `POST` | `/api/admin/doctors/{id}/approve` | Admin | Approve a pending doctor account |
+| `POST` | `/api/admin/doctors/{id}/reject` | Admin | Reject a pending doctor account |
+| `PATCH`| `/api/admin/doctors/{id}/status` | Admin | Change doctor status (`active`, `inactive`, `rejected`) |
+| `GET` | `/api/admin/patients` | Admin | List all registered patients with appointment counts |
+| `GET` | `/api/admin/reports` | Admin | Distribution analytics (appointments by status, doctors per dept) |
+
+---
+
+## 13. File Uploads & Static Assets
+
+- **Storage Location**: Static assets, profile avatars, and documents are designated to reside in `backend/public/uploads/`.
+- **Public Serving**: Assets in the `backend/public/` directory are served directly by the web server (Apache or PHP's built-in server) without passing through application routing.
+- **Current Status**: The core appointment scheduling, doctor credentialing, and consultation workflows utilize lightweight icon tokens and structured database fields. Dedicated multipart upload handlers can write directly to `public/uploads/` when extending avatar file features.
+
+---
+
+## 14. Project Scope
+
+To ensure high performance, security, and a focused clinical appointment lifecycle, the following features are **intentionally out of scope**:
+
+- ❌ Pharmacy and physical medication inventory management.
+- ❌ Payment gateway integration (Stripe, PayPal) and billing/invoicing automation.
+- ❌ Full Hospital EMR / inpatient bed management.
+- ❌ Nurse, ward staff, or lab technician workflows.
+- ❌ Real-time WebRTC audio/video calling.
+- ❌ AI-based automated diagnostic or predictive triage tools.
+
+---
+
+## 15. Troubleshooting
+
+### 1. Apache Stripping the Authorization Header in XAMPP
+**Issue**: Requests fail with `401 Unauthorized: Missing authentication token` even though a Bearer token is sent in the header.
+**Cause**: Apache in XAMPP by default often suppresses the HTTP `Authorization` header in CGI/FastCGI environments.
+**Solution**:
+1. Check `backend/src/Middleware/AuthMiddleware.php`: Notice the application already supports fallback inspection of `$_SERVER['REDIRECT_HTTP_AUTHORIZATION']`.
+2. Ensure your `public/.htaccess` includes the rewrite rule:
+   ```apache
+   RewriteEngine On
+   RewriteCond %{HTTP:Authorization} ^(.*)
+   RewriteRule .* - [e=HTTP_AUTHORIZATION:%1]
+   ```
+
+### 2. Database Connection Error (`SQLSTATE[HY000] [2002]`)
+**Issue**: Backend reports `Database connection failed`.
+**Solution**:
+- Ensure MySQL is running in the XAMPP Control Panel.
+- Check `backend/.env` and verify `DB_HOST=127.0.0.1` and `DB_PORT=3306`. Using `127.0.0.1` instead of `localhost` avoids Unix/Windows named socket conflicts.
+- Ensure the password in `DB_PASS` matches your MySQL root user (default XAMPP root password is empty `""`).
+
+### 3. CORS / Pre-flight Blocked
+**Issue**: Browser console displays `Cross-Origin Request Blocked`.
+**Solution**:
+- When running Vite on `localhost:5173` and PHP on `localhost:8000`, the built-in `CorsMiddleware` automatically responds to pre-flight `OPTIONS` requests with appropriate `Access-Control-Allow-Origin: *` headers.
+- Alternatively, rely on Vite's built-in proxy in `vite.config.ts`, which proxies `/api` requests locally without triggering CORS restrictions.
+
+### 4. Doctor Account Cannot Log In
+**Issue**: Newly registered doctor receives `403 Forbidden` on login attempt.
+**Solution**:
+- This is intentional: newly registered doctors are marked with status `pending`.
+- Log in to the Administrator portal at `/admin/login`, navigate to **Doctor Requests**, and click **Approve** on the doctor's profile.
+
+---
+
+## 16. Author & License
+
+- **Author**: Medi-Care Engineering Team
+- **Repository**: [https://github.com/shaamyll/Medicare-online-appointment-system](https://github.com/shaamyll/Medicare-online-appointment-system)
+- **License**: Released under the [MIT License](LICENSE).

@@ -12,7 +12,8 @@ export const RoleRoute: React.FC<RoleRouteProps> = ({ children, allowedRoles }) 
   const { user } = useAuth();
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    const redirectPath = window.location.pathname.startsWith('/doctor') ? '/doctor/login' : '/login';
+    return <Navigate to={redirectPath} replace />;
   }
 
   if (!allowedRoles.includes(user.role)) {

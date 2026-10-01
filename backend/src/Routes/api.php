@@ -22,7 +22,9 @@ class ApiRoutes {
 
         // Auth
         $router->post('/auth/login', [AuthController::class, 'login']);
+        $router->post('/auth/doctor/login', [AuthController::class, 'doctorLogin']);
         $router->post('/auth/register', [AuthController::class, 'register']);
+        $router->post('/auth/doctor/register', [AuthController::class, 'doctorRegister']);
         $router->get('/auth/me', [AuthController::class, 'me'], [AuthMiddleware::class]);
 
         // Departments (Public viewing)

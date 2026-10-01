@@ -4,10 +4,9 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 // Public Pages
 import { LandingPage } from '@/pages/LandingPage';
 import { LoginPage } from '@/pages/LoginPage';
-import { RegisterPage } from '@/pages/RegisterPage';
+import { DoctorLoginPage } from '@/pages/doctor/DoctorLoginPage';
 
 // Admin Pages
-import { AdminLoginPage } from '@/pages/admin/AdminLoginPage';
 import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage';
 import { AdminDoctorsPage } from '@/pages/admin/AdminDoctorsPage';
 import { AdminDoctorRequestsPage } from '@/pages/admin/AdminDoctorRequestsPage';
@@ -38,11 +37,11 @@ import { RoleRoute } from './RoleRoute';
 export const AppRouter: React.FC = () => {
   return (
     <Routes>
-      {/* Public Pages */}
+      {/* Public Pages - Exactly TWO Auth Portals */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
-      <Route path="/admin/login" element={<AdminLoginPage />} />
+      <Route path="/register" element={<Navigate to="/login?tab=register" replace />} />
+      <Route path="/doctor/login" element={<DoctorLoginPage />} />
 
       {/* Patient / Normal User Portal */}
       <Route

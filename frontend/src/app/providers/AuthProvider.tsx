@@ -1,5 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { User, LoginCredentials, RegisterData } from '@/features/auth/types/auth.types';
+import {
+  User,
+  LoginCredentials,
+  RegisterData,
+  PatientRegisterData,
+  DoctorRegisterData,
+  AuthResponse,
+} from '@/features/auth/types/auth.types';
 import { authApi } from '@/features/auth/api/authApi';
 
 interface AuthContextType {
@@ -8,8 +15,10 @@ interface AuthContextType {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (credentials: LoginCredentials) => Promise<void>;
-  register: (data: RegisterData) => Promise<void>;
+  login: (credentials: LoginCredentials) => Promise<User>;
+  doctorLogin: (credentials: LoginCredentials) => Promise<User>;
+  register: (data: PatientRegisterData | RegisterData) => Promise<User>;
+  doctorRegister: (data: DoctorRegisterData) => Promise<AuthResponse>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -52,7 +61,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     refreshUser();
   }, [refreshUser]);
 
-  const login = async (credentials: LoginCredentials) => {
+  const login = async (credentials: LoginCredentials): Promise<User> => {
     setIsLoading(true);
     try {
       const res = await authApi.login(credentials);
@@ -61,12 +70,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setToken(res.token);
       setUser(res.user);
       setProfile(res.profile);
+      return res.user;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const register = async (data: RegisterData) => {
+  const doctorLogin = async (credentials: LoginCredentials): Promise<User> => {
+    setIsLoading(true);
+    try {
+      const res = await authApi.doctorLogin(credentials);
+      localStorage.setItem('medicare_token', res.token);
+      localStorage.setItem('medicare_user', JSON.stringify(res.user));
+      setToken(res.token);
+      setUser(res.user);
+      setProfile(res.profile);
+      return res.user;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const register = async (data: PatientRegisterData | RegisterData): Promise<User> => {
     setIsLoading(true);
     try {
       const res = await authApi.register(data);
@@ -75,18 +100,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setToken(res.token);
       setUser(res.user);
       setProfile(res.profile);
+      return res.user;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const doctorRegister = async (data: DoctorRegisterData): Promise<AuthResponse> => {
+    setIsLoading(true);
+    try {
+      const res = await authApi.doctorRegister(data);
+      return res;
     } finally {
       setIsLoading(false);
     }
   };
 
   const logout = () => {
+    const isDoctorPortal = window.location.pathname.startsWith('/doctor');
     localStorage.removeItem('medicare_token');
     localStorage.removeItem('medicare_user');
     setToken(null);
     setUser(null);
     setProfile(null);
-    window.location.href = '/login';
+    window.location.href = isDoctorPortal ? '/doctor/login' : '/login';
   };
 
   return (
@@ -98,7 +135,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated: !!user && !!token,
         isLoading,
         login,
+        doctorLogin,
         register,
+        doctorRegister,
         logout,
         refreshUser,
       }}

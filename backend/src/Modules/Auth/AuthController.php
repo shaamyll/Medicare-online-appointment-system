@@ -23,7 +23,25 @@ class AuthController {
         }
 
         try {
-            $result = $this->authService->login($email, $password);
+            $result = $this->authService->userLogin($email, $password);
+            Response::success($result, 'Login successful');
+        } catch (Exception $e) {
+            $code = $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 400;
+            Response::error($e->getMessage(), $code);
+        }
+    }
+
+    public function doctorLogin(Request $request): void {
+        $email = $request->get('email');
+        $password = $request->get('password');
+
+        if (empty($email) || empty($password)) {
+            Response::error('Email and password are required.', 400);
+            return;
+        }
+
+        try {
+            $result = $this->authService->doctorLogin($email, $password);
             Response::success($result, 'Login successful');
         } catch (Exception $e) {
             $code = $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 400;
@@ -35,10 +53,20 @@ class AuthController {
         $data = $request->getBody();
 
         try {
-            $result = $this->authService->register($data);
-            $message = isset($result['pendingApproval']) && $result['pendingApproval']
-                ? $result['message']
-                : 'Registration successful';
+            $result = $this->authService->patientRegister($data);
+            Response::success($result, 'Registration successful', 201);
+        } catch (Exception $e) {
+            $code = $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 400;
+            Response::error($e->getMessage(), $code);
+        }
+    }
+
+    public function doctorRegister(Request $request): void {
+        $data = $request->getBody();
+
+        try {
+            $result = $this->authService->doctorRegister($data);
+            $message = $result['message'] ?? 'Doctor application submitted successfully';
             Response::success($result, $message, 201);
         } catch (Exception $e) {
             $code = $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 400;

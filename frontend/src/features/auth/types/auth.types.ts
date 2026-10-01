@@ -22,21 +22,37 @@ export interface LoginCredentials {
   password: string;
 }
 
-export interface RegisterData {
+export interface PatientRegisterData {
   name: string;
   email: string;
   password: string;
-  role: UserRole;
   phone?: string;
   dateOfBirth?: string;
   gender?: string;
   bloodGroup?: string;
-  specialization?: string;
-  departmentId?: number;
 }
+
+export interface DoctorRegisterData {
+  name: string;
+  email: string;
+  password: string;
+  phone?: string;
+  specialization: string;
+  departmentId?: number;
+  qualification: string;
+  experienceYears: number;
+  consultationFee: number;
+  bio?: string;
+  roomNumber?: string;
+}
+
+// Kept for backward compatibility
+export type RegisterData = PatientRegisterData & Partial<DoctorRegisterData> & { role?: UserRole };
 
 export interface AuthResponse {
   token: string;
   user: User;
   profile?: any;
+  pendingApproval?: boolean;
+  message?: string;
 }

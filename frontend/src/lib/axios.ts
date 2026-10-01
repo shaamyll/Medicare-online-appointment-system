@@ -35,12 +35,14 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError<ApiResponse>) => {
     if (error.response?.status === 401) {
-      const isAuthRequest = error.config?.url?.includes('/auth/login') || error.config?.url?.includes('/auth/register');
+      const isAuthRequest = error.config?.url?.includes('/auth/');
       if (!isAuthRequest) {
         localStorage.removeItem('medicare_token');
         localStorage.removeItem('medicare_user');
-        if (window.location.pathname !== '/login') {
-          window.location.href = '/login?expired=true';
+        const isDoctorRoute = window.location.pathname.startsWith('/doctor');
+        const loginPath = isDoctorRoute ? '/doctor/login' : '/login';
+        if (window.location.pathname !== loginPath) {
+          window.location.href = `${loginPath}?expired=true`;
         }
       }
     }

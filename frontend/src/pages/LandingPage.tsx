@@ -58,19 +58,19 @@ export const LandingPage: React.FC = () => {
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button
               size="lg"
-              onClick={() => navigate('/register')}
+              onClick={() => navigate('/login?tab=register')}
               rightIcon={<ArrowRight className="w-4 h-4" />}
-              className="w-full sm:w-auto shadow-md"
+              className="w-full sm:w-auto shadow-md bg-emerald-600 hover:bg-emerald-700"
             >
               Book an Appointment
             </Button>
             <Button
               variant="outline"
               size="lg"
-              onClick={() => navigate('/login')}
-              className="w-full sm:w-auto bg-white hover:bg-slate-50"
+              onClick={() => navigate('/doctor/login')}
+              className="w-full sm:w-auto bg-white hover:bg-slate-50 border-slate-300 text-slate-800"
             >
-              Staff & Doctor Portal
+              For Doctors &rarr;
             </Button>
           </div>
 
@@ -122,7 +122,7 @@ export const LandingPage: React.FC = () => {
                 </div>
                 <div className="mt-6 pt-4 border-t border-slate-100">
                   <button
-                    onClick={() => navigate('/register')}
+                    onClick={() => navigate('/login?tab=register')}
                     className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 inline-flex items-center gap-1"
                   >
                     <span>Find Doctors</span>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Stethoscope, LogOut, User as UserIcon, Calendar } from 'lucide-react';
+import { Stethoscope, LogOut, Calendar } from 'lucide-react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
 
@@ -66,11 +66,20 @@ export const Navbar: React.FC = () => {
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={() => navigate('/login')}>
-                Sign In
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/doctor/login')}
+                className="text-slate-700 hover:text-teal-700 font-medium"
+              >
+                For Doctors
               </Button>
-              <Button size="sm" onClick={() => navigate('/register')} leftIcon={<UserIcon className="w-4 h-4" />}>
-                Book Appointment
+              <Button
+                size="sm"
+                onClick={() => navigate('/login')}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium"
+              >
+                Login / Sign up
               </Button>
             </div>
           )}
