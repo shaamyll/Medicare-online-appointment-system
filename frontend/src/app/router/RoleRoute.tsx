@@ -11,8 +11,19 @@ export interface RoleRouteProps {
 export const RoleRoute: React.FC<RoleRouteProps> = ({ children, allowedRoles }) => {
   const { user } = useAuth();
 
-  if (!user || !allowedRoles.includes(user.role)) {
-    return <Navigate to="/dashboard" replace />;
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!allowedRoles.includes(user.role)) {
+    // Redirect to the appropriate portal according to their actual role
+    if (user.role === 'admin') {
+      return <Navigate to="/admin/dashboard" replace />;
+    } else if (user.role === 'doctor') {
+      return <Navigate to="/doctor/dashboard" replace />;
+    } else {
+      return <Navigate to="/dashboard" replace />;
+    }
   }
 
   return <>{children}</>;

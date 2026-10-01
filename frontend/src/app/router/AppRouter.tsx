@@ -1,11 +1,39 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+
+// Public Pages
 import { LandingPage } from '@/pages/LandingPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { RegisterPage } from '@/pages/RegisterPage';
+
+// Admin Pages
+import { AdminLoginPage } from '@/pages/admin/AdminLoginPage';
+import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage';
+import { AdminDoctorsPage } from '@/pages/admin/AdminDoctorsPage';
+import { AdminDoctorRequestsPage } from '@/pages/admin/AdminDoctorRequestsPage';
+import { AdminPatientsPage } from '@/pages/admin/AdminPatientsPage';
+import { AdminDepartmentsPage } from '@/pages/admin/AdminDepartmentsPage';
+import { AdminAppointmentsPage } from '@/pages/admin/AdminAppointmentsPage';
+import { AdminSettingsPage } from '@/pages/admin/AdminSettingsPage';
+
+// Doctor Pages
+import { DoctorDashboardPage } from '@/pages/doctor/DoctorDashboardPage';
+import { DoctorAppointmentsPage } from '@/pages/doctor/DoctorAppointmentsPage';
+import { DoctorSchedulePage } from '@/pages/doctor/DoctorSchedulePage';
+import { DoctorPatientsPage } from '@/pages/doctor/DoctorPatientsPage';
+import { DoctorProfilePage } from '@/pages/doctor/DoctorProfilePage';
+
+// Patient Pages
 import { DashboardPage } from '@/pages/DashboardPage';
+import { PatientAppointmentsPage } from '@/pages/patient/PatientAppointmentsPage';
+import { DoctorsBrowsePage } from '@/pages/patient/DoctorsBrowsePage';
+
+// Layouts & Route Guards
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { DoctorLayout } from '@/components/layout/DoctorLayout';
+import { AdminLayout } from '@/components/layout/AdminLayout';
 import { ProtectedRoute } from './ProtectedRoute';
+import { RoleRoute } from './RoleRoute';
 
 export const AppRouter: React.FC = () => {
   return (
@@ -14,25 +42,63 @@ export const AppRouter: React.FC = () => {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/admin/login" element={<AdminLoginPage />} />
 
-      {/* Authenticated Dashboard Routes */}
+      {/* Patient / Normal User Portal */}
       <Route
         path="/dashboard"
         element={
           <ProtectedRoute>
-            <DashboardLayout />
+            <RoleRoute allowedRoles={['patient']}>
+              <DashboardLayout />
+            </RoleRoute>
           </ProtectedRoute>
         }
       >
         <Route index element={<DashboardPage />} />
-        <Route path="appointments" element={<DashboardPage />} />
-        <Route path="doctors" element={<DashboardPage />} />
-        <Route path="schedules" element={<DashboardPage />} />
-        <Route path="patients" element={<DashboardPage />} />
-        <Route path="departments" element={<DashboardPage />} />
-        <Route path="staff-tasks" element={<DashboardPage />} />
-        <Route path="notifications" element={<DashboardPage />} />
-        <Route path="reports" element={<DashboardPage />} />
+        <Route path="appointments" element={<PatientAppointmentsPage />} />
+        <Route path="doctors" element={<DoctorsBrowsePage />} />
+      </Route>
+
+      {/* Doctor Clinical Portal */}
+      <Route
+        path="/doctor"
+        element={
+          <ProtectedRoute>
+            <RoleRoute allowedRoles={['doctor']}>
+              <DoctorLayout />
+            </RoleRoute>
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="/doctor/dashboard" replace />} />
+        <Route path="dashboard" element={<DoctorDashboardPage />} />
+        <Route path="appointments" element={<DoctorAppointmentsPage />} />
+        <Route path="schedule" element={<DoctorSchedulePage />} />
+        <Route path="patients" element={<DoctorPatientsPage />} />
+        <Route path="profile" element={<DoctorProfilePage />} />
+        <Route path="settings" element={<DoctorProfilePage />} />
+      </Route>
+
+      {/* Admin Portal */}
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute>
+            <RoleRoute allowedRoles={['admin']}>
+              <AdminLayout />
+            </RoleRoute>
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="/admin/dashboard" replace />} />
+        <Route path="dashboard" element={<AdminDashboardPage />} />
+        <Route path="doctors" element={<AdminDoctorsPage />} />
+        <Route path="doctor-requests" element={<AdminDoctorRequestsPage />} />
+        <Route path="patients" element={<AdminPatientsPage />} />
+        <Route path="departments" element={<AdminDepartmentsPage />} />
+        <Route path="appointments" element={<AdminAppointmentsPage />} />
+        <Route path="settings" element={<AdminSettingsPage />} />
       </Route>
 
       {/* Catch-all Redirect */}

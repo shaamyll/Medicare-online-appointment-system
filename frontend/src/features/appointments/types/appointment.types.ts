@@ -1,4 +1,23 @@
-export type AppointmentStatus = 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
+export type AppointmentStatus = 'PENDING' | 'APPROVED' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'REJECTED';
+
+export interface AppointmentSlot {
+  startTime: string;
+  endTime: string;
+  isAvailable: boolean;
+}
+
+export interface SlotsResponse {
+  date: string;
+  dayOfWeek: string;
+  hasSchedule: boolean;
+  slots: AppointmentSlot[];
+}
+
+export interface ConsultationRecord {
+  diagnosis?: string;
+  prescription?: string;
+  consultationNotes?: string;
+}
 
 export interface Appointment {
   id: number;
@@ -14,6 +33,9 @@ export interface Appointment {
     name: string;
     specialization: string;
     department?: string;
+    consultationFee?: number;
+    phone?: string;
+    email?: string;
   };
   appointmentDate: string;
   startTime: string;
@@ -21,12 +43,13 @@ export interface Appointment {
   status: AppointmentStatus;
   reasonForVisit?: string;
   createdAt: string;
+  consultation?: ConsultationRecord | null;
 }
 
 export interface BookAppointmentData {
   doctorId: number;
   appointmentDate: string;
   startTime: string;
-  endTime: string;
+  endTime?: string;
   reasonForVisit?: string;
 }

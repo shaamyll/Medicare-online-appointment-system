@@ -1,118 +1,74 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Calendar,
-  Clock,
-  UserCheck,
-  Building2,
   Stethoscope,
   PlusCircle,
-  Activity,
   CheckCircle2,
-  AlertCircle,
-  Search,
+  ArrowRight,
 } from 'lucide-react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { Modal } from '@/components/ui/Modal';
-import { Input } from '@/components/ui/Input';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/Table';
 import { useToast } from '@/components/ui/Toast';
 import { useDoctors } from '@/features/doctors/hooks/useDoctors';
-import { useAppointments, useBookAppointment } from '@/features/appointments/hooks/useAppointments';
+import { useAppointments, useCancelAppointment } from '@/features/appointments/hooks/useAppointments';
+import { AppointmentBookingModal } from '@/features/appointments/components/AppointmentBookingModal';
+import { LoadingState } from '@/components/ui/LoadingState';
 
 export const DashboardPage: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { toast } = useToast();
-  const role = user?.role || 'patient';
-
-  const { data: doctors } = useDoctors();
-  const { data: appointments } = useAppointments();
-  const bookMutation = useBookAppointment();
 
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
-  const [selectedDoctorId, setSelectedDoctorId] = useState<number>(1);
-  const [appointmentDate, setAppointmentDate] = useState(new Date().toISOString().split('T')[0]);
-  const [appointmentTime, setAppointmentTime] = useState('09:30');
-  const [reason, setReason] = useState('');
+  const [selectedDoctorId, setSelectedDoctorId] = useState<number | undefined>(undefined);
 
-  // Sample data fallback if server database is empty initially
-  const sampleAppointments = [
-    {
-      id: 1,
-      appointmentNumber: 'APT-20260917-A91',
-      patient: { name: user?.name || 'Jane Doe', email: user?.email || 'patient@medicare.local' },
-      doctor: { name: 'Dr. Sarah Mitchell', specialization: 'Cardiology', department: 'Cardiology' },
-      appointmentDate: '2026-09-18',
-      startTime: '10:00 AM',
-      endTime: '10:20 AM',
-      status: 'CONFIRMED',
-      reasonForVisit: 'Annual cardiovascular checkup and blood pressure monitoring.',
-    },
-    {
-      id: 2,
-      appointmentNumber: 'APT-20260919-C42',
-      patient: { name: 'Robert Chen', email: 'robert@example.com' },
-      doctor: { name: 'Dr. Michael Hayes', specialization: 'Orthopedics', department: 'Orthopedics' },
-      appointmentDate: '2026-09-21',
-      startTime: '02:30 PM',
-      endTime: '02:50 PM',
-      status: 'PENDING',
-      reasonForVisit: 'Knee injury follow-up evaluation.',
-    },
-  ];
+  const { data: doctors, isLoading: isLoadingDoctors } = useDoctors();
+  const { data: appointments, isLoading: isLoadingApts } = useAppointments();
+  const cancelMutation = useCancelAppointment();
 
-  const displayedAppointments = appointments && appointments.length > 0 ? appointments : sampleAppointments;
+  if (isLoadingApts || isLoadingDoctors) {
+    return <LoadingState message="Loading your health portal..." />;
+  }
 
-  const handleBookAppointment = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const todayStr = new Date().toISOString().split('T')[0];
+  const allApts = appointments || [];
+
+  const upcomingApts = allApts.filter(
+    (a) => (a.status === 'PENDING' || a.status === 'APPROVED' || a.status === 'CONFIRMED') && a.appointmentDate >= todayStr
+  );
+  const completedApts = allApts.filter((a) => a.status === 'COMPLETED');
+
+  const handleCancel = async (id: number, ref: string) => {
+    if (!window.confirm(`Are you sure you want to cancel appointment #${ref}?`)) {
+      return;
+    }
     try {
-      await bookMutation.mutateAsync({
-        doctorId: Number(selectedDoctorId),
-        appointmentDate,
-        startTime: appointmentTime,
-        endTime: '10:00',
-        reasonForVisit: reason,
-      });
-      toast('Appointment requested successfully!', 'success');
-      setIsBookingModalOpen(false);
-      setReason('');
-    } catch (err) {
-      // In demo mode without active DB
-      toast('Appointment scheduled in system!', 'success');
-      setIsBookingModalOpen(false);
-      setReason('');
+      await cancelMutation.mutateAsync(id);
+      toast('Appointment cancelled', 'info');
+    } catch (err: any) {
+      toast(err.message || 'Failed to cancel appointment', 'error');
     }
   };
 
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
-      case 'CONFIRMED':
-        return 'success';
-      case 'PENDING':
-        return 'warning';
-      case 'CANCELLED':
-        return 'danger';
-      case 'COMPLETED':
-        return 'info';
-      default:
-        return 'default';
-    }
+  const openBookingForDoctor = (docId: number) => {
+    setSelectedDoctorId(docId);
+    setIsBookingModalOpen(true);
   };
 
   return (
     <div className="space-y-8">
-      {/* Welcome & Action Banner */}
+      {/* Welcome Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-              Welcome back, {user?.name || 'User'}!
+              Welcome back, {user?.name || 'Patient'}!
             </h1>
-            <Badge variant="success" className="capitalize">
-              {role}
-            </Badge>
+            <Badge variant="success">Patient Portal</Badge>
           </div>
           <p className="text-sm text-slate-500">
             Medi-Care Healthcare Portal &bull; Today is{' '}
@@ -120,322 +76,235 @@ export const DashboardPage: React.FC = () => {
           </p>
         </div>
 
-        {role === 'patient' && (
+        <div className="flex items-center gap-3">
           <Button
-            onClick={() => setIsBookingModalOpen(true)}
-            leftIcon={<PlusCircle className="w-4 h-4" />}
-            className="shadow-sm"
+            variant="outline"
+            size="sm"
+            onClick={() => navigate('/dashboard/doctors')}
+            className="border-slate-300"
           >
-            New Appointment
+            Find Doctors
           </Button>
-        )}
+          <Button
+            size="sm"
+            onClick={() => {
+              setSelectedDoctorId(undefined);
+              setIsBookingModalOpen(true);
+            }}
+            leftIcon={<PlusCircle className="w-4 h-4" />}
+            className="bg-emerald-600 hover:bg-emerald-700 shadow-sm"
+          >
+            Book Appointment
+          </Button>
+        </div>
       </div>
 
-      {/* Role-Specific Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {role === 'admin' ? (
-          <>
-            <Card hover>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase text-slate-500 tracking-wider">Total Appointments</p>
-                  <p className="text-2xl font-extrabold text-slate-900 mt-1">128</p>
-                </div>
-                <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600">
-                  <Calendar className="w-6 h-6" />
-                </div>
-              </div>
-              <p className="text-xs text-emerald-600 font-medium mt-3 flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5" /> +14% this week
-              </p>
-            </Card>
-
-            <Card hover>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase text-slate-500 tracking-wider">Active Doctors</p>
-                  <p className="text-2xl font-extrabold text-slate-900 mt-1">24</p>
-                </div>
-                <div className="p-3 bg-sky-50 rounded-xl text-sky-600">
-                  <Stethoscope className="w-6 h-6" />
-                </div>
-              </div>
-              <p className="text-xs text-slate-500 mt-3 font-medium">Across 8 specialties</p>
-            </Card>
-
-            <Card hover>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase text-slate-500 tracking-wider">Departments</p>
-                  <p className="text-2xl font-extrabold text-slate-900 mt-1">5</p>
-                </div>
-                <div className="p-3 bg-indigo-50 rounded-xl text-indigo-600">
-                  <Building2 className="w-6 h-6" />
-                </div>
-              </div>
-              <p className="text-xs text-indigo-600 font-medium mt-3">All clinics active</p>
-            </Card>
-
-            <Card hover>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase text-slate-500 tracking-wider">API Health</p>
-                  <p className="text-2xl font-extrabold text-emerald-600 mt-1">99.9%</p>
-                </div>
-                <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600">
-                  <Activity className="w-6 h-6" />
-                </div>
-              </div>
-              <p className="text-xs text-slate-500 mt-3 font-medium">Backend REST connected</p>
-            </Card>
-          </>
-        ) : role === 'doctor' ? (
-          <>
-            <Card hover>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase text-slate-500 tracking-wider">Today's Patients</p>
-                  <p className="text-2xl font-extrabold text-slate-900 mt-1">6</p>
-                </div>
-                <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600">
-                  <UserCheck className="w-6 h-6" />
-                </div>
-              </div>
-              <p className="text-xs text-emerald-600 font-medium mt-3">2 completed, 4 upcoming</p>
-            </Card>
-
-            <Card hover>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase text-slate-500 tracking-wider">Consultation Shift</p>
-                  <p className="text-xl font-bold text-slate-900 mt-1">09:00 - 13:00</p>
-                </div>
-                <div className="p-3 bg-sky-50 rounded-xl text-sky-600">
-                  <Clock className="w-6 h-6" />
-                </div>
-              </div>
-              <p className="text-xs text-slate-500 mt-3 font-medium">Room #304 &bull; 20m slots</p>
-            </Card>
-
-            <Card hover>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase text-slate-500 tracking-wider">Pending Diagnoses</p>
-                  <p className="text-2xl font-extrabold text-amber-600 mt-1">1</p>
-                </div>
-                <div className="p-3 bg-amber-50 rounded-xl text-amber-600">
-                  <AlertCircle className="w-6 h-6" />
-                </div>
-              </div>
-              <p className="text-xs text-slate-500 mt-3 font-medium">Needs prescription update</p>
-            </Card>
-
-            <Card hover>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase text-slate-500 tracking-wider">Assisting Nurse</p>
-                  <p className="text-lg font-bold text-slate-900 mt-1">Nurse Emma</p>
-                </div>
-                <div className="p-3 bg-indigo-50 rounded-xl text-indigo-600">
-                  <UserCheck className="w-6 h-6" />
-                </div>
-              </div>
-              <p className="text-xs text-indigo-600 font-medium mt-3">Stationed in OP-2</p>
-            </Card>
-          </>
-        ) : (
-          <>
-            <Card hover>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase text-slate-500 tracking-wider">Upcoming Visits</p>
-                  <p className="text-2xl font-extrabold text-slate-900 mt-1">1</p>
-                </div>
-                <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600">
-                  <Calendar className="w-6 h-6" />
-                </div>
-              </div>
-              <p className="text-xs text-emerald-600 font-medium mt-3">Tomorrow at 10:00 AM</p>
-            </Card>
-
-            <Card hover>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase text-slate-500 tracking-wider">Completed Visits</p>
-                  <p className="text-2xl font-extrabold text-slate-900 mt-1">3</p>
-                </div>
-                <div className="p-3 bg-sky-50 rounded-xl text-sky-600">
-                  <CheckCircle2 className="w-6 h-6" />
-                </div>
-              </div>
-              <p className="text-xs text-slate-500 mt-3 font-medium">Medical notes recorded</p>
-            </Card>
-
-            <Card hover>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase text-slate-500 tracking-wider">Primary Physician</p>
-                  <p className="text-lg font-bold text-slate-900 mt-1">Dr. Mitchell</p>
-                </div>
-                <div className="p-3 bg-indigo-50 rounded-xl text-indigo-600">
-                  <Stethoscope className="w-6 h-6" />
-                </div>
-              </div>
-              <p className="text-xs text-slate-500 mt-3 font-medium">Cardiology Department</p>
-            </Card>
-
-            <Card hover>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase text-slate-500 tracking-wider">Emergency Contact</p>
-                  <p className="text-lg font-bold text-slate-900 mt-1">Verified</p>
-                </div>
-                <div className="p-3 bg-amber-50 rounded-xl text-amber-600">
-                  <UserCheck className="w-6 h-6" />
-                </div>
-              </div>
-              <p className="text-xs text-slate-500 mt-3 font-medium">+1 (555) 0199</p>
-            </Card>
-          </>
-        )}
-      </div>
-
-      {/* Appointments Management Table */}
-      <Card>
-        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-slate-100">
-          <div>
-            <CardTitle>Appointments & Consultations</CardTitle>
-            <p className="text-xs text-slate-500 mt-1">Active scheduled visits and clinical consultations</p>
-          </div>
-          <div className="flex items-center gap-2 mt-3 sm:mt-0">
-            <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-              <input
-                type="text"
-                placeholder="Search appointments..."
-                className="pl-9 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-emerald-500 w-48"
-              />
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+        <Card hover>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Upcoming Visits</p>
+              <p className="text-2xl font-black text-slate-900 mt-1">{upcomingApts.length}</p>
+            </div>
+            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
+              <Calendar className="w-5 h-5" />
             </div>
           </div>
+          <p className="text-xs text-emerald-600 font-medium mt-3">
+            {upcomingApts.length > 0
+              ? `Next: ${upcomingApts[0].appointmentDate} at ${upcomingApts[0].startTime}`
+              : 'No appointments upcoming'}
+          </p>
+        </Card>
+
+        <Card hover>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Completed Visits</p>
+              <p className="text-2xl font-black text-slate-900 mt-1">{completedApts.length}</p>
+            </div>
+            <div className="p-3 bg-sky-50 text-sky-600 rounded-xl">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+          </div>
+          <p className="text-xs text-slate-500 mt-3 font-medium">With clinical prescriptions</p>
+        </Card>
+
+        <Card hover>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Available Specialists</p>
+              <p className="text-2xl font-black text-slate-900 mt-1">{doctors?.length || 0}</p>
+            </div>
+            <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
+              <Stethoscope className="w-5 h-5" />
+            </div>
+          </div>
+          <button
+            onClick={() => navigate('/dashboard/doctors')}
+            className="text-xs text-indigo-600 hover:text-indigo-700 font-semibold mt-3 inline-flex items-center gap-1"
+          >
+            Browse all physicians &rarr;
+          </button>
+        </Card>
+      </div>
+
+      {/* Upcoming Appointments */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-slate-100">
+          <div>
+            <CardTitle>My Upcoming Appointments</CardTitle>
+            <p className="text-xs text-slate-500 mt-0.5">Your scheduled clinical consultations and checkups</p>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/dashboard/appointments')}
+            rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
+            className="text-xs text-emerald-600 hover:text-emerald-700"
+          >
+            View All
+          </Button>
         </CardHeader>
-        <CardContent className="pt-4 p-0">
+        <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Reference #</TableHead>
-                <TableHead>Doctor / Department</TableHead>
+                <TableHead>Doctor & Specialty</TableHead>
                 <TableHead>Date & Time</TableHead>
-                <TableHead>Patient / Reason</TableHead>
+                <TableHead>Reason for Visit</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {displayedAppointments.map((apt: any) => (
-                <TableRow key={apt.id}>
-                  <TableCell className="font-mono text-xs font-medium text-slate-800">
-                    {apt.appointmentNumber}
-                  </TableCell>
-                  <TableCell>
-                    <p className="font-medium text-slate-900">{apt.doctor?.name}</p>
-                    <p className="text-xs text-slate-500">{apt.doctor?.specialization}</p>
-                  </TableCell>
-                  <TableCell>
-                    <p className="font-medium text-slate-900">{apt.appointmentDate}</p>
-                    <p className="text-xs text-slate-500">{apt.startTime}</p>
-                  </TableCell>
-                  <TableCell>
-                    <p className="font-medium text-slate-900">{apt.patient?.name}</p>
-                    <p className="text-xs text-slate-500 truncate max-w-xs">{apt.reasonForVisit}</p>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={getStatusBadgeVariant(apt.status)}>
-                      {apt.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => toast(`Viewing details for ${apt.appointmentNumber}`, 'info')}
-                    >
-                      View
-                    </Button>
+              {upcomingApts.length > 0 ? (
+                upcomingApts.map((apt) => (
+                  <TableRow key={apt.id}>
+                    <TableCell className="font-mono text-xs font-semibold text-slate-800">
+                      {apt.appointmentNumber}
+                    </TableCell>
+
+                    <TableCell>
+                      <p className="font-semibold text-slate-900 text-sm">{apt.doctor.name}</p>
+                      <p className="text-xs text-slate-500">
+                        {apt.doctor.specialization} &bull; {apt.doctor.department || 'General'}
+                      </p>
+                    </TableCell>
+
+                    <TableCell>
+                      <p className="text-xs font-semibold text-slate-900">{apt.appointmentDate}</p>
+                      <p className="text-[11px] text-emerald-700 font-semibold">{apt.startTime} - {apt.endTime}</p>
+                    </TableCell>
+
+                    <TableCell>
+                      <p className="text-xs text-slate-600 max-w-xs truncate">{apt.reasonForVisit || 'Routine Checkup'}</p>
+                    </TableCell>
+
+                    <TableCell>
+                      <Badge
+                        variant={
+                          apt.status === 'APPROVED' || apt.status === 'CONFIRMED'
+                            ? 'success'
+                            : apt.status === 'PENDING'
+                            ? 'warning'
+                            : 'default'
+                        }
+                      >
+                        {apt.status}
+                      </Badge>
+                    </TableCell>
+
+                    <TableCell className="text-right">
+                      {apt.status === 'PENDING' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleCancel(apt.id, apt.appointmentNumber)}
+                          className="text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                        >
+                          Cancel
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-slate-400 text-xs">
+                    No upcoming appointments scheduled.
                   </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
 
-      {/* Booking Appointment Modal */}
-      <Modal
+      {/* Featured Doctors Directory Preview */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">Featured Hospital Physicians</h2>
+            <p className="text-xs text-slate-500">Book directly with certified specialists</p>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/dashboard/doctors')}
+            rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
+            className="text-xs text-emerald-600 hover:text-emerald-700"
+          >
+            Browse All Doctors
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {doctors?.slice(0, 3).map((doc) => (
+            <Card key={doc.id} hover className="p-5 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-700 font-bold flex items-center justify-center text-sm">
+                    {doc.user.name.split(' ').map((n) => n[0]).slice(0, 2).join('')}
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-sm">{doc.user.name}</h3>
+                    <p className="text-xs text-emerald-700 font-semibold">{doc.specialization}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 text-xs text-slate-600 mb-3">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Department:</span>
+                    <span className="font-medium text-slate-800">{doc.department?.name || 'General Clinic'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Consultation Fee:</span>
+                    <span className="font-bold text-emerald-700">${doc.consultationFee?.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                size="sm"
+                onClick={() => openBookingForDoctor(doc.id)}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs mt-2"
+              >
+                Schedule Consultation
+              </Button>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      {/* Booking Modal */}
+      <AppointmentBookingModal
         isOpen={isBookingModalOpen}
         onClose={() => setIsBookingModalOpen(false)}
-        title="Schedule Doctor Consultation"
-        description="Choose your preferred doctor, appointment date, and available time slot."
-      >
-        <form onSubmit={handleBookAppointment} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Select Doctor</label>
-            <select
-              value={selectedDoctorId}
-              onChange={(e) => setSelectedDoctorId(Number(e.target.value))}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none"
-            >
-              {doctors && doctors.length > 0 ? (
-                doctors.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.user?.name} - {d.specialization} ({d.department?.name || 'General'})
-                  </option>
-                ))
-              ) : (
-                <>
-                  <option value={1}>Dr. Sarah Mitchell - Cardiology ($75)</option>
-                  <option value={2}>Dr. Michael Hayes - Orthopedics ($60)</option>
-                  <option value={3}>Dr. Emily Davis - Pediatrics ($50)</option>
-                  <option value={4}>Dr. James Wilson - Neurology ($90)</option>
-                </>
-              )}
-            </select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label="Date"
-              type="date"
-              value={appointmentDate}
-              onChange={(e) => setAppointmentDate(e.target.value)}
-              required
-            />
-            <Input
-              label="Preferred Time"
-              type="time"
-              value={appointmentTime}
-              onChange={(e) => setAppointmentTime(e.target.value)}
-              required
-            />
-          </div>
-
-          <Input
-            label="Reason for Visit / Symptoms"
-            placeholder="e.g. Mild chest discomfort, routine follow up"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            required
-          />
-
-          <div className="flex justify-end gap-3 pt-3">
-            <Button variant="outline" type="button" onClick={() => setIsBookingModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" isLoading={bookMutation.isPending}>
-              Confirm Booking
-            </Button>
-          </div>
-        </form>
-      </Modal>
+        preselectedDoctorId={selectedDoctorId}
+      />
     </div>
   );
 };

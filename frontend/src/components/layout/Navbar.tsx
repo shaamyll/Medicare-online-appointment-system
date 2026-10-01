@@ -8,6 +8,13 @@ export const Navbar: React.FC = () => {
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
 
+  const getDashboardPath = () => {
+    if (!user) return '/login';
+    if (user.role === 'admin') return '/admin/dashboard';
+    if (user.role === 'doctor') return '/doctor/dashboard';
+    return '/dashboard';
+  };
+
   return (
     <header className="sticky top-0 z-40 w-full border-b border-slate-200/80 bg-white/90 backdrop-blur-md">
       <div className="max-w-7xl mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -31,8 +38,8 @@ export const Navbar: React.FC = () => {
           {isAuthenticated && user ? (
             <div className="flex items-center gap-4">
               <Link
-                to="/dashboard"
-                className="text-sm font-medium text-slate-700 hover:text-emerald-600 transition-colors flex items-center gap-1.5"
+                to={getDashboardPath()}
+                className="text-sm font-semibold text-slate-700 hover:text-emerald-600 transition-colors flex items-center gap-1.5"
               >
                 <Calendar className="w-4 h-4 text-emerald-600" />
                 <span>Dashboard</span>

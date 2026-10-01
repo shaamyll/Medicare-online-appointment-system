@@ -1,10 +1,17 @@
 import apiClient, { ApiResponse } from '@/lib/axios';
-import { Appointment, BookAppointmentData } from '../types/appointment.types';
+import { Appointment, BookAppointmentData, SlotsResponse } from '../types/appointment.types';
 
 export const appointmentsApi = {
-  getAll: async (): Promise<Appointment[]> => {
-    const response = await apiClient.get<ApiResponse<Appointment[]>>('/appointments');
+  getAll: async (params?: { status?: string; date?: string }): Promise<Appointment[]> => {
+    const response = await apiClient.get<ApiResponse<Appointment[]>>('/appointments', { params });
     return response.data.data || [];
+  },
+
+  getSlots: async (doctorId: number, date: string): Promise<SlotsResponse> => {
+    const response = await apiClient.get<ApiResponse<SlotsResponse>>('/appointments/slots', {
+      params: { doctorId, date }
+    });
+    return response.data.data || { date, dayOfWeek: '', hasSchedule: false, slots: [] };
   },
 
   book: async (data: BookAppointmentData): Promise<Appointment> => {
@@ -15,7 +22,18 @@ export const appointmentsApi = {
     return response.data.data;
   },
 
-  cancel: async (id: number): Promise<void> => {
-    await apiClient.post(`/appointments/${id}/cancel`);
+  cancel: async (id: number): Promise<Appointment> => {
+    const response = await apiClient.post<ApiResponse<Appointment>>(`/appointments/${id}/cancel`);
+    return response.data.data!;
   },
+
+  updateStatus: async (id: number, status: string): Promise<Appointment> => {
+    const response = await apiClient.patch<ApiResponse<Appointment>>(`/appointments/${id}/status`, { status });
+    return response.data.data!;
+  },
+
+  addConsultation: async (id: number, data: { diagnosis: string; prescription: string; consultationNotes: string }): Promise<Appointment> => {
+    const response = await apiClient.post<ApiResponse<Appointment>>(`/appointments/${id}/consultation`, data);
+    return response.data.data!;
+  }
 };
