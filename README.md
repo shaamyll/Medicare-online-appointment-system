@@ -228,15 +228,15 @@ cd "Medicare-online-appointment-system"
 
 ---
 
-### Step 2: Configure and Run the Backend
+### Step 2: Configure and Run the Backend (BE/)
 
-1. **Navigate to the backend directory**:
+1. **Navigate to the backend directory (`BE/`)**:
    ```bash
    cd backend
    ```
 
 2. **Set up Environment Variables**:
-   Copy the example environment file to `.env`:
+   Copy the example environment file to `BE/.env`:
    ```bash
    # On Windows (PowerShell)
    Copy-Item .env.example .env
@@ -246,13 +246,13 @@ cd "Medicare-online-appointment-system"
    ```
 
 3. **Configure Database & Secrets**:
-   Open `backend/.env` and update your MySQL connection details and a secure JWT key (see [Environment Variables](#9-environment-variables)).
+   Open `BE/.env` and update your MySQL connection details and a secure JWT key (see [Environment Variables](#9-environment-variables)).
 
 4. **Start MySQL in XAMPP**:
    Open the **XAMPP Control Panel** and start the **MySQL** module (default port `3306`).
 
 5. **Run Migrations & Database Seeder**:
-   Execute the migration script to automatically create the database `medicare_appointment_db`, generate the SQL schema tables, and insert initial seed data (departments, doctors, patients, and the admin account):
+   Execute the migration script in `BE/` to automatically create the database `medicare_appointment_db`, generate the SQL schema tables, and insert initial seed data (departments, doctors, patients, and the admin account):
    ```bash
    php migrations/seed.php
    ```
@@ -269,7 +269,7 @@ cd "Medicare-online-appointment-system"
    ```
 
 6. **Start the Backend Server**:
-   You can serve the backend via PHP's built-in development server pointing to `public/`:
+   You can serve the backend via PHP's built-in development server pointing to `BE/public/`:
    ```bash
    php -S localhost:8000 -t public
    ```
@@ -277,9 +277,9 @@ cd "Medicare-online-appointment-system"
 
 ---
 
-### Step 3: Configure and Run the Frontend
+### Step 3: Configure and Run the Frontend (FE/)
 
-1. **Navigate to the frontend directory**:
+1. **Navigate to the frontend directory (`FE/`)**:
    ```bash
    cd ../frontend
    ```
@@ -290,7 +290,7 @@ cd "Medicare-online-appointment-system"
    ```
 
 3. **Configure API Base URL (Optional)**:
-   By default, Vite is configured with a proxy in `vite.config.ts` redirecting all `/api` requests to `http://localhost:8000`. If you wish to specify an explicit endpoint, create a `.env` file in `frontend/`:
+   By default, Vite is configured with a proxy in `FE/vite.config.ts` redirecting all `/api` requests to `http://localhost:8000`. If you wish to specify an explicit endpoint, create an environment file in `FE/.env`:
    ```bash
    VITE_API_URL=http://localhost:8000/api
    ```
@@ -310,7 +310,7 @@ cd "Medicare-online-appointment-system"
 
 ## 9. Environment Variables
 
-The backend uses a root `.env` file loaded automatically by `App\Config\Database::loadEnv()`.
+The backend uses a configuration file in `BE/.env` loaded automatically by `App\Config\Database::loadEnv()`.
 
 | Variable | Description | Example / Default |
 | :--- | :--- | :--- |
@@ -326,42 +326,43 @@ The backend uses a root `.env` file loaded automatically by `App\Config\Database
 | `ADMIN_PASSWORD`| Initial administrator password used by the seeder | `<your-admin-seed-password>` |
 
 > [!NOTE]
-> Never commit active secrets or database passwords to version control. Keep `.env` included in your `.gitignore`.
+> Never commit active secrets or database passwords to version control. Keep `BE/.env` and `FE/.env` included in your `.gitignore`.
 
 ---
 
 ## 10. Default Admin & Demo Access
 
-For security, the administrator role cannot be registered from public forms. It is initialized strictly through `migrations/seed.php` using the values defined in `backend/.env`.
+For security, the administrator role cannot be registered through public forms. It is initialized strictly through `BE/migrations/seed.php` using the values configured in `BE/.env`.
 
 ### 🔐 Administrative Access
-- **Admin Login Portal**: `http://localhost:5173/admin/login`
-- **Dashboard Redirect**: Upon successful authentication, administrators are redirected directly to `http://localhost:5173/admin/dashboard`.
-- **Credentials**: Specified by `ADMIN_EMAIL` and `ADMIN_PASSWORD` in your `backend/.env` file.
-- **Modifying Admin Credentials**: You can modify `ADMIN_EMAIL` and `ADMIN_PASSWORD` in `backend/.env` prior to running `php migrations/seed.php`. To update after seeding, update the `users` table record or change the password in the database.
+- **Standard Login Screen**: The hospital administrator signs in through the standard user login screen (`/login`) using the seeded credentials. The login interface contains no text, link, hint, or visual indicator suggesting administrative access.
+- **Dashboard Redirect**: Upon successful authentication, administrators are automatically redirected by the system to `/admin/dashboard`.
+- **Credentials**: Configured via `ADMIN_EMAIL` and `ADMIN_PASSWORD` in your `BE/.env` file.
+- **Modifying Admin Credentials**: You can modify `ADMIN_EMAIL` and `ADMIN_PASSWORD` in `BE/.env` prior to executing `php migrations/seed.php`. To change credentials later, update the `users` table record or change the password hash in the database.
 
 ### 🧪 Pre-Seeded Demo Accounts for Testing
 The seeder creates working demo accounts for each role so you can test all workflows immediately:
 
-| Role | Email | Password (from seeder) | Purpose |
+| Role | Email | Password (from seeder) | Sign-In Portal & Purpose |
 | :--- | :--- | :--- | :--- |
-| **Admin** | `admin@medicare.com` | *From `backend/.env`* | System metrics, doctor approvals, department CRUD |
-| **Approved Doctor** | `dr.sarah@medicare.com` | `Doctor123!` | Test schedule management, appointment approvals, consultation notes |
-| **Pending Doctor** | `dr.michael@medicare.com` | `Doctor123!` | Test admin approval/rejection flow |
-| **Patient** | `patient@medicare.com` | `Patient123!` | Test doctor search, slot picking, booking, and cancellation |
+| **Admin** | `admin@medicare.com` | *From `BE/.env`* | Signs in via `/login` &rarr; redirected to `/admin/dashboard` |
+| **Approved Doctor** | `dr.sarah@medicare.com` | `Doctor123!` | Signs in via `/doctor/login` &rarr; access clinical schedules & appointments |
+| **Pending Doctor** | `dr.michael@medicare.com` | `Doctor123!` | Signs in via `/doctor/login` &rarr; test pending approval verification block |
+| **Patient** | `patient@medicare.com` | `Patient123!` | Signs in via `/login` &rarr; browse doctors, book slots, cancel visits |
 
 ---
 
 ## 11. User Flows & Application Routes
 
-### Client-Side Routes (Frontend)
+### Client-Side Routes (Frontend - FE/)
+
+The application features exactly **two public authentication screens** (Patient/User portal and Doctor portal) with role-guarded redirection:
 
 | Path | Access Level | Layout / Component | Description |
 | :--- | :--- | :--- | :--- |
-| `/` | Public | `LandingPage` | Home hero, service highlights, department overview, call-to-actions |
-| `/login` | Public | `LoginPage` | Patient and Doctor login portal |
-| `/register` | Public | `RegisterPage` | Patient registration or Doctor application submission |
-| `/admin/login` | Public | `AdminLoginPage` | Dedicated administrative authentication portal |
+| `/` | Public | `LandingPage` | Home hero, clinical specialties, department overview, call-to-actions |
+| `/login` | Public | `LoginPage` | User login & patient registration toggle (also used by seeded admin) |
+| `/doctor/login` | Public | `DoctorLoginPage` | Doctor clinical login & medical specialist application toggle |
 | `/dashboard` | Patient | `DashboardLayout` | Patient overview, upcoming appointments, quick doctor search |
 | `/dashboard/appointments` | Patient | `PatientAppointmentsPage` | View appointment status, book new slot, cancel visits, read notes |
 | `/dashboard/doctors` | Patient | `DoctorsBrowsePage` | Directory of approved doctors with search & department filters |
@@ -382,13 +383,15 @@ The seeder creates working demo accounts for each role so you can test all workf
 
 ## 12. API Reference Overview
 
-All API endpoints are prefixed with `/api` (or accessed directly depending on router dispatch).
+All API endpoints are hosted by `BE/` and prefixed with `/api` (or accessed directly depending on router dispatch).
 
 ### 🔑 Authentication & Profile
 | Method | Endpoint | Role Required | Description |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/api/auth/login` | Public | Authenticate with email/password; returns JWT token & user object |
-| `POST` | `/api/auth/register` | Public | Register a patient or submit doctor application (`pending` status) |
+| `POST` | `/api/auth/login` | Public | Patient & Admin login; returns JWT token & user object |
+| `POST` | `/api/auth/doctor/login` | Public | Doctor login with status verification (pending, rejected, active) |
+| `POST` | `/api/auth/register` | Public | Register patient account (creates `patient` role only) |
+| `POST` | `/api/auth/doctor/register` | Public | Submit doctor application (creates doctor with `pending` status) |
 | `GET` | `/api/auth/me` | Authenticated | Retrieve current user profile and doctor metadata |
 | `GET` | `/api/health` | Public | Verify backend availability and system timestamp |
 
@@ -486,8 +489,8 @@ To ensure high performance, security, and a focused clinical appointment lifecyc
 ### 4. Doctor Account Cannot Log In
 **Issue**: Newly registered doctor receives `403 Forbidden` on login attempt.
 **Solution**:
-- This is intentional: newly registered doctors are marked with status `pending`.
-- Log in to the Administrator portal at `/admin/login`, navigate to **Doctor Requests**, and click **Approve** on the doctor's profile.
+- This is intentional: newly registered doctors are placed into `pending` status upon submission.
+- Sign in with your administrator credentials via `/login` (which redirects to `/admin/dashboard`), navigate to **Doctor Requests**, and click **Approve** on the doctor's profile. Once approved, the doctor can immediately sign in at `/doctor/login`.
 
 ---
 
