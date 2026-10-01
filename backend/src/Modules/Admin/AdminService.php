@@ -77,6 +77,7 @@ class AdminService {
                 u.id, u.name, u.email, u.phone, u.status, u.created_at AS createdAt,
                 dp.specialization, dp.qualification, dp.experience_years AS experienceYears,
                 dp.consultation_fee AS consultationFee, dp.room_number AS roomNumber,
+                dp.license_number AS licenseNumber, dp.image_path AS imagePath, dp.thumbnail_path AS thumbnailPath,
                 d.name AS departmentName, d.id AS departmentId
             FROM users u
             LEFT JOIN doctor_profiles dp ON dp.user_id = u.id
@@ -100,6 +101,9 @@ class AdminService {
             $row['id'] = (int)$row['id'];
             $row['experienceYears'] = (int)($row['experienceYears'] ?? 0);
             $row['consultationFee'] = (float)($row['consultationFee'] ?? 0);
+            $row['licenseNumber'] = $row['licenseNumber'] ?? null;
+            $row['imagePath'] = $row['imagePath'] ?? null;
+            $row['thumbnailPath'] = $row['thumbnailPath'] ?? null;
             return $row;
         }, $rows);
     }

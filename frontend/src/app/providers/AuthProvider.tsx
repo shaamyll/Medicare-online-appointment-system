@@ -18,8 +18,8 @@ interface AuthContextType {
   login: (credentials: LoginCredentials) => Promise<User>;
   doctorLogin: (credentials: LoginCredentials) => Promise<User>;
   register: (data: PatientRegisterData | RegisterData) => Promise<User>;
-  doctorRegister: (data: DoctorRegisterData) => Promise<AuthResponse>;
-  logout: () => void;
+  doctorRegister: (data: DoctorRegisterData | FormData) => Promise<AuthResponse>;
+  logout: (redirect?: boolean) => void;
   refreshUser: () => Promise<void>;
 }
 
@@ -106,7 +106,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const doctorRegister = async (data: DoctorRegisterData): Promise<AuthResponse> => {
+  const doctorRegister = async (data: DoctorRegisterData | FormData): Promise<AuthResponse> => {
     setIsLoading(true);
     try {
       const res = await authApi.doctorRegister(data);
@@ -116,14 +116,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const logout = () => {
+  const logout = (redirect: boolean = true) => {
     const isDoctorPortal = window.location.pathname.startsWith('/doctor');
     localStorage.removeItem('medicare_token');
     localStorage.removeItem('medicare_user');
     setToken(null);
     setUser(null);
     setProfile(null);
-    window.location.href = isDoctorPortal ? '/doctor/login' : '/login';
+    if (redirect) {
+      window.location.href = isDoctorPortal ? '/doctor/login' : '/login';
+    }
   };
 
   return (

@@ -24,6 +24,9 @@ class DoctorRepository {
                 u.created_at AS user_created_at,
                 dp.specialization,
                 dp.qualification,
+                dp.license_number AS licenseNumber,
+                dp.image_path AS imagePath,
+                dp.thumbnail_path AS thumbnailPath,
                 dp.experience_years AS experienceYears,
                 dp.consultation_fee AS consultationFee,
                 dp.bio,
@@ -71,6 +74,9 @@ class DoctorRepository {
                 u.created_at AS user_created_at,
                 dp.specialization,
                 dp.qualification,
+                dp.license_number AS licenseNumber,
+                dp.image_path AS imagePath,
+                dp.thumbnail_path AS thumbnailPath,
                 dp.experience_years AS experienceYears,
                 dp.consultation_fee AS consultationFee,
                 dp.bio,
@@ -180,6 +186,14 @@ class DoctorRepository {
             $profFields[] = "qualification = ?";
             $profParams[] = $data['qualification'];
         }
+        if (isset($data['imagePath']) || isset($data['image_path'])) {
+            $profFields[] = "image_path = ?";
+            $profParams[] = $data['imagePath'] ?? $data['image_path'];
+        }
+        if (isset($data['thumbnailPath']) || isset($data['thumbnail_path'])) {
+            $profFields[] = "thumbnail_path = ?";
+            $profParams[] = $data['thumbnailPath'] ?? $data['thumbnail_path'];
+        }
         if (isset($data['experienceYears'])) {
             $profFields[] = "experience_years = ?";
             $profParams[] = (int)$data['experienceYears'];
@@ -212,6 +226,9 @@ class DoctorRepository {
             'profileId' => (int)$row['profile_id'],
             'specialization' => $row['specialization'],
             'qualification' => $row['qualification'],
+            'licenseNumber' => $row['licenseNumber'] ?? null,
+            'imagePath' => $row['imagePath'] ?? null,
+            'thumbnailPath' => $row['thumbnailPath'] ?? null,
             'experienceYears' => (int)$row['experienceYears'],
             'consultationFee' => (float)$row['consultationFee'],
             'bio' => $row['bio'],

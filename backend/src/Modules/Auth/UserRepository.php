@@ -42,6 +42,13 @@ class UserRepository {
         return (int)$this->db->lastInsertId();
     }
 
+    public function findByLicenseNumber(string $licenseNumber): ?array {
+        $stmt = $this->db->prepare("SELECT * FROM doctor_profiles WHERE license_number = ? LIMIT 1");
+        $stmt->execute([trim($licenseNumber)]);
+        $row = $stmt->fetch();
+        return $row ?: null;
+    }
+
     public function getDoctorProfile(int $userId): ?array {
         $stmt = $this->db->prepare("
             SELECT dp.*, d.name AS department_name
@@ -57,20 +64,27 @@ class UserRepository {
 
     public function createDoctorProfile(array $data): int {
         $stmt = $this->db->prepare("
-            INSERT INTO doctor_profiles (user_id, department_id, specialization, qualification, experience_years, consultation_fee, bio, room_number)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO doctor_profiles (user_id, department_id, specialization, qualification, license_number, image_path, thumbnail_path, experience_years, consultation_fee, bio, room_number)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
             $data['user_id'],
             $data['department_id'] ?? null,
             $data['specialization'],
             $data['qualification'] ?? 'MD',
+            $data['license_number'] ?? null,
+            $data['image_path'] ?? null,
+            $data['thumbnail_path'] ?? null,
             $data['experience_years'] ?? 0,
             $data['consultation_fee'] ?? 0.00,
             $data['bio'] ?? null,
             $data['room_number'] ?? null
         ]);
         return (int)$this->db->lastInsertId();
+    }
+
+    public function getDb(): PDO {
+        return $this->db;
     }
 
     public function updateStatus(int $userId, string $status): bool {

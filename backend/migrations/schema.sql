@@ -30,6 +30,9 @@ CREATE TABLE IF NOT EXISTS `doctor_profiles` (
     `department_id` INT NULL,
     `specialization` VARCHAR(150) NOT NULL,
     `qualification` VARCHAR(200) NOT NULL,
+    `license_number` VARCHAR(50) NULL UNIQUE,
+    `image_path` VARCHAR(255) NULL,
+    `thumbnail_path` VARCHAR(255) NULL,
     `experience_years` INT DEFAULT 0,
     `consultation_fee` DECIMAL(10,2) DEFAULT 0.00,
     `bio` TEXT NULL,
@@ -38,7 +41,8 @@ CREATE TABLE IF NOT EXISTS `doctor_profiles` (
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`department_id`) REFERENCES `departments`(`id`) ON DELETE SET NULL,
-    INDEX `idx_doctor_specialization` (`specialization`)
+    INDEX `idx_doctor_specialization` (`specialization`),
+    INDEX `idx_doctor_license` (`license_number`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `doctor_schedules` (

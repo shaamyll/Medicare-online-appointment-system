@@ -21,3 +21,21 @@ export function formatCurrency(amount: number): string {
     currency: 'USD',
   }).format(amount);
 }
+
+/**
+ * Builds full image URL for static assets and doctor photos
+ */
+export function getImageUrl(path?: string | null): string {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:') || path.startsWith('blob:')) {
+    return path;
+  }
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  const apiUrl = (import.meta.env.VITE_API_URL as string) || '';
+  if (apiUrl) {
+    const baseUrl = apiUrl.replace(/\/api\/?$/, '');
+    return `${baseUrl}${cleanPath}`;
+  }
+  return cleanPath;
+}
+

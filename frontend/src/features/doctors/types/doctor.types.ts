@@ -23,5 +23,8 @@ export interface Doctor {
   consultationFee: number;
   bio?: string;
   roomNumber?: string;
+  licenseNumber?: string;
+  imagePath?: string | null;
+  thumbnailPath?: string | null;
   schedules?: DoctorSchedule[];
 }

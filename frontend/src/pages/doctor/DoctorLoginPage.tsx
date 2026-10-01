@@ -15,6 +15,9 @@ import {
   CheckCircle2,
   AlertTriangle,
   UserCheck,
+  UploadCloud,
+  FileBadge,
+  X as CloseIcon,
 } from 'lucide-react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
@@ -66,6 +69,14 @@ export const DoctorLoginPage: React.FC = () => {
   const [consultationFee, setConsultationFee] = useState<number | ''>(100);
   const [bio, setBio] = useState('');
 
+  // Two mandatory registration credential fields
+  const [licenseNumber, setLicenseNumber] = useState('');
+  const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [licenseError, setLicenseError] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [isDraggingPhoto, setIsDraggingPhoto] = useState(false);
+
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [statusInfo, setStatusInfo] = useState<{
     type: 'pending' | 'rejected' | 'inactive';
@@ -116,9 +127,45 @@ export const DoctorLoginPage: React.FC = () => {
     }
   };
 
+  const handlePhotoSelect = (file: File | null | undefined) => {
+    setPhotoError(null);
+    if (!file) {
+      setProfilePhoto(null);
+      setPhotoPreview(null);
+      return;
+    }
+
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      setPhotoError('Invalid image format. Allowed formats: JPG, JPEG, PNG, WebP.');
+      return;
+    }
+
+    const maxBytes = 2 * 1024 * 1024; // 2 MB
+    if (file.size > maxBytes) {
+      setPhotoError('Profile photo exceeds the maximum size limit of 2 MB.');
+      return;
+    }
+
+    setProfilePhoto(file);
+    const objectUrl = URL.createObjectURL(file);
+    setPhotoPreview(objectUrl);
+  };
+
+  const handleLicenseChange = (value: string) => {
+    setLicenseNumber(value);
+    setLicenseError(null);
+    const trimmed = value.trim();
+    if (trimmed && !/^[A-Za-z0-9\-\/]{5,30}$/.test(trimmed)) {
+      setLicenseError('Must be 5-30 characters (letters, numbers, hyphens, and slashes only).');
+    }
+  };
+
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+    setLicenseError(null);
+    setPhotoError(null);
 
     if (!name.trim() || !email.trim() || !password) {
       setErrorMessage('Please provide your name, email, and password.');
@@ -130,25 +177,48 @@ export const DoctorLoginPage: React.FC = () => {
       return;
     }
 
+    // License number validation
+    const trimmedLicense = licenseNumber.trim();
+    if (!trimmedLicense) {
+      setLicenseError('Medical license number is required.');
+      setErrorMessage('Please enter your official medical license number.');
+      return;
+    }
+
+    if (!/^[A-Za-z0-9\-\/]{5,30}$/.test(trimmedLicense)) {
+      setLicenseError('License number must be 5-30 characters containing only letters, numbers, hyphens, and slashes.');
+      setErrorMessage('Invalid medical license number format.');
+      return;
+    }
+
+    // Profile photo validation
+    if (!profilePhoto) {
+      setPhotoError('Profile photo is required (max 2 MB).');
+      setErrorMessage('Please upload your professional profile photo.');
+      return;
+    }
+
     if (!specialization.trim()) {
       setErrorMessage('Please enter your primary medical specialization.');
       return;
     }
 
     try {
-      await doctorRegister({
-        name: name.trim(),
-        email: email.trim(),
-        password,
-        phone: phone.trim() || undefined,
-        departmentId: departmentId ? Number(departmentId) : undefined,
-        specialization: specialization.trim(),
-        qualification: qualification.trim() || 'MD / MBBS',
-        experienceYears: Number(experienceYears) || 0,
-        consultationFee: Number(consultationFee) || 0,
-        bio: bio.trim() || undefined,
-      });
+      const formData = new FormData();
+      formData.append('name', name.trim());
+      formData.append('email', email.trim());
+      formData.append('password', password);
+      if (phone.trim()) formData.append('phone', phone.trim());
+      if (departmentId) formData.append('departmentId', String(departmentId));
+      formData.append('specialization', specialization.trim());
+      formData.append('qualification', qualification.trim() || 'MD / MBBS');
+      formData.append('licenseNumber', trimmedLicense);
+      formData.append('experienceYears', String(experienceYears || 0));
+      formData.append('consultationFee', String(consultationFee || 0));
+      if (bio.trim()) formData.append('bio', bio.trim());
+      formData.append('profilePhoto', profilePhoto);
 
+      await doctorRegister(formData);
       setRegistrationSubmitted(true);
     } catch (err: any) {
       const msg = err.response?.data?.message || err.message || 'Doctor application failed.';
@@ -398,6 +468,92 @@ export const DoctorLoginPage: React.FC = () => {
                     leftIcon={<Phone className="w-4 h-4 text-slate-400" />}
                     className="bg-slate-900/70 border-slate-700 text-white placeholder-slate-500 focus:border-teal-500"
                   />
+                </div>
+              </div>
+
+              {/* Two New Mandatory Credential Fields: License Number & Profile Photo */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-slate-700/60">
+                <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">
+                    Medical License Number *
+                  </label>
+                  <Input
+                    placeholder="e.g. MED-CA-2024-1049"
+                    value={licenseNumber}
+                    onChange={(e) => handleLicenseChange(e.target.value)}
+                    leftIcon={<FileBadge className="w-4 h-4 text-slate-400" />}
+                    className="bg-slate-900/70 border-slate-700 text-white placeholder-slate-500 focus:border-teal-500"
+                    required
+                  />
+                  {licenseError ? (
+                    <p className="text-[11px] text-rose-400 mt-1">{licenseError}</p>
+                  ) : (
+                    <p className="text-[10px] text-slate-400 mt-0.5">5-30 characters (letters, numbers, hyphens, slashes)</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">
+                    Profile Photo * (Max 2 MB)
+                  </label>
+                  {photoPreview ? (
+                    <div className="flex items-center gap-2.5 p-1.5 rounded-lg bg-slate-900/80 border border-slate-700">
+                      <img
+                        src={photoPreview}
+                        alt="Doctor Preview"
+                        className="w-10 h-10 rounded-lg object-cover border border-teal-500/50 shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-slate-200 truncate">{profilePhoto?.name}</p>
+                        <p className="text-[10px] text-slate-400">
+                          {profilePhoto ? `${(profilePhoto.size / 1024).toFixed(0)} KB` : ''}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProfilePhoto(null);
+                          setPhotoPreview(null);
+                        }}
+                        className="text-slate-400 hover:text-rose-400 p-1"
+                        title="Remove photo"
+                      >
+                        <CloseIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setIsDraggingPhoto(true);
+                      }}
+                      onDragLeave={() => setIsDraggingPhoto(false)}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setIsDraggingPhoto(false);
+                        const file = e.dataTransfer.files?.[0];
+                        handlePhotoSelect(file);
+                      }}
+                      className={`relative border border-dashed rounded-lg p-2.5 text-center cursor-pointer transition-colors ${
+                        isDraggingPhoto
+                          ? 'border-teal-400 bg-teal-500/10'
+                          : 'border-slate-700 hover:border-slate-500 bg-slate-900/50'
+                      }`}
+                    >
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={(e) => handlePhotoSelect(e.target.files?.[0])}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        required={!profilePhoto}
+                      />
+                      <div className="flex items-center justify-center gap-2 pointer-events-none text-xs text-slate-300">
+                        <UploadCloud className="w-4 h-4 text-teal-400 shrink-0" />
+                        <span className="truncate">Click or drag photo (JPG/PNG/WebP)</span>
+                      </div>
+                    </div>
+                  )}
+                  {photoError && <p className="text-[11px] text-rose-400 mt-1">{photoError}</p>}
                 </div>
               </div>
 

@@ -1,8 +1,9 @@
 import React from 'react';
-import { Check, X, Stethoscope, Mail, Phone } from 'lucide-react';
+import { Check, X, ShieldCheck, Mail, Phone } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { Avatar } from '@/components/ui/Avatar';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useToast } from '@/components/ui/Toast';
@@ -54,7 +55,7 @@ export const AdminDoctorRequestsPage: React.FC = () => {
             <Badge variant="warning">{requests?.length || 0} Pending</Badge>
           </div>
           <p className="text-sm text-slate-500">
-            Review qualifications, verify credentials, and grant clinical portal access to new doctors
+            Review qualifications, verify credentials against official medical council registers, and grant portal access
           </p>
         </div>
       </div>
@@ -73,9 +74,12 @@ export const AdminDoctorRequestsPage: React.FC = () => {
               <div>
                 <CardHeader className="flex flex-row items-start justify-between pb-3 border-b border-slate-100">
                   <div className="flex items-center gap-3">
-                    <div className="h-11 w-11 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700">
-                      <Stethoscope className="w-5 h-5" />
-                    </div>
+                    <Avatar
+                      src={doctor.thumbnailPath || doctor.imagePath}
+                      name={doctor.name}
+                      size="lg"
+                      className="border-2 border-slate-100 shadow-sm"
+                    />
                     <div>
                       <CardTitle className="text-base font-bold text-slate-900">{doctor.name}</CardTitle>
                       <p className="text-xs text-emerald-700 font-medium">{doctor.specialization}</p>
@@ -85,6 +89,22 @@ export const AdminDoctorRequestsPage: React.FC = () => {
                 </CardHeader>
 
                 <CardContent className="pt-4 space-y-3">
+                  {/* Medical License Verification Banner */}
+                  <div className="p-3.5 rounded-xl bg-blue-50/80 border border-blue-200 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-blue-900 flex items-center gap-1.5">
+                        <ShieldCheck className="w-4 h-4 text-blue-600" />
+                        Medical License Number
+                      </span>
+                      <span className="font-mono font-bold text-xs bg-white text-blue-800 px-2 py-0.5 rounded border border-blue-200 shadow-xs">
+                        {doctor.licenseNumber || 'Not provided'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-blue-700/80">
+                      Cross-reference this license number and profile photo against the official medical council registry before approval.
+                    </p>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div className="flex items-center gap-1.5 text-slate-600">
                       <Mail className="w-3.5 h-3.5 text-slate-400" />

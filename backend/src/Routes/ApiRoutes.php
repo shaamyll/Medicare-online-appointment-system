@@ -55,6 +55,7 @@ class ApiRoutes {
         $router->put('/doctor/schedule', [DoctorController::class, 'updateMySchedule'], $doctorAuth);
         $router->get('/doctor/profile', [DoctorController::class, 'getMyProfile'], $doctorAuth);
         $router->put('/doctor/profile', [DoctorController::class, 'updateMyProfile'], $doctorAuth);
+        $router->post('/doctor/profile', [DoctorController::class, 'updateMyProfile'], $doctorAuth);
         $router->patch('/appointments/{id}/status', [AppointmentController::class, 'updateStatus'], $doctorAuth);
         $router->post('/appointments/{id}/consultation', [AppointmentController::class, 'addConsultation'], $doctorAuth);
 

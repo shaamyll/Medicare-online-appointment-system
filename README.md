@@ -34,12 +34,25 @@ The application is turnkey and ready to run locally for development, evaluation,
 - **Clinical History**: Access doctor consultation notes, diagnoses, and medical prescriptions recorded during completed appointments.
 
 ### 🩺 Doctor Clinical Portal
-- **Registration & Verification Flow**: Self-registration for doctors with professional profile information (specialization, qualifications, experience, room number, consultation fee) placed in a `pending` state until reviewed.
+- **Registration & Verification Flow**: Self-registration for doctors requiring professional profile details plus **two mandatory verification fields**:
+  - **Medical License Number**: Unique, 5–30 characters, alphanumeric with hyphens and slashes only (`/^[A-Za-z0-9\-\/]{5,30}$/`).
+  - **Profile Photo**: JPG, PNG, or WebP (max 2 MB), validated server-side with `finfo`.
+  - Account is initially registered in `pending` status.
+- **Verification Workflow**:
+  ```
+  Doctor Registers (with License Number + Profile Photo)
+        ↓
+  Status: 'pending' (Access to clinical portal withheld)
+        ↓
+  Admin Reviews at /admin/doctor-requests (Verifies photo & license number against official medical council register)
+        ├── Admin Approves → Status: 'active' → Doctor can log in and manage clinic
+        └── Admin Rejects  → Status: 'rejected' → Application denied with feedback
+  ```
 - **Clinical Dashboard**: Real-time overview of today's schedule, pending appointments, active patient count, and upcoming consultations.
 - **Schedule Management**: Weekly schedule builder to configure working days, shift hours (`start_time` - `end_time`), slot duration (default 30 mins), and toggle daily availability.
 - **Appointment Processing**: Review patient requests, approve appointments, mark visits as completed, or reject/cancel conflicts.
 - **Consultation Records & EMR Notes**: Record patient diagnosis, prescriptions, and clinical visit notes linked directly to the appointment.
-- **Doctor Profile Settings**: Update biography, contact phone, consultation fees, department assignment, and room/office location.
+- **Doctor Profile Settings**: Update biography, contact phone, consultation fees, department assignment, room/office location, and upload a new profile photo (re-generates thumbnail and purges old image files). License number is displayed as read-only.
 
 ### 🛡️ Administrator Control Center
 - **Protected Administrative Access**: Admin accounts are pre-seeded via configuration and cannot be registered publicly via client endpoints.
@@ -136,9 +149,9 @@ frontend/src/
    - Backend controller middleware guarantees zero unauthorized data leaks at the API layer.
 4. **Doctor Credentialing & Approval Gate**:
    ```
-   Doctor Registers -> Status: 'pending' (Token withheld) -> Admin Reviews Application
-         ├── Admin Approves -> Status: 'active' -> Doctor can login & manage clinic
-         └── Admin Rejects  -> Status: 'rejected' -> Login blocked with notification
+   Doctor Registers (License + Photo) -> Status: 'pending' -> Admin checks license number & photo -> Approve/Reject
+         ├── Admin Approves -> Status: 'active'   -> Doctor logs in & manages clinic
+         └── Admin Rejects  -> Status: 'rejected' -> Login blocked with status notification
    ```
 5. **Admin Safeguards**:
    - Administrative registration is completely disabled over the public registration endpoint.
@@ -440,13 +453,113 @@ All API endpoints are hosted by `BE/` and prefixed with `/api` (or accessed dire
 
 ## 13. File Uploads & Static Assets
 
-- **Storage Location**: Static assets, profile avatars, and documents are designated to reside in `backend/public/uploads/`.
-- **Public Serving**: Assets in the `backend/public/` directory are served directly by the web server (Apache or PHP's built-in server) without passing through application routing.
-- **Current Status**: The core appointment scheduling, doctor credentialing, and consultation workflows utilize lightweight icon tokens and structured database fields. Dedicated multipart upload handlers can write directly to `public/uploads/` when extending avatar file features.
+Doctor profile photos and thumbnails are processed and managed entirely on the backend:
+
+- **Native PHP Uploads**: File uploads are processed directly by native PHP business logic (`App\Services\UploadService`), **NOT** multer (which is Node.js-only).
+- **Storage Locations**:
+  - Full Images: `backend/public/uploads/doctors/`
+  - Cropped Thumbnails (300x300 via GD): `backend/public/uploads/doctors/thumbs/`
+  - Default Avatar Placeholder: `backend/public/uploads/defaults/doctor-default.png`
+- **Allowed Types & Limits**:
+  - Allowed MIME types: `image/jpeg`, `image/png`, `image/webp` (validated strictly using PHP `finfo` against file contents, not just client file extensions).
+  - Maximum file size: `2 MB`.
+- **Security & Execution Protection**:
+  - Safe randomized filenames generated via `bin2hex(random_bytes(16)) . '.' . $extension` (never using original client filenames).
+  - PHP script execution is disabled inside `backend/public/uploads/.htaccess` and enforced at the router level.
+  - Orphan files are automatically deleted via database transactions and cleanup routines on failure or photo update.
+- **PHP Extension Requirements**:
+  - `ext-gd`: Required for image cropping and generating 300x300 thumbnails.
+  - `ext-fileinfo`: Required for verifying actual MIME types.
+  - *Enabling in XAMPP*: In `C:\xampp\php\php.ini`, ensure `extension=gd` and `extension=fileinfo` are uncommented (remove the leading semicolon `;`), then restart Apache.
 
 ---
 
-## 14. Project Scope
+## 14. Database Schema & Columns
+
+The relational database (`medicare_appointment_db`) contains the following tables and columns:
+
+### `users`
+| Column | Type | Constraints / Description |
+| :--- | :--- | :--- |
+| `id` | `INT` | PRIMARY KEY, AUTO_INCREMENT |
+| `name` | `VARCHAR(100)` | NOT NULL |
+| `email` | `VARCHAR(150)` | NOT NULL, UNIQUE, Indexed |
+| `password` | `VARCHAR(255)` | NOT NULL (Bcrypt hashed) |
+| `role` | `ENUM('admin', 'doctor', 'patient')` | NOT NULL, Indexed |
+| `phone` | `VARCHAR(30)` | NULL |
+| `status` | `ENUM('active', 'pending', 'rejected', 'inactive')`| DEFAULT 'active', Indexed |
+| `created_at` | `DATETIME` | DEFAULT CURRENT_TIMESTAMP |
+| `updated_at` | `DATETIME` | DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP |
+
+### `departments`
+| Column | Type | Constraints / Description |
+| :--- | :--- | :--- |
+| `id` | `INT` | PRIMARY KEY, AUTO_INCREMENT |
+| `name` | `VARCHAR(100)` | NOT NULL, UNIQUE |
+| `description` | `TEXT` | NULL |
+| `icon` | `VARCHAR(50)` | DEFAULT 'Activity' |
+| `is_active` | `TINYINT(1)` | DEFAULT 1 |
+| `created_at` | `DATETIME` | DEFAULT CURRENT_TIMESTAMP |
+
+### `doctor_profiles`
+| Column | Type | Constraints / Description |
+| :--- | :--- | :--- |
+| `id` | `INT` | PRIMARY KEY, AUTO_INCREMENT |
+| `user_id` | `INT` | NOT NULL, UNIQUE, FOREIGN KEY (`users.id`) ON DELETE CASCADE |
+| `department_id` | `INT` | NULL, FOREIGN KEY (`departments.id`) ON DELETE SET NULL |
+| `specialization` | `VARCHAR(150)` | NOT NULL, Indexed |
+| `qualification` | `VARCHAR(200)` | NOT NULL |
+| `license_number` | `VARCHAR(50)` | NULL, **UNIQUE**, Indexed (5–30 chars, alphanumeric + hyphens/slashes) |
+| `image_path` | `VARCHAR(255)` | NULL (Relative path to full image in `uploads/doctors/`) |
+| `thumbnail_path` | `VARCHAR(255)` | NULL (Relative path to 300x300 thumbnail in `uploads/doctors/thumbs/`) |
+| `experience_years`| `INT` | DEFAULT 0 |
+| `consultation_fee`| `DECIMAL(10,2)` | DEFAULT 0.00 |
+| `bio` | `TEXT` | NULL |
+| `room_number` | `VARCHAR(50)` | NULL |
+| `created_at` | `DATETIME` | DEFAULT CURRENT_TIMESTAMP |
+| `updated_at` | `DATETIME` | DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP |
+
+### `doctor_schedules`
+| Column | Type | Constraints / Description |
+| :--- | :--- | :--- |
+| `id` | `INT` | PRIMARY KEY, AUTO_INCREMENT |
+| `doctor_id` | `INT` | NOT NULL, FOREIGN KEY (`users.id`) ON DELETE CASCADE |
+| `day_of_week` | `ENUM('Monday'...'Sunday')` | NOT NULL |
+| `start_time` | `TIME` | NOT NULL |
+| `end_time` | `TIME` | NOT NULL |
+| `slot_duration_minutes` | `INT` | DEFAULT 30 |
+| `is_available` | `TINYINT(1)` | DEFAULT 1 |
+| `created_at` | `DATETIME` | DEFAULT CURRENT_TIMESTAMP |
+
+### `appointments`
+| Column | Type | Constraints / Description |
+| :--- | :--- | :--- |
+| `id` | `INT` | PRIMARY KEY, AUTO_INCREMENT |
+| `appointment_number` | `VARCHAR(30)` | UNIQUE, NOT NULL |
+| `patient_id` | `INT` | NOT NULL, FOREIGN KEY (`users.id`) ON DELETE CASCADE |
+| `doctor_id` | `INT` | NOT NULL, FOREIGN KEY (`users.id`) ON DELETE CASCADE |
+| `appointment_date` | `DATE` | NOT NULL, Indexed |
+| `start_time` | `TIME` | NOT NULL |
+| `end_time` | `TIME` | NOT NULL |
+| `status` | `ENUM('pending', 'approved', 'rejected', 'completed', 'cancelled')` | DEFAULT 'pending', Indexed |
+| `reason_for_visit` | `TEXT` | NULL |
+| `created_at` | `DATETIME` | DEFAULT CURRENT_TIMESTAMP |
+| `updated_at` | `DATETIME` | DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP |
+
+### `consultation_records`
+| Column | Type | Constraints / Description |
+| :--- | :--- | :--- |
+| `id` | `INT` | PRIMARY KEY, AUTO_INCREMENT |
+| `appointment_id` | `INT` | NOT NULL, UNIQUE, FOREIGN KEY (`appointments.id`) ON DELETE CASCADE |
+| `diagnosis` | `TEXT` | NULL |
+| `prescription` | `TEXT` | NULL |
+| `consultation_notes`| `TEXT` | NULL |
+| `created_at` | `DATETIME` | DEFAULT CURRENT_TIMESTAMP |
+| `updated_at` | `DATETIME` | DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP |
+
+---
+
+## 15. Project Scope
 
 To ensure high performance, security, and a focused clinical appointment lifecycle, the following features are **intentionally out of scope**:
 

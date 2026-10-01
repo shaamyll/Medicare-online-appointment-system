@@ -72,10 +72,26 @@ class DoctorController {
         $data = $request->getBody();
 
         try {
+            $photoFile = $_FILES['profilePhoto'] ?? $_FILES['photo'] ?? null;
+            if ($photoFile && isset($photoFile['error']) && $photoFile['error'] !== UPLOAD_ERR_NO_FILE) {
+                $uploadService = new \App\Services\UploadService();
+                $currentDoctor = $this->service->getDoctorById($user['id']);
+
+                $uploadResult = $uploadService->uploadDoctorPhoto($photoFile);
+                $data['image_path'] = $uploadResult['image_path'];
+                $data['thumbnail_path'] = $uploadResult['thumbnail_path'];
+
+                // Delete old image & thumbnail if not a default asset
+                if (!empty($currentDoctor['imagePath']) || !empty($currentDoctor['thumbnailPath'])) {
+                    $uploadService->deleteFiles($currentDoctor['imagePath'] ?? null, $currentDoctor['thumbnailPath'] ?? null);
+                }
+            }
+
             $updated = $this->service->updateDoctorProfile($user['id'], $data);
             Response::success($updated, 'Profile updated successfully');
         } catch (Exception $e) {
-            Response::error($e->getMessage(), 400);
+            $code = $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 400;
+            Response::error($e->getMessage(), $code);
         }
     }
 }

@@ -1,3 +1,10 @@
 node_modules
 package-lock.json
 .env
+
+# Uploaded doctor files (keep placeholder avatar and .gitkeep)
+public/uploads/doctors/*
+!public/uploads/doctors/.gitkeep
+!public/uploads/doctors/thumbs/
+public/uploads/doctors/thumbs/*
+!public/uploads/doctors/thumbs/.gitkeep

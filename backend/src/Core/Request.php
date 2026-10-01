@@ -90,6 +90,14 @@ class Request {
         return $this->body[$key] ?? $this->queryParams[$key] ?? $default;
     }
 
+    public function getFile(string $key): ?array {
+        return $_FILES[$key] ?? null;
+    }
+
+    public function getFiles(): array {
+        return $_FILES;
+    }
+
     public function setRouteParams(array $params): void {
         $this->routeParams = $params;
     }

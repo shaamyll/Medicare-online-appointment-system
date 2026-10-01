@@ -22,6 +22,9 @@ export interface AdminDoctor {
   experienceYears?: number;
   consultationFee?: number;
   roomNumber?: string;
+  licenseNumber?: string;
+  imagePath?: string | null;
+  thumbnailPath?: string | null;
   departmentName?: string;
   departmentId?: number;
 }

@@ -33,8 +33,24 @@ export const authApi = {
     return response.data.data;
   },
 
-  doctorRegister: async (data: DoctorRegisterData): Promise<AuthResponse> => {
-    const response = await apiClient.post<ApiResponse<AuthResponse>>('/auth/doctor/register', data);
+  doctorRegister: async (data: DoctorRegisterData | FormData): Promise<AuthResponse> => {
+    let payload: FormData;
+    if (data instanceof FormData) {
+      payload = data;
+    } else {
+      payload = new FormData();
+      Object.entries(data).forEach(([key, val]) => {
+        if (val !== undefined && val !== null) {
+          if (key === 'profilePhoto' && val instanceof File) {
+            payload.append('profilePhoto', val);
+          } else {
+            payload.append(key, String(val));
+          }
+        }
+      });
+    }
+
+    const response = await apiClient.post<ApiResponse<AuthResponse>>('/auth/doctor/register', payload);
     if (!response.data.success || !response.data.data) {
       throw new Error(response.data.message || 'Doctor registration failed');
     }

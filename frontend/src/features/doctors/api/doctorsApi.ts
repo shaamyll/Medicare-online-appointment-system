@@ -30,8 +30,8 @@ export const doctorsApi = {
     return response.data.data!;
   },
 
-  updateMyProfile: async (data: Partial<Doctor>): Promise<Doctor> => {
-    const response = await apiClient.put<ApiResponse<Doctor>>('/doctor/profile', data);
+  updateMyProfile: async (data: Partial<Doctor> | FormData): Promise<Doctor> => {
+    const response = await apiClient.post<ApiResponse<Doctor>>('/doctor/profile', data);
     return response.data.data!;
   },
 };

@@ -37,6 +37,8 @@ export interface DoctorRegisterData {
   email: string;
   password: string;
   phone?: string;
+  licenseNumber: string;
+  profilePhoto?: File | null;
   specialization: string;
   departmentId?: number;
   qualification: string;

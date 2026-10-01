@@ -16,12 +16,15 @@ const apiClient = axios.create({
   timeout: 15000,
 });
 
-// Request Interceptor: Attach JWT Token
+// Request Interceptor: Attach JWT Token & support FormData
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = localStorage.getItem('medicare_token');
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    if (config.data instanceof FormData && config.headers) {
+      delete config.headers['Content-Type'];
     }
     return config;
   },

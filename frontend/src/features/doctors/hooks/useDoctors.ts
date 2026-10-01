@@ -44,9 +44,10 @@ export const useDoctorProfile = () => {
 export const useUpdateDoctorProfile = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: Partial<Doctor>) => doctorsApi.updateMyProfile(data),
+    mutationFn: (data: Partial<Doctor> | FormData) => doctorsApi.updateMyProfile(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['myDoctorProfile'] });
+      queryClient.invalidateQueries({ queryKey: ['doctors'] });
     },
   });
 };

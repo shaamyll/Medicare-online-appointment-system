@@ -3,6 +3,7 @@ import { Search } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { Avatar } from '@/components/ui/Avatar';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/Table';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { useToast } from '@/components/ui/Toast';
@@ -102,12 +103,19 @@ export const AdminDoctorsPage: React.FC = () => {
                   <TableRow key={doc.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-xs">
-                          Dr
-                        </div>
+                        <Avatar
+                          src={doc.thumbnailPath || doc.imagePath}
+                          name={doc.name}
+                          size="md"
+                        />
                         <div>
                           <p className="font-semibold text-slate-900 text-sm">{doc.name}</p>
                           <p className="text-xs text-slate-400">{doc.email}</p>
+                          {doc.licenseNumber && (
+                            <p className="text-[11px] font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded inline-block mt-0.5 border border-blue-100">
+                              Lic: {doc.licenseNumber}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </TableCell>

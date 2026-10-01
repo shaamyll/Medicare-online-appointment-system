@@ -1,0 +1,27 @@
+# Node dependencies
+node_modules/
+package-lock.json
+
+# Environment configuration
+.env
+.env.local
+*.env
+
+# Build outputs
+dist/
+dist-ssr/
+*.local
+tsconfig.tsbuildinfo
+
+# Uploaded doctor files (ignore actual uploads, keep directory structure via .gitkeep)
+backend/public/uploads/doctors/*
+!backend/public/uploads/doctors/.gitkeep
+!backend/public/uploads/doctors/thumbs/
+backend/public/uploads/doctors/thumbs/*
+!backend/public/uploads/doctors/thumbs/.gitkeep
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

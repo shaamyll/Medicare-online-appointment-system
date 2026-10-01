@@ -2,19 +2,24 @@ import React, { useState } from 'react';
 import {
   Search,
   Calendar,
+  Eye,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { Avatar } from '@/components/ui/Avatar';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useDoctors } from '@/features/doctors/hooks/useDoctors';
 import { useDepartments } from '@/features/departments/hooks/useDepartments';
 import { AppointmentBookingModal } from '@/features/appointments/components/AppointmentBookingModal';
+import { DoctorDetailsModal } from '@/features/doctors/components/DoctorDetailsModal';
+import { Doctor } from '@/features/doctors/types/doctor.types';
 
 export const DoctorsBrowsePage: React.FC = () => {
   const [selectedDeptId, setSelectedDeptId] = useState<number | undefined>(undefined);
   const [search, setSearch] = useState('');
   const [bookingDoctorId, setBookingDoctorId] = useState<number | null>(null);
+  const [selectedDoctorForDetails, setSelectedDoctorForDetails] = useState<Doctor | null>(null);
 
   const { data: departments } = useDepartments();
   const { data: doctors, isLoading } = useDoctors({
@@ -79,11 +84,20 @@ export const DoctorsBrowsePage: React.FC = () => {
               <div className="p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center font-bold text-base shadow-sm">
-                      {doc.user.name.split(' ').map((n) => n[0]).slice(0, 2).join('')}
-                    </div>
+                    <Avatar
+                      src={doc.thumbnailPath || doc.imagePath}
+                      name={doc.user.name}
+                      size="lg"
+                      className="border border-slate-200/80 shadow-xs cursor-pointer"
+                      onClick={() => setSelectedDoctorForDetails(doc)}
+                    />
                     <div>
-                      <h3 className="text-base font-bold text-slate-900">{doc.user.name}</h3>
+                      <h3
+                        onClick={() => setSelectedDoctorForDetails(doc)}
+                        className="text-base font-bold text-slate-900 hover:text-emerald-700 cursor-pointer transition-colors"
+                      >
+                        {doc.user.name}
+                      </h3>
                       <p className="text-xs text-emerald-700 font-semibold">{doc.specialization}</p>
                     </div>
                   </div>
@@ -111,10 +125,16 @@ export const DoctorsBrowsePage: React.FC = () => {
                 )}
               </div>
 
-              <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between gap-3 rounded-b-xl">
-                <span className="text-[11px] text-slate-400 font-medium">
-                  {doc.roomNumber || 'Outpatient Clinic'}
-                </span>
+              <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between gap-2 rounded-b-xl">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedDoctorForDetails(doc)}
+                  leftIcon={<Eye className="w-3.5 h-3.5" />}
+                  className="text-xs border-slate-200 hover:bg-slate-100"
+                >
+                  View Details
+                </Button>
                 <Button
                   size="sm"
                   onClick={() => setBookingDoctorId(doc.id)}
@@ -128,6 +148,14 @@ export const DoctorsBrowsePage: React.FC = () => {
           ))}
         </div>
       )}
+
+      {/* Doctor Details Modal with Full High-Res Photo & Credentials */}
+      <DoctorDetailsModal
+        isOpen={selectedDoctorForDetails !== null}
+        onClose={() => setSelectedDoctorForDetails(null)}
+        doctor={selectedDoctorForDetails}
+        onBookAppointment={(id) => setBookingDoctorId(id)}
+      />
 
       {/* Appointment Booking Modal */}
       {bookingDoctorId !== null && (

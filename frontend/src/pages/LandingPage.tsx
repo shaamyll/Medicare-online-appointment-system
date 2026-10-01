@@ -11,12 +11,15 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Avatar } from '@/components/ui/Avatar';
 import { Navbar } from '@/components/layout/Navbar';
 import { useDepartments } from '@/features/departments/hooks/useDepartments';
+import { useDoctors } from '@/features/doctors/hooks/useDoctors';
 
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
   const { data: departments } = useDepartments();
+  const { data: doctors } = useDoctors();
 
   const departmentIcons: Record<string, React.ReactNode> = {
     Cardiology: <HeartPulse className="w-6 h-6 text-rose-500" />,
@@ -134,6 +137,61 @@ export const LandingPage: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {/* Featured Doctors Section */}
+      {doctors && doctors.length > 0 && (
+        <section className="py-16 bg-slate-50 border-b border-slate-200/70">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center max-w-2xl mx-auto mb-12">
+              <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+                Featured Medical Specialists
+              </h2>
+              <p className="text-slate-500 text-sm mt-2">
+                Connect with board-certified physicians and schedule your appointment today.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {doctors.slice(0, 3).map((doctor) => (
+                <Card key={doctor.id} hover className="border-slate-200 flex flex-col justify-between">
+                  <div className="p-6">
+                    <div className="flex items-center gap-4 mb-4">
+                      <Avatar
+                        src={doctor.thumbnailPath || doctor.imagePath}
+                        name={doctor.user.name}
+                        size="lg"
+                        className="border border-slate-200/80 shadow-xs shrink-0"
+                      />
+                      <div>
+                        <h3 className="text-base font-bold text-slate-900">{doctor.user.name}</h3>
+                        <p className="text-xs text-emerald-700 font-semibold">{doctor.specialization}</p>
+                        <p className="text-[11px] text-slate-400">{doctor.department?.name || 'General Clinic'}</p>
+                      </div>
+                    </div>
+                    {doctor.bio && (
+                      <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                        {doctor.bio}
+                      </p>
+                    )}
+                  </div>
+                  <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between rounded-b-xl">
+                    <span className="text-xs font-bold text-emerald-700">
+                      ${doctor.consultationFee?.toFixed(2)} / visit
+                    </span>
+                    <Button
+                      size="sm"
+                      onClick={() => navigate('/login?tab=register')}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs"
+                    >
+                      Book Visit
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* How Medi-Care Works */}
       <section className="py-16 bg-slate-50">

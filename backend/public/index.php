@@ -11,6 +11,15 @@ use App\Routes\ApiRoutes;
 // Initialize Environment Variables
 Database::loadEnv();
 
+// Block any attempt to execute .php scripts under /uploads/
+$requestUri = $_SERVER['REQUEST_URI'] ?? '';
+if (str_starts_with($requestUri, '/uploads/') && preg_match('/\.php/i', $requestUri)) {
+    http_response_code(403);
+    header('Content-Type: application/json; charset=UTF-8');
+    echo json_encode(['success' => false, 'message' => 'Direct PHP execution in uploads directory is forbidden.'], JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
 // Error reporting settings
 error_reporting(E_ALL);
 ini_set('display_errors', '0');

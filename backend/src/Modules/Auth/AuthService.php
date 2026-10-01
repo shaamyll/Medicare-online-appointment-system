@@ -161,6 +161,7 @@ class AuthService {
 
     /**
      * Doctor registration: registers doctors with status 'pending' and without session token.
+     * Requires medical license number and profile photo upload.
      */
     public function doctorRegister(array $data): array {
         if (isset($data['role']) && strtolower(trim($data['role'])) === 'admin') {
@@ -179,32 +180,73 @@ class AuthService {
             throw new Exception('Password must be at least 6 characters long.', 400);
         }
 
+        // Validate Medical License Number
+        $licenseNumber = trim($data['licenseNumber'] ?? $data['license_number'] ?? '');
+        if (empty($licenseNumber)) {
+            throw new Exception('Medical license number is required.', 400);
+        }
+
+        if (!preg_match('/^[A-Za-z0-9\-\/]{5,30}$/', $licenseNumber)) {
+            throw new Exception('License number must be 5-30 characters containing only letters, numbers, hyphens, and slashes.', 400);
+        }
+
+        $existingLicense = $this->userRepository->findByLicenseNumber($licenseNumber);
+        if ($existingLicense) {
+            throw new Exception('This license number is already registered', 409);
+        }
+
         $existing = $this->userRepository->findByEmail(strtolower(trim($data['email'])));
         if ($existing) {
             throw new Exception('This email address is already registered.', 409);
         }
 
-        $hashedPassword = password_hash($data['password'], PASSWORD_BCRYPT);
+        // Validate and handle profile photo upload
+        $photoFile = $_FILES['profilePhoto'] ?? $_FILES['photo'] ?? null;
+        if (!$photoFile || !isset($photoFile['error']) || $photoFile['error'] === UPLOAD_ERR_NO_FILE) {
+            throw new Exception('Profile photo is required (JPG, PNG, or WebP up to 2MB).', 400);
+        }
 
-        $userId = $this->userRepository->create([
-            'name' => trim($data['name']),
-            'email' => strtolower(trim($data['email'])),
-            'password' => $hashedPassword,
-            'role' => 'doctor',
-            'phone' => $data['phone'] ?? null,
-            'status' => 'pending'
-        ]);
+        $uploadService = new \App\Services\UploadService();
+        $uploadResult = $uploadService->uploadDoctorPhoto($photoFile);
+        $imagePath = $uploadResult['image_path'];
+        $thumbnailPath = $uploadResult['thumbnail_path'];
 
-        $this->userRepository->createDoctorProfile([
-            'user_id' => $userId,
-            'department_id' => !empty($data['departmentId']) ? (int)$data['departmentId'] : null,
-            'specialization' => $data['specialization'] ?? 'General Specialist',
-            'qualification' => $data['qualification'] ?? 'MBBS / MD',
-            'experience_years' => !empty($data['experienceYears']) ? (int)$data['experienceYears'] : 0,
-            'consultation_fee' => !empty($data['consultationFee']) ? (float)$data['consultationFee'] : 0.00,
-            'bio' => $data['bio'] ?? null,
-            'room_number' => $data['roomNumber'] ?? null
-        ]);
+        $db = $this->userRepository->getDb();
+        $db->beginTransaction();
+
+        try {
+            $hashedPassword = password_hash($data['password'], PASSWORD_BCRYPT);
+
+            $userId = $this->userRepository->create([
+                'name' => trim($data['name']),
+                'email' => strtolower(trim($data['email'])),
+                'password' => $hashedPassword,
+                'role' => 'doctor',
+                'phone' => $data['phone'] ?? null,
+                'status' => 'pending'
+            ]);
+
+            $this->userRepository->createDoctorProfile([
+                'user_id' => $userId,
+                'department_id' => !empty($data['departmentId']) ? (int)$data['departmentId'] : null,
+                'specialization' => $data['specialization'] ?? 'General Specialist',
+                'qualification' => $data['qualification'] ?? 'MBBS / MD',
+                'license_number' => $licenseNumber,
+                'image_path' => $imagePath,
+                'thumbnail_path' => $thumbnailPath,
+                'experience_years' => !empty($data['experienceYears']) ? (int)$data['experienceYears'] : 0,
+                'consultation_fee' => !empty($data['consultationFee']) ? (float)$data['consultationFee'] : 0.00,
+                'bio' => $data['bio'] ?? null,
+                'room_number' => $data['roomNumber'] ?? null
+            ]);
+
+            $db->commit();
+        } catch (\Throwable $e) {
+            $db->rollBack();
+            // Delete orphan uploaded files
+            $uploadService->deleteFiles($imagePath, $thumbnailPath);
+            throw $e;
+        }
 
         $profile = $this->userRepository->getDoctorProfile($userId);
         $user = $this->userRepository->findById($userId);
