@@ -144,8 +144,8 @@ export const PatientAppointmentsPage: React.FC = () => {
       activeTab === 'upcoming'
         ? upcomingApts
         : activeTab === 'history'
-        ? historyApts
-        : allApts;
+          ? historyApts
+          : allApts;
 
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -262,15 +262,15 @@ export const PatientAppointmentsPage: React.FC = () => {
               search || statusFilter !== 'all'
                 ? 'No Matching Appointments'
                 : activeTab === 'upcoming'
-                ? 'No Upcoming Appointments'
-                : 'No Past Appointment History'
+                  ? 'No Upcoming Appointments'
+                  : 'No Past Appointment History'
             }
             description={
               search || statusFilter !== 'all'
                 ? 'Try clearing your search query or switching filters to see more results.'
                 : activeTab === 'upcoming'
-                ? "You don't have any pending or confirmed consultations on schedule."
-                : 'Your completed and past appointment records will be safely archived here for your reference.'
+                  ? "You don't have any pending or confirmed consultations on schedule."
+                  : 'Your completed and past appointment records will be safely archived here for your reference.'
             }
             actionLabel={
               search || statusFilter !== 'all' ? 'Clear Filters' : undefined
@@ -278,9 +278,9 @@ export const PatientAppointmentsPage: React.FC = () => {
             onAction={
               search || statusFilter !== 'all'
                 ? () => {
-                    setSearch('');
-                    setStatusFilter('all');
-                  }
+                  setSearch('');
+                  setStatusFilter('all');
+                }
                 : undefined
             }
           />
@@ -395,14 +395,24 @@ export const PatientAppointmentsPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Badges in one aligned row */}
-                  <div className="flex items-center gap-2.5 shrink-0 self-start md:self-center">
-                    <StatusBadge
-                      status={apt.status}
-                      showHelper
-                      rejectionReason={apt.rejectionReason}
-                    />
-                    <PaymentBadge status={paymentStatus} />
+                  {/* Approval & payment status, stacked */}
+                  <div className="w-full md:w-52 shrink-0 self-start md:self-center rounded-lg border border-gray-100 bg-gray-50/60 divide-y divide-gray-100">
+                    <div className="flex items-center justify-between gap-3 px-3 py-2">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                        Approval
+                      </span>
+                      <StatusBadge
+                        status={apt.status}
+                        showHelper
+                        rejectionReason={apt.rejectionReason}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-3 px-3 py-2">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                        Payment
+                      </span>
+                      <PaymentBadge status={paymentStatus} />
+                    </div>
                   </div>
                 </div>
 
