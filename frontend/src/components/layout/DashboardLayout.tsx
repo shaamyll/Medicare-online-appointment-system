@@ -5,6 +5,7 @@ import { Sidebar } from './Sidebar';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { Avatar } from '@/components/ui/Avatar';
 import { LogoutConfirmModal } from '@/components/ui/LogoutConfirmModal';
+import { NotificationBell } from '@/features/notifications/components/NotificationBell';
 
 export const DashboardLayout: React.FC = () => {
   const { user } = useAuth();
@@ -57,6 +58,7 @@ export const DashboardLayout: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            <NotificationBell />
             <div className="flex items-center gap-2.5">
               <Avatar
                 src={(user as any)?.thumbnailPath || (user as any)?.imagePath}

@@ -12,13 +12,17 @@ import {
   Menu,
   X,
   Activity,
+  Bell,
 } from 'lucide-react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { Avatar } from '@/components/ui/Avatar';
 import { LogoutConfirmModal } from '@/components/ui/LogoutConfirmModal';
+import { NotificationBell } from '@/features/notifications/components/NotificationBell';
+import { useUnreadCount } from '@/features/notifications/hooks/useNotifications';
 
 export const DoctorLayout: React.FC = () => {
   const { user, profile } = useAuth();
+  const { data: unreadCount = 0 } = useUnreadCount();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const location = useLocation();
@@ -32,6 +36,7 @@ export const DoctorLayout: React.FC = () => {
     { label: 'Appointments', href: '/doctor/appointments', icon: Calendar },
     { label: 'Schedule', href: '/doctor/schedule', icon: Clock },
     { label: 'Patients', href: '/doctor/patients', icon: Users },
+    { label: 'Notifications', href: '/doctor/notifications', icon: Bell, badge: unreadCount },
     { label: 'Profile', href: '/doctor/profile', icon: User },
     { label: 'Settings', href: '/doctor/settings', icon: Settings },
   ];
@@ -122,15 +127,30 @@ export const DoctorLayout: React.FC = () => {
                   to={item.href}
                   end={item.href === '/doctor/dashboard'}
                   className={({ isActive }) =>
-                    `flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                    `flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
                       isActive
                         ? 'bg-teal-600 text-white shadow-sm'
                         : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900'
                     }`
                   }
                 >
-                  <Icon className="w-4 h-4 shrink-0" />
-                  <span>{item.label}</span>
+                  {({ isActive }) => (
+                    <>
+                      <div className="flex items-center gap-3">
+                        <Icon className="w-4 h-4 shrink-0" />
+                        <span>{item.label}</span>
+                      </div>
+                      {typeof (item as any).badge === 'number' && (item as any).badge > 0 && (
+                        <span
+                          className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                            isActive ? 'bg-white text-teal-800' : 'bg-rose-600 text-white'
+                          }`}
+                        >
+                          {(item as any).badge > 99 ? '99+' : (item as any).badge}
+                        </span>
+                      )}
+                    </>
+                  )}
                 </NavLink>
               );
             })}
@@ -170,6 +190,7 @@ export const DoctorLayout: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            <NotificationBell />
             <div className="hidden sm:flex flex-col text-right">
               <span className="text-xs font-semibold text-slate-900">{user?.name}</span>
               <span className="text-[11px] text-teal-600 font-medium">{user?.email}</span>

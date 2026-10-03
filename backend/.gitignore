@@ -7,4 +7,9 @@ public/uploads/doctors/*
 !public/uploads/doctors/.gitkeep
 !public/uploads/doctors/thumbs/
 public/uploads/doctors/thumbs/*
-!public/uploads/doctors/thumbs/.gitkeep
+!public/uploads/doctors/thumbs/.gitkeep
+
+# Composer
+composer.phar
+vendor/*
+!vendor/autoload.php

@@ -37,4 +37,10 @@ export const queryKeys = {
     patients: ['admin', 'patients'] as const,
     reports: ['admin', 'reports'] as const,
   },
+  notifications: {
+    all: ['notifications'] as const,
+    list: (page: number = 1, filter: string = 'all') =>
+      ['notifications', 'list', { page, filter }] as const,
+    unreadCount: ['notifications', 'unreadCount'] as const,
+  },
 };

@@ -81,5 +81,13 @@ class ApiRoutes {
         $router->post('/departments', [DepartmentController::class, 'create'], $adminAuth);
         $router->put('/departments/{id}', [DepartmentController::class, 'update'], $adminAuth);
         $router->delete('/departments/{id}', [DepartmentController::class, 'delete'], $adminAuth);
+
+        // Notifications (All authenticated roles)
+        $router->get('/notifications', [\App\Modules\Notification\NotificationController::class, 'index'], [AuthMiddleware::class]);
+        $router->get('/notifications/unread-count', [\App\Modules\Notification\NotificationController::class, 'unreadCount'], [AuthMiddleware::class]);
+        $router->patch('/notifications/{id}/read', [\App\Modules\Notification\NotificationController::class, 'markRead'], [AuthMiddleware::class]);
+        $router->post('/notifications/read-all', [\App\Modules\Notification\NotificationController::class, 'markAllRead'], [AuthMiddleware::class]);
+        $router->delete('/notifications/{id}', [\App\Modules\Notification\NotificationController::class, 'delete'], [AuthMiddleware::class]);
+        $router->delete('/notifications', [\App\Modules\Notification\NotificationController::class, 'clearRead'], [AuthMiddleware::class]);
     }
 }

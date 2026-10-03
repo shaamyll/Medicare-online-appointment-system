@@ -3,6 +3,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { QueryProvider } from './QueryProvider';
 import { AuthProvider } from './AuthProvider';
 import { ToastProvider } from '@/components/ui/Toast';
+import { SocketProvider } from './SocketProvider';
 
 export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
@@ -10,7 +11,9 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
       <QueryProvider>
         <AuthProvider>
           <ToastProvider>
-            {children}
+            <SocketProvider>
+              {children}
+            </SocketProvider>
           </ToastProvider>
         </AuthProvider>
       </QueryProvider>

@@ -3,14 +3,18 @@
 namespace App\Modules\Admin;
 
 use App\Config\Database;
+use App\Modules\Notification\NotificationService;
+use App\Modules\Notification\NotificationTypes;
 use Exception;
 use PDO;
 
 class AdminService {
     private PDO $db;
+    private NotificationService $notificationService;
 
     public function __construct() {
         $this->db = Database::getConnection();
+        $this->notificationService = new NotificationService();
     }
 
     public function getDashboardStats(): array {
@@ -122,8 +126,49 @@ class AdminService {
             throw new Exception("Doctor not found.", 404);
         }
 
+        $prevStatus = $doctor['status'];
+
         $updateStmt = $this->db->prepare("UPDATE users SET status = ? WHERE id = ?");
         $updateStmt->execute([$status, $doctorId]);
+
+        // Send notifications based on status transition
+        $eventType = null;
+        if ($status === 'active' && $prevStatus === 'pending') {
+            $eventType = NotificationTypes::DOCTOR_APPROVED;
+        } elseif ($status === 'rejected') {
+            $eventType = NotificationTypes::DOCTOR_REJECTED;
+        } elseif ($status === 'inactive') {
+            $eventType = NotificationTypes::DOCTOR_DEACTIVATED;
+        } elseif ($status === 'active' && $prevStatus === 'inactive') {
+            $eventType = NotificationTypes::DOCTOR_ACTIVATED;
+        }
+
+        if ($eventType) {
+            $meta = NotificationTypes::build($eventType, [
+                'doctorName' => $doctor['name'],
+            ]);
+            $this->notificationService->notify(
+                $doctorId,
+                $eventType,
+                $meta['title'],
+                $meta['message'],
+                ['doctorId' => $doctorId, 'status' => $status],
+                $meta['link']
+            );
+        }
+
+        // If deactivated or rejected, terminate any open session immediately
+        if ($status === 'inactive' || $status === 'rejected') {
+            $this->notificationService->publishForceLogout(
+                $doctorId,
+                $status === 'inactive'
+                    ? 'Your doctor account has been deactivated by administration.'
+                    : 'Your doctor application was not approved.'
+            );
+        }
+
+        // Invalidate admin and doctor lists
+        $this->notificationService->publishDataChanged([$doctorId], ['doctors', 'admin-stats', 'doctor-requests']);
 
         return [
             'id' => $doctorId,

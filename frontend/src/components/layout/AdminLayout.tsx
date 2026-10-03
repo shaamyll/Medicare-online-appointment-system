@@ -12,12 +12,16 @@ import {
   ShieldAlert,
   Menu,
   X,
+  Bell,
 } from 'lucide-react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { LogoutConfirmModal } from '@/components/ui/LogoutConfirmModal';
+import { NotificationBell } from '@/features/notifications/components/NotificationBell';
+import { useUnreadCount } from '@/features/notifications/hooks/useNotifications';
 
 export const AdminLayout: React.FC = () => {
   const { user } = useAuth();
+  const { data: unreadCount = 0 } = useUnreadCount();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const location = useLocation();
@@ -33,6 +37,7 @@ export const AdminLayout: React.FC = () => {
     { label: 'Patients', href: '/admin/patients', icon: Users },
     { label: 'Departments', href: '/admin/departments', icon: Building2 },
     { label: 'Appointments', href: '/admin/appointments', icon: Calendar },
+    { label: 'Notifications', href: '/admin/notifications', icon: Bell, badge: unreadCount },
     { label: 'Settings', href: '/admin/settings', icon: Settings },
   ];
 
@@ -95,15 +100,30 @@ export const AdminLayout: React.FC = () => {
                   to={item.href}
                   end={item.href === '/admin/dashboard'}
                   className={({ isActive }) =>
-                    `flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all ${
+                    `flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold transition-all ${
                       isActive
                         ? 'bg-emerald-500 text-slate-950 shadow-sm'
                         : 'text-slate-400 hover:bg-slate-800/90 hover:text-slate-100'
                     }`
                   }
                 >
-                  <Icon className="w-4 h-4 shrink-0" />
-                  <span>{item.label}</span>
+                  {({ isActive }) => (
+                    <>
+                      <div className="flex items-center gap-3">
+                        <Icon className="w-4 h-4 shrink-0" />
+                        <span>{item.label}</span>
+                      </div>
+                      {typeof (item as any).badge === 'number' && (item as any).badge > 0 && (
+                        <span
+                          className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                            isActive ? 'bg-slate-950 text-emerald-400' : 'bg-rose-600 text-white'
+                          }`}
+                        >
+                          {(item as any).badge > 99 ? '99+' : (item as any).badge}
+                        </span>
+                      )}
+                    </>
+                  )}
                 </NavLink>
               );
             })}
@@ -142,6 +162,7 @@ export const AdminLayout: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-4">
+            <NotificationBell />
             <div className="hidden sm:flex flex-col text-right">
               <span className="text-xs font-semibold text-slate-200">{user?.name || 'Administrator'}</span>
               <span className="text-[11px] text-slate-400">{user?.email}</span>

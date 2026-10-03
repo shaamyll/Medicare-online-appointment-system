@@ -85,8 +85,10 @@ class AppointmentController {
             return;
         }
 
+        $reason = $request->get('reason') ?? $request->get('rejectionReason');
+
         try {
-            $appointment = $this->service->updateStatus($id, $status, $user);
+            $appointment = $this->service->updateStatus($id, $status, $user, $reason);
             Response::success($appointment, "Appointment status updated to {$status}");
         } catch (Exception $e) {
             $code = $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 400;

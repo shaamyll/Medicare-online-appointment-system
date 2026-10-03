@@ -10,6 +10,7 @@ import {
 } from '@/features/auth/types/auth.types';
 import { authApi } from '@/features/auth/api/authApi';
 import { queryKeys } from '@/lib/queryKeys';
+import { socketClient } from '@/lib/socket';
 
 interface AuthContextType {
   user: User | null;
@@ -126,6 +127,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('medicare_token');
     localStorage.removeItem('medicare_user');
     setToken(null);
+    socketClient.disconnect();
     queryClient.clear();
 
     if (redirect) {

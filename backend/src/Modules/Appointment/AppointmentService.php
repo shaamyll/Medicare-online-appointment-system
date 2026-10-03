@@ -3,6 +3,8 @@
 namespace App\Modules\Appointment;
 
 use App\Modules\Doctor\DoctorRepository;
+use App\Modules\Notification\NotificationService;
+use App\Modules\Notification\NotificationTypes;
 use DateTime;
 use Exception;
 
@@ -10,9 +12,12 @@ class AppointmentService {
     private AppointmentRepository $repository;
     private DoctorRepository $doctorRepository;
 
+    private NotificationService $notificationService;
+
     public function __construct() {
         $this->repository = new AppointmentRepository();
         $this->doctorRepository = new DoctorRepository();
+        $this->notificationService = new NotificationService();
     }
 
     public function getAvailableSlots(int $doctorId, string $date): array {
@@ -125,7 +130,42 @@ class AppointmentService {
             'reason_for_visit' => $reason
         ]);
 
-        return $this->repository->findById($id);
+        $apt = $this->repository->findById($id);
+
+        // 1. Notify patient that request was submitted
+        $patientMeta = NotificationTypes::build(NotificationTypes::APPOINTMENT_BOOKED, [
+            'appointmentNumber' => $apt['appointmentNumber'],
+            'doctorName' => $apt['doctor']['name'] ?? 'Doctor',
+        ]);
+        $this->notificationService->notify(
+            $patientId,
+            NotificationTypes::APPOINTMENT_BOOKED,
+            $patientMeta['title'],
+            $patientMeta['message'],
+            ['appointmentId' => $id, 'doctorId' => $doctorId],
+            $patientMeta['link']
+        );
+
+        // 2. Notify doctor about new appointment request
+        $doctorMeta = NotificationTypes::build(NotificationTypes::NEW_APPOINTMENT_REQUEST, [
+            'appointmentNumber' => $apt['appointmentNumber'],
+            'patientName' => $apt['patient']['name'] ?? 'Patient',
+            'appointmentDate' => $apt['appointmentDate'],
+            'startTime' => $apt['startTime'],
+        ]);
+        $this->notificationService->notify(
+            $doctorId,
+            NotificationTypes::NEW_APPOINTMENT_REQUEST,
+            $doctorMeta['title'],
+            $doctorMeta['message'],
+            ['appointmentId' => $id, 'patientId' => $patientId],
+            $doctorMeta['link']
+        );
+
+        // 3. Broadcast data changed
+        $this->notificationService->publishDataChanged([$patientId, $doctorId], ['appointments']);
+
+        return $apt;
     }
 
     public function cancelAppointment(int $appointmentId, array $user): array {
@@ -147,10 +187,57 @@ class AppointmentService {
         }
 
         $this->repository->updateStatus($appointmentId, 'cancelled');
-        return $this->repository->findById($appointmentId);
+        $updated = $this->repository->findById($appointmentId);
+
+        $patientId = (int)$apt['patient']['id'];
+        $doctorId = (int)$apt['doctor']['id'];
+
+        if ($user['role'] === 'patient') {
+            // Doctor receives notification
+            $docMeta = NotificationTypes::build(NotificationTypes::APPOINTMENT_CANCELLED_BY_PATIENT, [
+                'appointmentNumber' => $apt['appointmentNumber'],
+                'patientName' => $apt['patient']['name'] ?? 'Patient',
+            ]);
+            $this->notificationService->notify(
+                $doctorId,
+                NotificationTypes::APPOINTMENT_CANCELLED_BY_PATIENT,
+                $docMeta['title'],
+                $docMeta['message'],
+                ['appointmentId' => $appointmentId],
+                $docMeta['link']
+            );
+
+            // Admin receives notification summary
+            $this->notificationService->notifyAdmins(
+                NotificationTypes::ADMIN_APPOINTMENT_CANCELLED,
+                'Appointment Cancelled',
+                "Appointment #{$apt['appointmentNumber']} was cancelled by patient {$apt['patient']['name']}.",
+                ['appointmentId' => $appointmentId],
+                '/admin/appointments'
+            );
+        } else {
+            // Cancelled by doctor or admin -> patient receives notification
+            $by = $user['role'] === 'admin' ? 'hospital administration' : ('Dr. ' . ($apt['doctor']['name'] ?? 'Doctor'));
+            $patMeta = NotificationTypes::build(NotificationTypes::APPOINTMENT_CANCELLED, [
+                'appointmentNumber' => $apt['appointmentNumber'],
+                'cancelledBy' => $by,
+            ]);
+            $this->notificationService->notify(
+                $patientId,
+                NotificationTypes::APPOINTMENT_CANCELLED,
+                $patMeta['title'],
+                $patMeta['message'],
+                ['appointmentId' => $appointmentId],
+                $patMeta['link']
+            );
+        }
+
+        $this->notificationService->publishDataChanged([$patientId, $doctorId], ['appointments']);
+
+        return $updated;
     }
 
-    public function updateStatus(int $appointmentId, string $status, array $user): array {
+    public function updateStatus(int $appointmentId, string $status, array $user, ?string $reason = null): array {
         $status = strtolower($status);
         $allowed = ['pending', 'approved', 'rejected', 'completed', 'cancelled'];
         if (!in_array($status, $allowed, true)) {
@@ -167,7 +254,58 @@ class AppointmentService {
         }
 
         $this->repository->updateStatus($appointmentId, $status);
-        return $this->repository->findById($appointmentId);
+        $updated = $this->repository->findById($appointmentId);
+
+        $patientId = (int)$apt['patient']['id'];
+        $doctorId = (int)$apt['doctor']['id'];
+
+        if ($status === 'approved') {
+            $meta = NotificationTypes::build(NotificationTypes::APPOINTMENT_APPROVED, [
+                'appointmentNumber' => $apt['appointmentNumber'],
+                'doctorName' => $apt['doctor']['name'] ?? 'Doctor',
+                'appointmentDate' => $apt['appointmentDate'],
+                'startTime' => $apt['startTime'],
+            ]);
+            $this->notificationService->notify(
+                $patientId,
+                NotificationTypes::APPOINTMENT_APPROVED,
+                $meta['title'],
+                $meta['message'],
+                ['appointmentId' => $appointmentId],
+                $meta['link']
+            );
+        } elseif ($status === 'rejected') {
+            $meta = NotificationTypes::build(NotificationTypes::APPOINTMENT_REJECTED, [
+                'appointmentNumber' => $apt['appointmentNumber'],
+                'doctorName' => $apt['doctor']['name'] ?? 'Doctor',
+                'reason' => $reason,
+            ]);
+            $this->notificationService->notify(
+                $patientId,
+                NotificationTypes::APPOINTMENT_REJECTED,
+                $meta['title'],
+                $meta['message'],
+                ['appointmentId' => $appointmentId],
+                $meta['link']
+            );
+        } elseif ($status === 'completed') {
+            $meta = NotificationTypes::build(NotificationTypes::APPOINTMENT_COMPLETED, [
+                'appointmentNumber' => $apt['appointmentNumber'],
+                'doctorName' => $apt['doctor']['name'] ?? 'Doctor',
+            ]);
+            $this->notificationService->notify(
+                $patientId,
+                NotificationTypes::APPOINTMENT_COMPLETED,
+                $meta['title'],
+                $meta['message'],
+                ['appointmentId' => $appointmentId],
+                $meta['link']
+            );
+        }
+
+        $this->notificationService->publishDataChanged([$patientId, $doctorId], ['appointments']);
+
+        return $updated;
     }
 
     public function addConsultationNotes(int $appointmentId, int $doctorId, array $data): array {
@@ -182,8 +320,27 @@ class AppointmentService {
 
         $this->repository->upsertConsultationRecord($appointmentId, $data);
         $this->repository->updateStatus($appointmentId, 'completed');
+        $updated = $this->repository->findById($appointmentId);
 
-        return $this->repository->findById($appointmentId);
+        $patientId = (int)$apt['patient']['id'];
+
+        // Notify patient of consultation notes/prescription
+        $meta = NotificationTypes::build(NotificationTypes::APPOINTMENT_COMPLETED, [
+            'appointmentNumber' => $apt['appointmentNumber'],
+            'doctorName' => $apt['doctor']['name'] ?? 'Doctor',
+        ]);
+        $this->notificationService->notify(
+            $patientId,
+            NotificationTypes::APPOINTMENT_COMPLETED,
+            $meta['title'],
+            $meta['message'],
+            ['appointmentId' => $appointmentId],
+            $meta['link']
+        );
+
+        $this->notificationService->publishDataChanged([$patientId, $doctorId], ['appointments']);
+
+        return $updated;
     }
 
     public function getPatientAppointments(int $patientId): array {

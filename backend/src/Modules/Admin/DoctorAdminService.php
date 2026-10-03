@@ -137,6 +137,13 @@ class DoctorAdminService {
             $uploadService->deleteFiles($imagePath, $thumbnailPath);
         }
 
+        // Force logout any open session of the deleted doctor and refresh lists
+        try {
+            $notificationService = new \App\Modules\Notification\NotificationService();
+            $notificationService->publishForceLogout($doctorId, 'Your account has been deleted by administration.');
+            $notificationService->publishDataChanged([], ['doctors', 'admin-stats', 'doctor-requests']);
+        } catch (\Throwable $ignored) {}
+
         return [
             'id' => $doctorId,
             'name' => $user['name'],

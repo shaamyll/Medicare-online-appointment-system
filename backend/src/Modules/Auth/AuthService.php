@@ -3,6 +3,8 @@
 namespace App\Modules\Auth;
 
 use App\Core\Jwt;
+use App\Modules\Notification\NotificationService;
+use App\Modules\Notification\NotificationTypes;
 use Exception;
 
 class AuthService {
@@ -144,6 +146,23 @@ class AuthService {
 
         $user = $this->userRepository->findById($userId);
 
+        // Notify admins about new patient registration
+        try {
+            $notifService = new NotificationService();
+            $meta = NotificationTypes::build(
+                NotificationTypes::NEW_PATIENT_REGISTERED,
+                ['patientName' => $user['name'], 'email' => $user['email']]
+            );
+            $notifService->notifyAdmins(
+                NotificationTypes::NEW_PATIENT_REGISTERED,
+                $meta['title'],
+                $meta['message'],
+                ['patientId' => $user['id'], 'email' => $user['email']],
+                $meta['link']
+            );
+            $notifService->publishDataChanged([], ['admin-stats', 'patients']);
+        } catch (\Throwable $ignored) {}
+
         $token = Jwt::encode([
             'sub' => $user['id'],
             'email' => $user['email'],
@@ -251,6 +270,23 @@ class AuthService {
         $profile = $this->userRepository->getDoctorProfile($userId);
         $user = $this->userRepository->findById($userId);
         unset($user['password']);
+
+        // Notify admins about new doctor registration awaiting verification
+        try {
+            $notifService = new NotificationService();
+            $meta = NotificationTypes::build(
+                NotificationTypes::NEW_DOCTOR_REGISTRATION,
+                ['doctorName' => $user['name'], 'licenseNumber' => $licenseNumber]
+            );
+            $notifService->notifyAdmins(
+                NotificationTypes::NEW_DOCTOR_REGISTRATION,
+                $meta['title'],
+                $meta['message'],
+                ['doctorId' => $userId, 'licenseNumber' => $licenseNumber],
+                $meta['link']
+            );
+            $notifService->publishDataChanged([], ['admin-stats', 'doctor-requests', 'doctors']);
+        } catch (\Throwable $ignored) {}
 
         return [
             'token' => '',

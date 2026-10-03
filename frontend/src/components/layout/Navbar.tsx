@@ -5,6 +5,7 @@ import { useAuth } from '@/features/auth/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
 import { LogoutConfirmModal } from '@/components/ui/LogoutConfirmModal';
+import { NotificationBell } from '@/features/notifications/components/NotificationBell';
 
 export const Navbar: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
@@ -48,6 +49,8 @@ export const Navbar: React.FC = () => {
                   <Calendar className="w-4 h-4 text-emerald-600" />
                   <span>Dashboard</span>
                 </Link>
+
+                <NotificationBell />
 
                 <div className="flex items-center gap-2 pl-3 border-l border-slate-200">
                   <Avatar

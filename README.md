@@ -393,11 +393,13 @@ The application features exactly **two public authentication screens** (Patient/
 | `/dashboard` | Patient | `DashboardLayout` | Patient overview, upcoming appointments, quick doctor search |
 | `/dashboard/appointments` | Patient | `PatientAppointmentsPage` | View appointment status, book new slot, cancel visits, read notes |
 | `/dashboard/doctors` | Patient | `DoctorsBrowsePage` | Directory of approved doctors with search & department filters |
+| `/dashboard/notifications` | Patient | `DashboardLayout` | Real-time alerts, booking confirmations, prescriptions, pagination |
 | `/doctor/dashboard` | Doctor | `DoctorLayout` | Clinical summary, today's schedule, patient count |
 | `/doctor/appointments`| Doctor | `DoctorAppointmentsPage` | Manage bookings, approve/reject, add diagnosis & prescriptions |
 | `/doctor/schedule` | Doctor | `DoctorSchedulePage` | Configure working days, start/end hours, and appointment durations |
 | `/doctor/patients` | Doctor | `DoctorPatientsPage` | View assigned patients and their past consultations |
 | `/doctor/profile` | Doctor | `DoctorProfilePage` | Update specialization, consultation fees, biography, and room number |
+| `/doctor/notifications`| Doctor | `DoctorLayout` | Patient booking requests, status alerts, approvals, notification history |
 | `/admin/dashboard` | Admin | `AdminLayout` | Overview metrics, quick actions, recent hospital appointments |
 | `/admin/doctors` | Admin | `AdminDoctorsPage` | Doctor roster management and account status toggles |
 | `/admin/doctor-requests`| Admin | `AdminDoctorRequestsPage` | Review and approve/reject pending doctor applications |
@@ -405,6 +407,7 @@ The application features exactly **two public authentication screens** (Patient/
 | `/admin/departments`| Admin | `AdminDepartmentsPage` | Create, update, and manage medical departments |
 | `/admin/appointments`| Admin | `AdminAppointmentsPage` | Global oversight and filters for all hospital bookings |
 | `/admin/settings` | Admin | `AdminSettingsPage` | Administrative environment and configuration overview |
+| `/admin/notifications` | Admin | `AdminLayout` | New doctor registrations, patient signups, cancellations overview |
 
 ---
 
@@ -464,6 +467,16 @@ All API endpoints are hosted by `BE/` and prefixed with `/api` (or accessed dire
 | `DELETE`| `/api/admin/doctors/{id}` | Admin | Hard delete doctor, schedules, consultation notes, appointments, user, and avatar files |
 | `GET` | `/api/admin/patients` | Admin | List all registered patients with appointment counts |
 | `GET` | `/api/admin/reports` | Admin | Distribution analytics (appointments by status, doctors per dept) |
+
+### 🔔 Notifications (All Authenticated Roles)
+| Method | Endpoint | Role Required | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/notifications` | Authenticated | List paginated notifications (`?page=1&limit=10&filter=all\|unread`) |
+| `GET` | `/api/notifications/unread-count` | Authenticated | Get real-time unread notifications count |
+| `PATCH`| `/api/notifications/{id}/read` | Authenticated | Mark a single notification as read (scoped to current user) |
+| `POST` | `/api/notifications/read-all` | Authenticated | Mark all notifications as read for current user |
+| `DELETE`| `/api/notifications/{id}` | Authenticated | Delete a single notification (scoped to current user) |
+| `DELETE`| `/api/notifications` | Authenticated | Delete all read notifications for current user |
 
 ---
 
@@ -573,9 +586,83 @@ The relational database (`medicare_appointment_db`) contains the following table
 | `created_at` | `DATETIME` | DEFAULT CURRENT_TIMESTAMP |
 | `updated_at` | `DATETIME` | DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP |
 
+### `notifications`
+| Column | Type | Constraints / Description |
+| :--- | :--- | :--- |
+| `id` | `INT` | PRIMARY KEY, AUTO_INCREMENT |
+| `user_id` | `INT` | NOT NULL, FOREIGN KEY (`users.id`) ON DELETE CASCADE |
+| `type` | `VARCHAR(50)` | NOT NULL, Event category identifier |
+| `title` | `VARCHAR(255)` | NOT NULL, Notification title |
+| `message` | `TEXT` | NOT NULL, Body text / explanation |
+| `data` | `JSON` | NULL, Contextual references (`appointment_id`, `doctor_id`, etc.) |
+| `link` | `VARCHAR(255)` | NULL, Target route to navigate to upon click |
+| `is_read` | `TINYINT(1)` | DEFAULT 0, Read indicator (0 = unread, 1 = read) |
+| `read_at` | `DATETIME` | NULL, Timestamp when marked as read |
+| `created_at` | `DATETIME` | DEFAULT CURRENT_TIMESTAMP |
+
+> **Performance Composite Index**: `(user_id, is_read, created_at DESC)` ensures zero-scan scoped queries, instantaneous unread count calculation, and snappy paginated inbox listing.
+
 ---
 
-## 15. Project Scope
+## 15. Real-Time Notification System & WebSocket Architecture
+
+Medi-Care features an enterprise-grade, event-driven real-time notification subsystem shared seamlessly across all three roles (**Patient**, **Doctor**, and **Admin**).
+
+### Dual-Port WebSocket Architecture
+The WebSocket server runs as an independent daemon process alongside Apache and the Vite dev server using **Ratchet** and **ReactPHP**:
+
+```
+[ Browser Clients ] ──(ws://127.0.0.1:8080)──► [ Ratchet WsServer ]
+                                                       │
+                                            [ EventLoop Dispatcher ]
+                                                       ▲
+[ PHP Backend HTTP ] ──(POST /publish)──────► [ ReactPHP HTTP Bridge ]
+ (NotificationService) (127.0.0.1:8081)
+```
+
+1. **Client WebSocket Server (`127.0.0.1:8080`)**:
+   - Accepts WebSocket connections from browser tabs.
+   - **Handshake Authentication**: Clients connect and immediately send `{ type: "auth", token: "<JWT>" }` as their first frame. Tokens are **never** passed in the URL to prevent leakage in proxy and server access logs.
+   - Connections that fail to authenticate within 5 seconds are terminated.
+   - Origin checking enforces access only from approved client domains (`WS_ALLOWED_ORIGINS`).
+   - Supports multi-tab tracking per user with automatic heartbeat ping/pong every 30 seconds.
+
+2. **Internal Publish Bridge (`127.0.0.1:8081/publish`)**:
+   - Binds strictly to `127.0.0.1` and accepts internal `POST /publish` requests dispatched by `NotificationService`.
+   - Protected by `X-Internal-Secret` header validation.
+   - Main request non-blocking safety: Backend services invoke the bridge via cURL with a 1-second timeout. Any network failure is logged and safely suppressed without interrupting database transactions or user operations.
+
+3. **Event Dispatch Matrix**:
+   - `notification`: Delivers full notification record and updated `unreadCount` to recipient user sockets.
+   - `data_changed`: Instructs client query caches to invalidate specified entities (`appointments`, `doctors`, `admin-stats`, `patients`) so open screens update live.
+   - `force_logout`: Dispatched when medical credentials or user accounts are deactivated/deleted, terminating active sessions immediately.
+
+4. **Resilience & Polling Fallback**:
+   - The frontend singleton WebSocket client (`lib/socket.ts`) automatically reconnects using exponential backoff (1s &rarr; 30s max).
+   - If the WebSocket server is offline or unreachable, React Query activates an automatic fallback: polling `GET /api/notifications/unread-count` every 30 seconds (`refetchInterval` active only while disconnected).
+   - Once the socket reconnects, polling deactivates and the badge count is refetched once.
+
+### Starting the WebSocket Server
+
+1. **Environment Settings** (in `backend/.env`):
+   ```env
+   WS_HOST=127.0.0.1
+   WS_PORT=8080
+   WS_INTERNAL_PORT=8081
+   WS_INTERNAL_SECRET=medicare_ws_internal_secret_998877_secure
+   WS_ALLOWED_ORIGINS=http://localhost:5173
+   ```
+
+2. **Run in a Separate Terminal**:
+   ```bash
+   cd backend
+   composer ws:start
+   # Or directly: php bin/websocket.php
+   ```
+
+---
+
+## 16. Project Scope
 
 To ensure high performance, security, and a focused clinical appointment lifecycle, the following features are **intentionally out of scope**:
 
@@ -588,7 +675,7 @@ To ensure high performance, security, and a focused clinical appointment lifecyc
 
 ---
 
-## 15. Troubleshooting
+## 17. Troubleshooting
 
 ### 1. Apache Stripping the Authorization Header in XAMPP
 **Issue**: Requests fail with `401 Unauthorized: Missing authentication token` even though a Bearer token is sent in the header.
@@ -609,13 +696,28 @@ To ensure high performance, security, and a focused clinical appointment lifecyc
 - Check `backend/.env` and verify `DB_HOST=127.0.0.1` and `DB_PORT=3306`. Using `127.0.0.1` instead of `localhost` avoids Unix/Windows named socket conflicts.
 - Ensure the password in `DB_PASS` matches your MySQL root user (default XAMPP root password is empty `""`).
 
-### 3. CORS / Pre-flight Blocked
-**Issue**: Browser console displays `Cross-Origin Request Blocked`.
+### 3. WebSocket Port In Use (`Address already in use` 8080 or 8081)
+**Issue**: Running `composer ws:start` reports `Failed to listen on "tcp://127.0.0.1:8080": Address already in use`.
 **Solution**:
-- When running Vite on `localhost:5173` and PHP on `localhost:8000`, the built-in `CorsMiddleware` automatically responds to pre-flight `OPTIONS` requests with appropriate `Access-Control-Allow-Origin: *` headers.
-- Alternatively, rely on Vite's built-in proxy in `vite.config.ts`, which proxies `/api` requests locally without triggering CORS restrictions.
+- Check which process is occupying port 8080 or 8081:
+  ```powershell
+  netstat -ano | findstr :8080
+  netstat -ano | findstr :8081
+  ```
+- Terminate the conflicting process (`taskkill /PID <PID> /F`) or change `WS_PORT` / `WS_INTERNAL_PORT` in `backend/.env`.
 
-### 4. Doctor Account Cannot Log In
+### 4. WebSocket Disconnected / Polling Fallback Active
+**Issue**: Browser console displays `WebSocket connection to 'ws://localhost:8080/' failed`.
+**Solution**:
+- The frontend gracefully handles this scenario: the notification badge switches to polling `GET /api/notifications/unread-count` every 30 seconds so all features remain functional.
+- To enable instant real-time pushes, open a terminal in `backend/` and start the daemon with `composer ws:start`. Upon launching, the frontend will automatically reconnect without needing a page refresh.
+
+### 5. Windows Firewall Blocking WebSocket Handshake
+**Issue**: Local browser connections to `ws://127.0.0.1:8080` are rejected or reset.
+**Solution**:
+- Ensure Windows Firewall or third-party antivirus permits inbound TCP connections to `127.0.0.1:8080` and `127.0.0.1:8081`.
+
+### 6. Doctor Account Cannot Log In
 **Issue**: Newly registered doctor receives `403 Forbidden` on login attempt.
 **Solution**:
 - This is intentional: newly registered doctors are placed into `pending` status upon submission.
@@ -623,8 +725,9 @@ To ensure high performance, security, and a focused clinical appointment lifecyc
 
 ---
 
-## 16. Author & License
+## 18. Author & License
 
 - **Author**: Medi-Care Engineering Team
 - **Repository**: [https://github.com/shaamyll/Medicare-online-appointment-system](https://github.com/shaamyll/Medicare-online-appointment-system)
 - **License**: Released under the [MIT License](LICENSE).
+

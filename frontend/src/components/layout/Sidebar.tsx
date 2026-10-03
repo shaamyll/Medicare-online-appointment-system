@@ -8,8 +8,10 @@ import {
   LogOut,
   Stethoscope,
   X,
+  Bell,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useUnreadCount } from '@/features/notifications/hooks/useNotifications';
 
 export interface SidebarProps {
   mobileOpen?: boolean;
@@ -22,6 +24,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onClose,
   onLogoutClick,
 }) => {
+  const { data: unreadCount = 0 } = useUnreadCount();
+
   const navItems = [
     {
       label: 'Dashboard',
@@ -37,6 +41,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       label: 'Find Doctors',
       href: '/dashboard/doctors',
       icon: UserRound,
+    },
+    {
+      label: 'Notifications',
+      href: '/dashboard/notifications',
+      icon: Bell,
+      badge: unreadCount,
     },
   ];
 
@@ -87,15 +97,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 end={item.href === '/dashboard'}
                 className={({ isActive }) =>
                   cn(
-                    'flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all',
+                    'flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all',
                     isActive
                       ? 'bg-emerald-600 text-white shadow-sm'
                       : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                   )
                 }
               >
-                <Icon className="w-4 h-4 text-inherit" />
-                <span>{item.label}</span>
+                {({ isActive }) => (
+                  <>
+                    <div className="flex items-center gap-3">
+                      <Icon className="w-4 h-4 text-inherit" />
+                      <span>{item.label}</span>
+                    </div>
+                    {typeof item.badge === 'number' && item.badge > 0 && (
+                      <span
+                        className={cn(
+                          'px-1.5 py-0.5 rounded-full text-[10px] font-bold',
+                          isActive
+                            ? 'bg-white text-emerald-700'
+                            : 'bg-rose-600 text-white'
+                        )}
+                      >
+                        {item.badge > 99 ? '99+' : item.badge}
+                      </span>
+                    )}
+                  </>
+                )}
               </NavLink>
             );
           })}

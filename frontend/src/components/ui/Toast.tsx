@@ -8,10 +8,17 @@ interface Toast {
   id: string;
   type: ToastType;
   message: string;
+  title?: string;
+  onClick?: () => void;
+}
+
+interface ToastOptions {
+  title?: string;
+  onClick?: () => void;
 }
 
 interface ToastContextType {
-  toast: (message: string, type?: ToastType) => void;
+  toast: (message: string, type?: ToastType, options?: ToastOptions) => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -19,13 +26,22 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const toast = useCallback((message: string, type: ToastType = 'info') => {
+  const toast = useCallback((message: string, type: ToastType = 'info', options?: ToastOptions) => {
     const id = Math.random().toString(36).substring(2, 9);
-    setToasts((prev) => [...prev, { id, type, message }]);
+    setToasts((prev) => [
+      ...prev,
+      {
+        id,
+        type,
+        message,
+        title: options?.title,
+        onClick: options?.onClick,
+      },
+    ]);
 
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4000);
+    }, 5000);
   }, []);
 
   React.useEffect(() => {
@@ -50,23 +66,38 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         {toasts.map((t) => (
           <div
             key={t.id}
+            onClick={() => {
+              if (t.onClick) {
+                t.onClick();
+                removeToast(t.id);
+              }
+            }}
             className={cn(
-              'pointer-events-auto flex items-center justify-between p-4 rounded-xl shadow-lg border text-sm transition-all animate-in slide-in-from-bottom-2',
+              'pointer-events-auto flex items-start justify-between p-4 rounded-xl shadow-lg border text-sm transition-all animate-in slide-in-from-bottom-2',
+              t.onClick && 'cursor-pointer hover:shadow-xl',
               t.type === 'success' && 'bg-white border-emerald-200 text-emerald-950',
               t.type === 'error' && 'bg-white border-rose-200 text-rose-950',
               t.type === 'warning' && 'bg-white border-amber-200 text-amber-950',
               t.type === 'info' && 'bg-white border-sky-200 text-sky-950'
             )}
           >
-            <div className="flex items-center gap-3">
-              {t.type === 'success' && <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />}
-              {t.type === 'error' && <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0" />}
-              {t.type === 'warning' && <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />}
-              {t.type === 'info' && <Info className="w-5 h-5 text-sky-600 flex-shrink-0" />}
-              <span className="font-medium">{t.message}</span>
+            <div className="flex items-start gap-3 flex-1 min-w-0">
+              {t.type === 'success' && <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />}
+              {t.type === 'error' && <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />}
+              {t.type === 'warning' && <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />}
+              {t.type === 'info' && <Info className="w-5 h-5 text-sky-600 flex-shrink-0 mt-0.5" />}
+              <div className="flex-1 min-w-0">
+                {t.title && <div className="font-semibold text-slate-900 leading-snug">{t.title}</div>}
+                <div className={cn("text-slate-700 leading-snug", t.title ? "text-xs mt-0.5 text-slate-600" : "font-medium")}>
+                  {t.message}
+                </div>
+              </div>
             </div>
             <button
-              onClick={() => removeToast(t.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                removeToast(t.id);
+              }}
               className="text-slate-400 hover:text-slate-600 ml-2 p-1 rounded-md"
             >
               <X className="w-4 h-4" />

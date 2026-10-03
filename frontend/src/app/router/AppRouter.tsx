@@ -27,6 +27,9 @@ import { DashboardPage } from '@/pages/DashboardPage';
 import { PatientAppointmentsPage } from '@/pages/patient/PatientAppointmentsPage';
 import { DoctorsBrowsePage } from '@/pages/patient/DoctorsBrowsePage';
 
+// Notifications Page (Shared across all roles)
+import { NotificationsPage } from '@/features/notifications/pages/NotificationsPage';
+
 // Layouts & Route Guards
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { DoctorLayout } from '@/components/layout/DoctorLayout';
@@ -57,6 +60,7 @@ export const AppRouter: React.FC = () => {
         <Route index element={<DashboardPage />} />
         <Route path="appointments" element={<PatientAppointmentsPage />} />
         <Route path="doctors" element={<DoctorsBrowsePage />} />
+        <Route path="notifications" element={<NotificationsPage />} />
       </Route>
 
       {/* Doctor Clinical Portal */}
@@ -77,6 +81,7 @@ export const AppRouter: React.FC = () => {
         <Route path="patients" element={<DoctorPatientsPage />} />
         <Route path="profile" element={<DoctorProfilePage />} />
         <Route path="settings" element={<DoctorProfilePage />} />
+        <Route path="notifications" element={<NotificationsPage />} />
       </Route>
 
       {/* Admin Portal */}
@@ -98,6 +103,7 @@ export const AppRouter: React.FC = () => {
         <Route path="departments" element={<AdminDepartmentsPage />} />
         <Route path="appointments" element={<AdminAppointmentsPage />} />
         <Route path="settings" element={<AdminSettingsPage />} />
+        <Route path="notifications" element={<NotificationsPage />} />
       </Route>
 
       {/* Catch-all Redirect */}

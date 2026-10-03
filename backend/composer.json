@@ -1,0 +1,19 @@
+{
+    "name": "medicare/backend",
+    "description": "Medi-Care Online Appointment System Backend",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.0",
+        "cboden/ratchet": "^0.4.4",
+        "react/http": "^1.9"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    },
+    "scripts": {
+        "ws:start": "php bin/websocket.php"
+    }
+}
