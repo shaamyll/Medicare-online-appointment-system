@@ -8,6 +8,9 @@ import {
   Bone,
   Stethoscope,
   Sparkles,
+  CheckCircle2,
+  Calendar,
+  Star,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -46,55 +49,139 @@ export const LandingPage: React.FC = () => {
       <Navbar />
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-emerald-50/60 via-gray-50 to-gray-50 pt-16 pb-20 md:pt-24 md:pb-28">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-100/70 border border-emerald-200/80 text-emerald-800 text-xs font-semibold mb-6">
-            <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Smarter, Faster Healthcare Scheduling</span>
+      <section className="relative overflow-hidden bg-gradient-to-b from-emerald-50/70 via-gray-50/50 to-gray-50 pt-10 pb-16 md:pt-16 md:pb-24">
+        {/* Subtle background glow effect */}
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-emerald-100/40 rounded-full blur-3xl pointer-events-none -z-10" />
+        <div className="absolute top-1/3 left-10 w-72 h-72 bg-sky-100/40 rounded-full blur-3xl pointer-events-none -z-10" />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
+            
+            {/* Left Column: Headline, Value Proposition & Actions */}
+            <div className="lg:col-span-7 text-left space-y-6">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-100/80 border border-emerald-200/90 text-emerald-800 text-xs font-semibold shadow-xs">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Next-Gen Healthcare Appointment Platform</span>
+              </div>
+
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-gray-900 leading-[1.12]">
+                Book Trusted Doctor Consultations in{' '}
+                <span className="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                  Minutes
+                </span>
+              </h1>
+
+              <p className="text-base sm:text-lg text-gray-600 max-w-xl leading-relaxed">
+                Connect with verified independent physicians and specialized clinic doctors. Browse live availability, choose suitable consultation slots, and book your visit securely.
+              </p>
+
+              <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5">
+                <Button
+                  size="lg"
+                  onClick={() => navigate('/login?tab=register')}
+                  rightIcon={<ArrowRight className="w-4 h-4" />}
+                  className="shadow-md shadow-emerald-600/20 px-7"
+                >
+                  Book an Appointment
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => navigate('/doctor/login')}
+                  className="bg-white hover:bg-gray-50 border-gray-300 text-gray-800 px-6"
+                >
+                  Join as a Doctor &rarr;
+                </Button>
+              </div>
+
+              {/* Trust Badges */}
+              <div className="pt-4 flex flex-wrap items-center gap-y-2 gap-x-6 text-xs text-gray-500 font-medium">
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>Verified Medical Licenses</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>Independent & Clinic Specialists</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>Instant Slot Confirmation</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column: Hero Visual with Overlay Cards */}
+            <div className="lg:col-span-5 relative">
+              <div className="relative mx-auto max-w-md lg:max-w-none">
+                
+                {/* Decorative background element */}
+                <div className="absolute -inset-2 bg-gradient-to-tr from-emerald-500/20 to-teal-500/10 rounded-3xl blur-xl" />
+
+                {/* Main Hero Card Container */}
+                <div className="relative rounded-3xl overflow-hidden border border-gray-200/90 bg-white shadow-2xl shadow-gray-900/10">
+                  <img
+                    src="https://t3.ftcdn.net/jpg/06/99/65/88/360_F_699658885_S0IIHvw0YNa2o6tVtf65hRlaAxoWEwMe.jpg"
+                    alt="Professional healthcare doctor consultation"
+                    className="w-full h-80 sm:h-96 lg:h-[420px] object-cover object-center transform hover:scale-[1.02] transition-transform duration-500"
+                    loading="eager"
+                  />
+                  
+                  {/* Subtle bottom gradient scrim */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-gray-950/60 via-transparent to-transparent pointer-events-none" />
+
+                  {/* Bottom Text Overlay */}
+                  <div className="absolute bottom-4 left-4 right-4 text-white">
+                    <p className="text-sm font-bold drop-shadow-sm">Verified Healthcare Professionals</p>
+                    <p className="text-xs text-gray-200/90 drop-shadow-xs">Schedule clinical consultations with certified physicians</p>
+                  </div>
+                </div>
+
+                {/* Floating Micro-Card 1: Top Right - Live Availability */}
+                <div className="absolute -top-4 -right-3 sm:-right-5 bg-white/95 backdrop-blur-md px-3.5 py-2.5 rounded-2xl border border-gray-100 shadow-xl flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                    <Calendar className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      <p className="text-xs font-bold text-gray-900 leading-none">Live Scheduling</p>
+                    </div>
+                    <p className="text-[10px] text-gray-500 mt-1 leading-none">Instant slot confirmation</p>
+                  </div>
+                </div>
+
+                {/* Floating Micro-Card 2: Bottom Left - Top Rating */}
+                <div className="absolute -bottom-4 -left-3 sm:-left-5 bg-white/95 backdrop-blur-md px-3.5 py-2.5 rounded-2xl border border-gray-100 shadow-xl flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center shrink-0">
+                    <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-gray-900 leading-none">4.9 / 5.0 Rating</p>
+                    <p className="text-[10px] text-gray-500 mt-1 leading-none">Over 1,200+ verified patients</p>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
           </div>
 
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-gray-900 max-w-4xl mx-auto leading-tight">
-            Book Trusted Doctor Consultations in <span className="text-emerald-600">Minutes</span>
-          </h1>
-
-          <p className="mt-6 text-base sm:text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed">
-            Medi-Care streamlines online healthcare appointment booking. Connect with verified medical specialists, select ideal time slots, and manage your health records effortlessly.
-          </p>
-
-          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Button
-              size="lg"
-              onClick={() => navigate('/login?tab=register')}
-              rightIcon={<ArrowRight className="w-4 h-4" />}
-              className="w-full sm:w-auto shadow-md"
-            >
-              Book an Appointment
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={() => navigate('/doctor/login')}
-              className="w-full sm:w-auto bg-white hover:bg-gray-50 border-gray-300 text-gray-800"
-            >
-              For Doctors &rarr;
-            </Button>
-          </div>
-
-          {/* Key Metric Highlights */}
-          <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
-            <div className="p-4 rounded-xl bg-white border border-gray-200 shadow-sm">
+          {/* Key Metric Highlights Row */}
+          <div className="mt-14 sm:mt-16 grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-4 rounded-2xl bg-white border border-gray-200/90 shadow-xs hover:border-emerald-200 transition-colors">
               <p className="text-2xl sm:text-3xl font-extrabold text-emerald-600">50+</p>
-              <p className="text-xs text-gray-500 mt-1 font-medium">Expert Doctors</p>
+              <p className="text-xs text-gray-500 mt-1 font-medium">Certified Specialists</p>
             </div>
-            <div className="p-4 rounded-xl bg-white border border-gray-200 shadow-sm">
+            <div className="p-4 rounded-2xl bg-white border border-gray-200/90 shadow-xs hover:border-sky-200 transition-colors">
               <p className="text-2xl sm:text-3xl font-extrabold text-sky-600">12+</p>
-              <p className="text-xs text-gray-500 mt-1 font-medium">Specialized Clinics</p>
+              <p className="text-xs text-gray-500 mt-1 font-medium">Medical Specialties</p>
             </div>
-            <div className="p-4 rounded-xl bg-white border border-gray-200 shadow-sm">
-              <p className="text-2xl sm:text-3xl font-extrabold text-indigo-600">15 min</p>
-              <p className="text-xs text-gray-500 mt-1 font-medium">Avg. Wait Time</p>
+            <div className="p-4 rounded-2xl bg-white border border-gray-200/90 shadow-xs hover:border-indigo-200 transition-colors">
+              <p className="text-2xl sm:text-3xl font-extrabold text-indigo-600">&lt; 15 min</p>
+              <p className="text-xs text-gray-500 mt-1 font-medium">Average Confirmation</p>
             </div>
-            <div className="p-4 rounded-xl bg-white border border-gray-200 shadow-sm">
+            <div className="p-4 rounded-2xl bg-white border border-gray-200/90 shadow-xs hover:border-amber-200 transition-colors">
               <p className="text-2xl sm:text-3xl font-extrabold text-amber-600">99.8%</p>
               <p className="text-xs text-gray-500 mt-1 font-medium">Patient Satisfaction</p>
             </div>
