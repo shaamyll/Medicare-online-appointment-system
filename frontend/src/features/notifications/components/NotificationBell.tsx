@@ -66,19 +66,23 @@ export const NotificationBell: React.FC = () => {
 
   return (
     <div className="relative inline-block text-left" ref={dropdownRef}>
-      {/* Bell Button */}
+      {/* Bell Button - Box type, rounded-md, small */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         aria-label="Notifications"
         aria-expanded={isOpen}
-        className="relative p-2.5 rounded-full bg-white text-slate-700 hover:text-emerald-700 shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all duration-200 border border-slate-100 flex items-center justify-center"
+        className={`relative w-8 h-8 rounded-md flex items-center justify-center transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 cursor-pointer ${
+          user?.role === 'admin'
+            ? 'bg-slate-800 border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700/80 shadow-2xs'
+            : 'bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-2xs'
+        }`}
       >
-        <Bell className="w-5 h-5 transition-transform group-hover:scale-105" />
+        <Bell className="w-4 h-4 transition-transform group-hover:scale-105" />
 
         {/* Red Unread Count Badge */}
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[11px] font-bold text-white bg-rose-600 rounded-full shadow-sm animate-pulse">
+          <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center min-w-[15px] h-3.5 px-1 text-[9px] font-bold text-white bg-rose-600 rounded-full shadow-2xs leading-none">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}

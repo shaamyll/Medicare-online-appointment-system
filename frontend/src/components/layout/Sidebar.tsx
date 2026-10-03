@@ -58,20 +58,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
         mobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
       )}
     >
-      {/* Brand Header on Mobile */}
-      <div className="h-16 px-5 border-b border-slate-200 flex items-center justify-between shrink-0 bg-white lg:hidden">
+      {/* Brand / Portal Header */}
+      <div className="h-16 px-5 border-b border-slate-200 flex items-center justify-between shrink-0 bg-white">
         <div className="flex items-center gap-2.5">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-sm">
             <Stethoscope className="w-5 h-5" />
           </div>
-          <span className="text-base font-extrabold tracking-tight text-slate-900">
-            Medi<span className="text-emerald-600">Care</span>
-          </span>
+          <div>
+            <span className="text-base font-extrabold tracking-tight text-slate-900">
+              Medi<span className="text-emerald-600">Care</span>
+            </span>
+            <span className="block text-[10px] font-bold uppercase tracking-wider text-emerald-700">
+              Patient Portal
+            </span>
+          </div>
         </div>
         <button
           type="button"
           onClick={onClose}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+          className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
         >
           <X className="w-5 h-5" />
         </button>
@@ -81,7 +86,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="p-4 pb-2 shrink-0">
         <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-100 text-xs font-semibold text-emerald-800">
           <ShieldCheck className="w-4 h-4 text-emerald-600" />
-          <span>Patient Portal</span>
+          <span>Verified Patient Account</span>
         </div>
       </div>
 

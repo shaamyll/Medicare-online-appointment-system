@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import { Menu, LogOut, Stethoscope } from 'lucide-react';
+import { Menu, LogOut, Stethoscope, Activity } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { Avatar } from '@/components/ui/Avatar';
@@ -47,13 +47,21 @@ export const DashboardLayout: React.FC = () => {
             >
               <Menu className="w-5 h-5" />
             </button>
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-sm lg:hidden">
+            
+            {/* Mobile App Name and Logo */}
+            <div className="flex items-center gap-2 lg:hidden">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-sm">
                 <Stethoscope className="w-4 h-4" />
               </div>
-              <span className="text-sm font-bold text-slate-800 hidden sm:inline">
-                Patient Consultation & Appointment Center
+              <span className="text-base font-extrabold tracking-tight text-slate-900">
+                Medi<span className="text-emerald-600">Care</span>
               </span>
+            </div>
+
+            {/* Desktop Station Badge (matching Doctor & Admin) */}
+            <div className="hidden sm:flex items-center gap-2 text-xs text-emerald-800 font-semibold bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-100">
+              <Activity className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Patient Consultation Center</span>
             </div>
           </div>
 
