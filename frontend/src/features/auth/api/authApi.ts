@@ -65,6 +65,14 @@ export const authApi = {
     return response.data.data;
   },
 
+  updateProfile: async (data: { name: string; phone?: string }): Promise<{ user: User; profile: any }> => {
+    const response = await apiClient.put<ApiResponse<{ user: User; profile: any }>>('/auth/profile', data);
+    if (!response.data.success || !response.data.data) {
+      throw new Error(response.data.message || 'Failed to update profile');
+    }
+    return response.data.data;
+  },
+
   checkHealth: async () => {
     const response = await apiClient.get<ApiResponse<any>>('/health');
     return response.data;

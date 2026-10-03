@@ -8,9 +8,11 @@ use Exception;
 
 class AdminController {
     private AdminService $service;
+    private DoctorAdminService $doctorAdminService;
 
     public function __construct() {
         $this->service = new AdminService();
+        $this->doctorAdminService = new DoctorAdminService();
     }
 
     public function stats(Request $request): void {
@@ -87,6 +89,28 @@ class AdminController {
             Response::success($patients);
         } catch (Exception $e) {
             Response::error($e->getMessage(), 400);
+        }
+    }
+
+    public function deleteImpact(Request $request): void {
+        $id = (int)$request->getRouteParam('id');
+        try {
+            $impact = $this->doctorAdminService->getDeleteImpact($id);
+            Response::success($impact, 'Delete impact retrieved');
+        } catch (Exception $e) {
+            $code = $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 400;
+            Response::error($e->getMessage(), $code);
+        }
+    }
+
+    public function deleteDoctor(Request $request): void {
+        $id = (int)$request->getRouteParam('id');
+        try {
+            $result = $this->doctorAdminService->deleteDoctor($id);
+            Response::success($result, $result['message'] ?? 'Doctor deleted permanently');
+        } catch (Exception $e) {
+            $code = $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 400;
+            Response::error($e->getMessage(), $code);
         }
     }
 

@@ -1,11 +1,11 @@
-import React from 'react';
-import { Check, X, ShieldCheck, Mail, Phone } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
+import React, { useState } from 'react';
+import { Check, X, Search, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/Card';
+import { StatusBadge } from '@/components/ui/Badge';
 import { Avatar } from '@/components/ui/Avatar';
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableHeadSerial, TableCellSerial } from '@/components/ui/Table';
 import { LoadingState } from '@/components/ui/LoadingState';
-import { EmptyState } from '@/components/ui/EmptyState';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { useToast } from '@/components/ui/Toast';
 import {
   useAdminDoctorRequests,
@@ -15,7 +15,10 @@ import {
 
 export const AdminDoctorRequestsPage: React.FC = () => {
   const { toast } = useToast();
-  const { data: requests, isLoading } = useAdminDoctorRequests();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [rejectingDoctor, setRejectingDoctor] = useState<{ id: number; name: string } | null>(null);
+
+  const { data: requests, isLoading, isError, error, refetch } = useAdminDoctorRequests();
   const approveMutation = useApproveDoctor();
   const rejectMutation = useRejectDoctor();
 
@@ -24,148 +27,220 @@ export const AdminDoctorRequestsPage: React.FC = () => {
       await approveMutation.mutateAsync(id);
       toast(`Dr. ${name} approved successfully! They can now log in to the Doctor Portal.`, 'success');
     } catch (err: any) {
-      toast(err.message || 'Failed to approve doctor', 'error');
+      toast(err.response?.data?.message || err.message || 'Failed to approve doctor', 'error');
     }
   };
 
-  const handleReject = async (id: number, name: string) => {
-    if (!window.confirm(`Are you sure you want to reject Dr. ${name}'s application?`)) {
-      return;
-    }
+  const handleRejectConfirm = async () => {
+    if (!rejectingDoctor) return;
     try {
-      await rejectMutation.mutateAsync(id);
-      toast(`Dr. ${name}'s request was rejected.`, 'info');
+      await rejectMutation.mutateAsync(rejectingDoctor.id);
+      toast(`Dr. ${rejectingDoctor.name}'s registration request was rejected.`, 'info');
+      setRejectingDoctor(null);
     } catch (err: any) {
-      toast(err.message || 'Failed to reject doctor', 'error');
+      toast(err.response?.data?.message || err.message || 'Failed to reject doctor', 'error');
     }
   };
+
+  const filteredRequests = (requests || []).filter((doc) => {
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      doc.name.toLowerCase().includes(term) ||
+      doc.email.toLowerCase().includes(term) ||
+      (doc.specialization && doc.specialization.toLowerCase().includes(term)) ||
+      (doc.departmentName && doc.departmentName.toLowerCase().includes(term)) ||
+      (doc.licenseNumber && doc.licenseNumber.toLowerCase().includes(term))
+    );
+  });
 
   if (isLoading) {
     return <LoadingState message="Fetching pending doctor applications..." />;
   }
 
+  if (isError) {
+    return (
+      <div className="p-8 text-center bg-white rounded-2xl border border-rose-200 shadow-sm space-y-4">
+        <div className="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
+          <AlertCircle className="w-6 h-6" />
+        </div>
+        <div>
+          <h3 className="text-lg font-bold text-slate-900">Failed to load doctor requests</h3>
+          <p className="text-sm text-slate-500 mt-1">
+            {(error as any)?.message || 'An error occurred while fetching pending requests.'}
+          </p>
+        </div>
+        <button
+          onClick={() => refetch()}
+          className="px-4 py-2 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition"
+        >
+          Try Again
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">
               Doctor Approval Requests
             </h1>
-            <Badge variant="warning">{requests?.length || 0} Pending</Badge>
+            <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
+              {requests?.length || 0} Pending
+            </span>
           </div>
           <p className="text-sm text-slate-500">
-            Review qualifications, verify credentials against official medical council registers, and grant portal access
+            Verify credentials, check medical license against official registers, and grant portal access
           </p>
+        </div>
+
+        <div className="relative">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+          <input
+            type="text"
+            placeholder="Search by name, license..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-emerald-500 w-56 transition"
+          />
         </div>
       </div>
 
-      {!requests || requests.length === 0 ? (
-        <Card className="p-8">
-          <EmptyState
-            title="No Pending Applications"
-            description="All registered doctors have been evaluated. New doctor registrations will appear here for verification."
-          />
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {requests.map((doctor) => (
-            <Card key={doctor.id} className="border-slate-200/90 shadow-sm flex flex-col justify-between">
-              <div>
-                <CardHeader className="flex flex-row items-start justify-between pb-3 border-b border-slate-100">
-                  <div className="flex items-center gap-3">
-                    <Avatar
-                      src={doctor.thumbnailPath || doctor.imagePath}
-                      name={doctor.name}
-                      size="lg"
-                      className="border-2 border-slate-100 shadow-sm"
-                    />
-                    <div>
-                      <CardTitle className="text-base font-bold text-slate-900">{doctor.name}</CardTitle>
-                      <p className="text-xs text-emerald-700 font-medium">{doctor.specialization}</p>
-                    </div>
-                  </div>
-                  <Badge variant="warning">Pending Verification</Badge>
-                </CardHeader>
+      {/* Table */}
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHeadSerial />
+                <TableHead>Doctor</TableHead>
+                <TableHead>Medical License</TableHead>
+                <TableHead>Specialization & Dept</TableHead>
+                <TableHead>Experience & Fee</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right pr-6">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredRequests.length > 0 ? (
+                filteredRequests.map((doc, idx) => {
+                  const isApproving =
+                    approveMutation.isPending && (approveMutation.variables as any) === doc.id;
+                  const isRejecting =
+                    rejectMutation.isPending && (rejectMutation.variables as any) === doc.id;
 
-                <CardContent className="pt-4 space-y-3">
-                  {/* Medical License Verification Banner */}
-                  <div className="p-3.5 rounded-xl bg-blue-50/80 border border-blue-200 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-blue-900 flex items-center gap-1.5">
-                        <ShieldCheck className="w-4 h-4 text-blue-600" />
-                        Medical License Number
-                      </span>
-                      <span className="font-mono font-bold text-xs bg-white text-blue-800 px-2 py-0.5 rounded border border-blue-200 shadow-xs">
-                        {doctor.licenseNumber || 'Not provided'}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-blue-700/80">
-                      Cross-reference this license number and profile photo against the official medical council registry before approval.
-                    </p>
-                  </div>
+                  return (
+                    <TableRow key={doc.id}>
+                      <TableCellSerial index={idx} />
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Avatar
+                            src={doc.thumbnailPath || doc.imagePath}
+                            name={doc.name}
+                            size="md"
+                            version={doc.updatedAt}
+                          />
+                          <div>
+                            <p className="font-semibold text-slate-900 text-sm">{doc.name}</p>
+                            <p className="text-xs text-slate-400">{doc.email}</p>
+                            {doc.phone && (
+                              <p className="text-[11px] text-slate-500">{doc.phone}</p>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
 
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="flex items-center gap-1.5 text-slate-600">
-                      <Mail className="w-3.5 h-3.5 text-slate-400" />
-                      <span className="truncate">{doctor.email}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-slate-600">
-                      <Phone className="w-3.5 h-3.5 text-slate-400" />
-                      <span>{doctor.phone || 'No phone'}</span>
-                    </div>
-                  </div>
+                      <TableCell>
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-900">
+                          <ShieldCheck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                          <span className="font-mono font-bold text-xs">
+                            {doc.licenseNumber || 'Not provided'}
+                          </span>
+                        </div>
+                      </TableCell>
 
-                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-500">Department:</span>
-                      <span className="font-semibold text-slate-800">{doctor.departmentName || 'Unassigned'}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-500">Qualification:</span>
-                      <span className="font-semibold text-slate-800">{doctor.qualification || 'MD'}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-500">Experience:</span>
-                      <span className="font-semibold text-slate-800">{doctor.experienceYears} Years</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-500">Consultation Fee:</span>
-                      <span className="font-semibold text-emerald-700">${doctor.consultationFee?.toFixed(2)}</span>
-                    </div>
-                  </div>
+                      <TableCell>
+                        <p className="font-medium text-slate-800 text-xs">{doc.specialization || 'General'}</p>
+                        <p className="text-xs text-slate-500">{doc.departmentName || 'Unassigned'}</p>
+                      </TableCell>
 
-                  <p className="text-xs text-slate-400 italic">
-                    Registered on: {new Date(doctor.createdAt).toLocaleDateString()}
-                  </p>
-                </CardContent>
-              </div>
+                      <TableCell>
+                        <p className="text-xs text-slate-800 font-medium">
+                          ${Number(doc.consultationFee || 0).toFixed(2)}
+                        </p>
+                        <p className="text-[11px] text-slate-500">{doc.experienceYears || 0} Yrs Practice</p>
+                      </TableCell>
 
-              <div className="p-4 border-t border-slate-100 flex items-center justify-end gap-3 bg-slate-50/50 rounded-b-xl">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleReject(doctor.id, doctor.name)}
-                  isLoading={rejectMutation.isPending}
-                  leftIcon={<X className="w-4 h-4 text-rose-600" />}
-                  className="hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200"
-                >
-                  Reject
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => handleApprove(doctor.id, doctor.name)}
-                  isLoading={approveMutation.isPending}
-                  leftIcon={<Check className="w-4 h-4" />}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                >
-                  Approve Doctor
-                </Button>
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
+                      <TableCell>
+                        <StatusBadge status="pending" />
+                      </TableCell>
+
+                      <TableCell className="text-right pr-6">
+                        <div className="flex items-center justify-end gap-2">
+                          {/* Approve Button */}
+                          <button
+                            type="button"
+                            onClick={() => handleApprove(doc.id, doc.name)}
+                            disabled={isApproving || isRejecting}
+                            title="Approve Doctor"
+                            aria-label="Approve Doctor"
+                            className="w-9 h-9 rounded-lg border-2 border-emerald-300 bg-emerald-50/80 text-emerald-700 shadow-sm hover:shadow-md hover:bg-emerald-100 hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-all flex items-center justify-center disabled:opacity-50 cursor-pointer"
+                          >
+                            {isApproving ? (
+                              <div className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <Check className="w-4 h-4" />
+                            )}
+                          </button>
+
+                          {/* Reject Button */}
+                          <button
+                            type="button"
+                            onClick={() => setRejectingDoctor({ id: doc.id, name: doc.name })}
+                            disabled={isApproving || isRejecting}
+                            title="Reject Application"
+                            aria-label="Reject Application"
+                            className="w-9 h-9 rounded-lg border-2 border-rose-300 bg-rose-50/80 text-rose-600 shadow-sm hover:shadow-md hover:bg-rose-100 hover:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-400 transition-all flex items-center justify-center disabled:opacity-50 cursor-pointer"
+                          >
+                            {isRejecting ? (
+                              <div className="w-4 h-4 border-2 border-rose-600 border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <X className="w-4 h-4" />
+                            )}
+                          </button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-12 text-slate-400 text-xs">
+                    No pending doctor applications requiring verification.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Reject Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!rejectingDoctor}
+        onClose={() => setRejectingDoctor(null)}
+        title={`Reject Dr. ${rejectingDoctor?.name}?`}
+        description={`Are you sure you want to reject the application for Dr. ${rejectingDoctor?.name}? Their pending status will be set to rejected.`}
+        confirmLabel="Reject Application"
+        variant="danger"
+        isLoading={rejectMutation.isPending}
+        onConfirm={handleRejectConfirm}
+      />
     </div>
   );
 };
+

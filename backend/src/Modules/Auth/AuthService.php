@@ -270,13 +270,49 @@ class AuthService {
         $profile = null;
         if ($user['role'] === 'doctor') {
             $profile = $this->userRepository->getDoctorProfile($userId);
+            if ($profile) {
+                $user['licenseNumber'] = $profile['license_number'] ?? null;
+                $user['imagePath'] = $profile['image_path'] ?? null;
+                $user['thumbnailPath'] = $profile['thumbnail_path'] ?? null;
+                $user['specialization'] = $profile['specialization'] ?? null;
+                $user['qualification'] = $profile['qualification'] ?? null;
+                $user['consultationFee'] = (float)($profile['consultation_fee'] ?? 0);
+            }
         }
 
+        $user['createdAt'] = $user['created_at'] ?? null;
+        $user['updatedAt'] = $user['updated_at'] ?? null;
         unset($user['password']);
 
         return [
             'user' => $user,
             'profile' => $profile
         ];
+    }
+
+    public function updateUserProfile(int $userId, array $data): array {
+        $user = $this->userRepository->findById($userId);
+        if (!$user) {
+            throw new Exception('User not found.', 404);
+        }
+
+        $fields = [];
+        $params = [];
+        if (isset($data['name']) && trim($data['name']) !== '') {
+            $fields[] = "name = ?";
+            $params[] = trim($data['name']);
+        }
+        if (array_key_exists('phone', $data)) {
+            $fields[] = "phone = ?";
+            $params[] = !empty($data['phone']) ? trim($data['phone']) : null;
+        }
+
+        if (!empty($fields)) {
+            $params[] = $userId;
+            $sql = "UPDATE users SET " . implode(', ', $fields) . ", updated_at = NOW() WHERE id = ?";
+            $this->userRepository->getDb()->prepare($sql)->execute($params);
+        }
+
+        return $this->getMe($userId);
     }
 }

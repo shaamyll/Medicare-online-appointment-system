@@ -88,4 +88,20 @@ class AuthController {
             Response::error($e->getMessage(), 404);
         }
     }
+
+    public function updateProfile(Request $request): void {
+        $currentUser = $request->getUser();
+        if (!$currentUser) {
+            Response::error('Unauthorized', 401);
+            return;
+        }
+
+        try {
+            $result = $this->authService->updateUserProfile($currentUser['id'], $request->getBody());
+            Response::success($result, 'Profile updated successfully');
+        } catch (Exception $e) {
+            $code = $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 400;
+            Response::error($e->getMessage(), $code);
+        }
+    }
 }

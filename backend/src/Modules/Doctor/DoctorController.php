@@ -88,7 +88,13 @@ class DoctorController {
             }
 
             $updated = $this->service->updateDoctorProfile($user['id'], $data);
-            Response::success($updated, 'Profile updated successfully');
+            $authService = new \App\Modules\Auth\AuthService();
+            $me = $authService->getMe($user['id']);
+            $merged = array_merge($updated, [
+                'user' => $me['user'],
+                'profile' => $me['profile']
+            ]);
+            Response::success($merged, 'Profile updated successfully');
         } catch (Exception $e) {
             $code = $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 400;
             Response::error($e->getMessage(), $code);

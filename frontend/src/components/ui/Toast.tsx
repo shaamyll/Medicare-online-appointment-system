@@ -28,6 +28,17 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }, 4000);
   }, []);
 
+  React.useEffect(() => {
+    const handleCustomToast = (e: Event) => {
+      const customEvent = e as CustomEvent<{ message: string; type?: ToastType }>;
+      if (customEvent.detail) {
+        toast(customEvent.detail.message, customEvent.detail.type || 'info');
+      }
+    };
+    window.addEventListener('app:toast', handleCustomToast);
+    return () => window.removeEventListener('app:toast', handleCustomToast);
+  }, [toast]);
+
   const removeToast = (id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
@@ -74,3 +85,13 @@ export const useToast = (): ToastContextType => {
   }
   return context;
 };
+
+/**
+ * Global toast dispatcher for use outside React component lifecycles (e.g. Axios interceptors)
+ */
+export function showToast(message: string, type: ToastType = 'info'): void {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('app:toast', { detail: { message, type } }));
+  }
+}
+

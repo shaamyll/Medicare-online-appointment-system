@@ -128,9 +128,23 @@ frontend/src/
 │   ├── auth/          # Auth context, login/register API calls, token persistence
 │   ├── departments/   # Department listings, queries, and types
 │   └── doctors/       # Doctor directory hooks, schedule management
-├── lib/               # Shared utilities (Axios instance, QueryClient, date formatters)
+├── lib/               # Shared utilities (Axios instance, queryKeys factory, QueryClient)
 └── pages/             # Route-level view components (Public, Patient, Doctor, Admin)
 ```
+
+### Data Freshness & Caching Architecture
+- **Single Source of Truth (`['auth', 'me']`)**:
+  - The authenticated user identity is driven exclusively by the React Query cache key `['auth', 'me']` (`GET /api/auth/me`).
+  - Stale duplicates in separate `useState` or `localStorage` copies are eliminated (only the JWT Bearer token is persisted in client storage).
+  - Profile updates (e.g., name, avatar, contact) immediately call `queryClient.setQueryData(queryKeys.auth.me, updatedUser)` using the server response, synchronizing the header, sidebar, and dashboard in real time without requiring page refreshes.
+- **Central Query Key Factory (`FE/src/lib/queryKeys.ts`)**:
+  - All query keys are managed systematically through a central factory (`queryKeys.auth.me`, `queryKeys.doctors.*`, `queryKeys.appointments.*`, `queryKeys.departments.*`, `queryKeys.admin.*`).
+  - Every mutation precisely invalidates affected cache entries upon settlement (e.g. appointment updates invalidate slots and dashboard statistics, department mutations invalidate doctor and department listings).
+- **Default Policy & Optimistic Updates**:
+  - Default `staleTime` is set to 30 seconds with `refetchOnWindowFocus: true` and single retry (skipping 401, 403, and 404 errors).
+  - High-tempo surfaces (appointment queues and administrative operational counters) leverage a 30-second `refetchInterval` for automated polling.
+  - Optimistic updates with rollback are applied exclusively to fast toggles (such as activating or deactivating medical staff accounts).
+  - Image URLs incorporate a cache-busting version query string (`?v={timestamp}`) to eliminate browser asset staleness.
 
 ---
 
@@ -446,6 +460,8 @@ All API endpoints are hosted by `BE/` and prefixed with `/api` (or accessed dire
 | `POST` | `/api/admin/doctors/{id}/approve` | Admin | Approve a pending doctor account |
 | `POST` | `/api/admin/doctors/{id}/reject` | Admin | Reject a pending doctor account |
 | `PATCH`| `/api/admin/doctors/{id}/status` | Admin | Change doctor status (`active`, `inactive`, `rejected`) |
+| `GET` | `/api/admin/doctors/{id}/delete-impact` | Admin | Return total & upcoming appointments affected by doctor deletion |
+| `DELETE`| `/api/admin/doctors/{id}` | Admin | Hard delete doctor, schedules, consultation notes, appointments, user, and avatar files |
 | `GET` | `/api/admin/patients` | Admin | List all registered patients with appointment counts |
 | `GET` | `/api/admin/reports` | Admin | Distribution analytics (appointments by status, doctors per dept) |
 

@@ -1,0 +1,40 @@
+/**
+ * Central Query Key Factory for React Query
+ * Single source of truth for all cache keys across the application
+ */
+export const queryKeys = {
+  auth: {
+    me: ['auth', 'me'] as const,
+  },
+  doctors: {
+    all: ['doctors'] as const,
+    list: (filters?: { departmentId?: number; search?: string }) =>
+      ['doctors', 'list', filters ?? {}] as const,
+    detail: (id: number | string) => ['doctors', 'detail', id] as const,
+    mine: ['doctors', 'mine'] as const,
+    mySchedule: ['doctors', 'mySchedule'] as const,
+  },
+  departments: {
+    all: ['departments'] as const,
+    list: (all?: boolean) => ['departments', 'list', { all: !!all }] as const,
+    detail: (id: number | string) => ['departments', 'detail', id] as const,
+  },
+  appointments: {
+    all: ['appointments'] as const,
+    list: (filters?: { status?: string; role?: string; doctorId?: number; patientId?: number }) =>
+      ['appointments', 'list', filters ?? {}] as const,
+    detail: (id: number | string) => ['appointments', 'detail', id] as const,
+    slots: (doctorId?: number | null, date?: string | null) =>
+      ['appointments', 'slots', { doctorId: doctorId ?? null, date: date ?? null }] as const,
+  },
+  admin: {
+    stats: ['admin', 'stats'] as const,
+    doctors: (filters?: { status?: string }) =>
+      ['admin', 'doctors', filters ?? {}] as const,
+    doctorRequests: ['admin', 'doctorRequests'] as const,
+    doctorDeleteImpact: (id: number | string) =>
+      ['admin', 'doctorDeleteImpact', id] as const,
+    patients: ['admin', 'patients'] as const,
+    reports: ['admin', 'reports'] as const,
+  },
+};

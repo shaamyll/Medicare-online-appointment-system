@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { PlusCircle, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
+import { Badge, StatusBadge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/Table';
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableHeadSerial, TableCellSerial } from '@/components/ui/Table';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { useToast } from '@/components/ui/Toast';
 import { useAppointments, useCancelAppointment } from '@/features/appointments/hooks/useAppointments';
@@ -122,6 +122,7 @@ export const PatientAppointmentsPage: React.FC = () => {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHeadSerial />
                 <TableHead>Reference #</TableHead>
                 <TableHead>Doctor & Specialty</TableHead>
                 <TableHead>Date & Time</TableHead>
@@ -132,8 +133,9 @@ export const PatientAppointmentsPage: React.FC = () => {
             </TableHeader>
             <TableBody>
               {displayedApts.length > 0 ? (
-                displayedApts.map((apt) => (
+                displayedApts.map((apt, idx) => (
                   <TableRow key={apt.id}>
+                    <TableCellSerial index={idx} />
                     <TableCell className="font-mono text-xs font-bold text-slate-800">
                       {apt.appointmentNumber}
                     </TableCell>
@@ -157,9 +159,7 @@ export const PatientAppointmentsPage: React.FC = () => {
                     </TableCell>
 
                     <TableCell>
-                      <Badge variant={getStatusBadgeVariant(apt.status)}>
-                        {apt.status}
-                      </Badge>
+                      <StatusBadge status={apt.status} />
                     </TableCell>
 
                     <TableCell className="text-right">
@@ -188,7 +188,7 @@ export const PatientAppointmentsPage: React.FC = () => {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-slate-400 text-xs">
+                  <TableCell colSpan={7} className="text-center py-12 text-slate-400 text-xs">
                     {activeTab === 'upcoming'
                       ? 'No upcoming appointments scheduled. Book a visit with a doctor!'
                       : 'No past appointment records found.'}

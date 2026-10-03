@@ -131,6 +131,7 @@ export const DoctorProfilePage: React.FC = () => {
                 name={name || doctor?.user?.name}
                 size="2xl"
                 shape="rounded"
+                version={doctor?.user?.updatedAt || (doctor as any)?.updatedAt}
                 className="ring-4 ring-white shadow-md shrink-0"
               />
 

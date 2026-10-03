@@ -26,6 +26,8 @@ class ApiRoutes {
         $router->post('/auth/register', [AuthController::class, 'register']);
         $router->post('/auth/doctor/register', [AuthController::class, 'doctorRegister']);
         $router->get('/auth/me', [AuthController::class, 'me'], [AuthMiddleware::class]);
+        $router->put('/auth/profile', [AuthController::class, 'updateProfile'], [AuthMiddleware::class]);
+        $router->put('/patient/profile', [AuthController::class, 'updateProfile'], [AuthMiddleware::class]);
 
         // Departments (Public viewing)
         $router->get('/departments', [DepartmentController::class, 'index']);
@@ -70,6 +72,8 @@ class ApiRoutes {
         $router->post('/admin/doctors/{id}/approve', [AdminController::class, 'approveDoctor'], $adminAuth);
         $router->post('/admin/doctors/{id}/reject', [AdminController::class, 'rejectDoctor'], $adminAuth);
         $router->patch('/admin/doctors/{id}/status', [AdminController::class, 'toggleDoctorStatus'], $adminAuth);
+        $router->get('/admin/doctors/{id}/delete-impact', [AdminController::class, 'deleteImpact'], $adminAuth);
+        $router->delete('/admin/doctors/{id}', [AdminController::class, 'deleteDoctor'], $adminAuth);
         $router->get('/admin/patients', [AdminController::class, 'patients'], $adminAuth);
         $router->get('/admin/reports', [AdminController::class, 'reports'], $adminAuth);
 

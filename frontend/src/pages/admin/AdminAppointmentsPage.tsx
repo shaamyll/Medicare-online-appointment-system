@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { Search } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
+import { Badge, StatusBadge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/Table';
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableHeadSerial, TableCellSerial } from '@/components/ui/Table';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { useToast } from '@/components/ui/Toast';
 import { useAppointments, useCancelAppointment } from '@/features/appointments/hooks/useAppointments';
@@ -107,6 +107,7 @@ export const AdminAppointmentsPage: React.FC = () => {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHeadSerial />
                 <TableHead>Reference #</TableHead>
                 <TableHead>Patient Details</TableHead>
                 <TableHead>Assigned Doctor</TableHead>
@@ -117,8 +118,9 @@ export const AdminAppointmentsPage: React.FC = () => {
             </TableHeader>
             <TableBody>
               {filteredAppointments.length > 0 ? (
-                filteredAppointments.map((apt) => (
+                filteredAppointments.map((apt, idx) => (
                   <TableRow key={apt.id}>
+                    <TableCellSerial index={idx} />
                     <TableCell className="font-mono text-xs font-bold text-slate-800">
                       {apt.appointmentNumber}
                     </TableCell>
@@ -141,9 +143,7 @@ export const AdminAppointmentsPage: React.FC = () => {
                     </TableCell>
 
                     <TableCell>
-                      <Badge variant={getStatusBadgeVariant(apt.status)}>
-                        {apt.status}
-                      </Badge>
+                      <StatusBadge status={apt.status} />
                     </TableCell>
 
                     <TableCell className="text-right">
@@ -160,7 +160,7 @@ export const AdminAppointmentsPage: React.FC = () => {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-slate-400 text-xs">
+                  <TableCell colSpan={7} className="text-center py-12 text-slate-400 text-xs">
                     No appointments found matching current filters.
                   </TableCell>
                 </TableRow>

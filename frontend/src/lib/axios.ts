@@ -1,4 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { queryClient } from './queryClient';
+import { showToast } from '@/components/ui/Toast';
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -33,20 +35,39 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Response Interceptor: Handle Global 401 Unauthorized
+// Response Interceptor: Handle Global 401 Unauthorized & 403 Deactivated Account
 apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError<ApiResponse>) => {
-    if (error.response?.status === 401) {
-      const isAuthRequest = error.config?.url?.includes('/auth/');
-      if (!isAuthRequest) {
-        localStorage.removeItem('medicare_token');
-        localStorage.removeItem('medicare_user');
-        const isDoctorRoute = window.location.pathname.startsWith('/doctor');
-        const loginPath = isDoctorRoute ? '/doctor/login' : '/login';
-        if (window.location.pathname !== loginPath) {
+    const status = error.response?.status;
+    const errorMsg = error.response?.data?.message || '';
+
+    const isDeactivatedOrInactive =
+      status === 403 &&
+      (errorMsg.toLowerCase().includes('not active') ||
+        errorMsg.toLowerCase().includes('deactivated') ||
+        errorMsg.toLowerCase().includes('inactive') ||
+        errorMsg.toLowerCase().includes('rejected') ||
+        errorMsg.toLowerCase().includes('account'));
+
+    const isAuthAttempt =
+      error.config?.url?.includes('/auth/login') ||
+      error.config?.url?.includes('/auth/doctor/login') ||
+      error.config?.url?.includes('/auth/register') ||
+      error.config?.url?.includes('/auth/doctor/register');
+
+    if (!isAuthAttempt && (status === 401 || isDeactivatedOrInactive)) {
+      localStorage.removeItem('medicare_token');
+      localStorage.removeItem('medicare_user');
+      queryClient.clear();
+      showToast('Your session has ended or your account is no longer active', 'error');
+
+      const isDoctorRoute = window.location.pathname.startsWith('/doctor');
+      const loginPath = isDoctorRoute ? '/doctor/login' : '/login';
+      if (!window.location.pathname.includes('/login')) {
+        setTimeout(() => {
           window.location.href = `${loginPath}?expired=true`;
-        }
+        }, 150);
       }
     }
     return Promise.reject(error);

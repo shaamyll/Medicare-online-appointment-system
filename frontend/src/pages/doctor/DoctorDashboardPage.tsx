@@ -9,8 +9,8 @@ import {
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/Table';
+import { Badge, StatusBadge } from '@/components/ui/Badge';
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableHeadSerial, TableCellSerial } from '@/components/ui/Table';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useAppointments } from '@/features/appointments/hooks/useAppointments';
 import { LoadingState } from '@/components/ui/LoadingState';
@@ -151,6 +151,7 @@ export const DoctorDashboardPage: React.FC = () => {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHeadSerial />
                 <TableHead>Reference #</TableHead>
                 <TableHead>Patient Details</TableHead>
                 <TableHead>Date & Time</TableHead>
@@ -161,8 +162,9 @@ export const DoctorDashboardPage: React.FC = () => {
             </TableHeader>
             <TableBody>
               {allApts.length > 0 ? (
-                allApts.slice(0, 5).map((apt) => (
+                allApts.slice(0, 5).map((apt, idx) => (
                   <TableRow key={apt.id}>
+                    <TableCellSerial index={idx} />
                     <TableCell className="font-mono text-xs font-semibold text-slate-800">
                       {apt.appointmentNumber}
                     </TableCell>
@@ -182,19 +184,7 @@ export const DoctorDashboardPage: React.FC = () => {
                     </TableCell>
 
                     <TableCell>
-                      <Badge
-                        variant={
-                          apt.status === 'APPROVED' || apt.status === 'CONFIRMED'
-                            ? 'success'
-                            : apt.status === 'PENDING'
-                            ? 'warning'
-                            : apt.status === 'COMPLETED'
-                            ? 'info'
-                            : 'danger'
-                        }
-                      >
-                        {apt.status}
-                      </Badge>
+                      <StatusBadge status={apt.status} />
                     </TableCell>
 
                     <TableCell className="text-right">
@@ -211,7 +201,7 @@ export const DoctorDashboardPage: React.FC = () => {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-slate-400 text-xs">
+                  <TableCell colSpan={7} className="text-center py-12 text-slate-400 text-xs">
                     No scheduled appointments at this time.
                   </TableCell>
                 </TableRow>

@@ -11,6 +11,7 @@ export interface AvatarProps {
   shape?: 'circle' | 'rounded';
   className?: string;
   onClick?: () => void;
+  version?: string | number | null;
 }
 
 const sizeClasses = {
@@ -31,8 +32,14 @@ export const Avatar: React.FC<AvatarProps> = ({
   shape = 'rounded',
   className,
   onClick,
+  version,
 }) => {
   const [hasError, setHasError] = useState(false);
+
+  // Reset error state if src changes
+  React.useEffect(() => {
+    setHasError(false);
+  }, [src, version]);
 
   // Compute initials if not explicitly provided
   const computedInitials =
@@ -48,7 +55,7 @@ export const Avatar: React.FC<AvatarProps> = ({
           .toUpperCase()
       : '');
 
-  const resolvedUrl = src ? getImageUrl(src) : '';
+  const resolvedUrl = src ? getImageUrl(src, version) : '';
   const roundedClass = shape === 'circle' ? 'rounded-full' : 'rounded-xl';
 
   if (resolvedUrl && !hasError) {

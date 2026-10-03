@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { Search, Calendar } from 'lucide-react';
+import { Search, Calendar, AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/Table';
+import { StatusBadge } from '@/components/ui/Badge';
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableHeadSerial, TableCellSerial } from '@/components/ui/Table';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { useAdminPatients } from '@/features/admin/hooks/useAdmin';
 
 export const AdminPatientsPage: React.FC = () => {
   const [search, setSearch] = useState('');
-  const { data: patients, isLoading } = useAdminPatients();
+  const { data: patients, isLoading, isError, error, refetch } = useAdminPatients();
 
   const filteredPatients = (patients || []).filter((p) => {
     if (!search) return true;
@@ -18,6 +18,28 @@ export const AdminPatientsPage: React.FC = () => {
 
   if (isLoading) {
     return <LoadingState message="Fetching patient accounts..." />;
+  }
+
+  if (isError) {
+    return (
+      <div className="p-8 text-center bg-white rounded-2xl border border-rose-200 shadow-sm space-y-4">
+        <div className="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
+          <AlertCircle className="w-6 h-6" />
+        </div>
+        <div>
+          <h3 className="text-lg font-bold text-slate-900">Failed to load patients</h3>
+          <p className="text-sm text-slate-500 mt-1">
+            {(error as any)?.message || 'An error occurred while fetching patients.'}
+          </p>
+        </div>
+        <button
+          onClick={() => refetch()}
+          className="px-4 py-2 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition"
+        >
+          Try Again
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -37,7 +59,7 @@ export const AdminPatientsPage: React.FC = () => {
             placeholder="Search patients..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-emerald-500 w-56"
+            className="pl-9 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-emerald-500 w-56 transition"
           />
         </div>
       </div>
@@ -47,6 +69,7 @@ export const AdminPatientsPage: React.FC = () => {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHeadSerial />
                 <TableHead>Patient Name</TableHead>
                 <TableHead>Contact Information</TableHead>
                 <TableHead>Appointments Booked</TableHead>
@@ -56,8 +79,9 @@ export const AdminPatientsPage: React.FC = () => {
             </TableHeader>
             <TableBody>
               {filteredPatients.length > 0 ? (
-                filteredPatients.map((p) => (
+                filteredPatients.map((p, idx) => (
                   <TableRow key={p.id}>
+                    <TableCellSerial index={idx} />
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <div className="h-9 w-9 rounded-full bg-sky-50 border border-sky-100 flex items-center justify-center text-sky-700 font-bold text-xs">
@@ -87,13 +111,13 @@ export const AdminPatientsPage: React.FC = () => {
                     </TableCell>
 
                     <TableCell>
-                      <Badge variant="success">Active</Badge>
+                      <StatusBadge status="active" />
                     </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-slate-400 text-xs">
+                  <TableCell colSpan={6} className="text-center py-12 text-slate-400 text-xs">
                     No patients match your search.
                   </TableCell>
                 </TableRow>
@@ -105,3 +129,4 @@ export const AdminPatientsPage: React.FC = () => {
     </div>
   );
 };
+

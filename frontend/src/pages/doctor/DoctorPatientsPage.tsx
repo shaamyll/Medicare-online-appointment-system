@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Search } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/Table';
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableHeadSerial, TableCellSerial } from '@/components/ui/Table';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { useAppointments } from '@/features/appointments/hooks/useAppointments';
 
@@ -78,6 +78,7 @@ export const DoctorPatientsPage: React.FC = () => {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHeadSerial />
                 <TableHead>Patient</TableHead>
                 <TableHead>Contact Information</TableHead>
                 <TableHead>Total Consultations</TableHead>
@@ -87,8 +88,9 @@ export const DoctorPatientsPage: React.FC = () => {
             </TableHeader>
             <TableBody>
               {patients.length > 0 ? (
-                patients.map((p) => (
+                patients.map((p, idx) => (
                   <TableRow key={p.id}>
+                    <TableCellSerial index={idx} />
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <div className="h-9 w-9 rounded-full bg-teal-50 border border-teal-100 flex items-center justify-center text-teal-700 font-bold text-xs">
@@ -125,7 +127,7 @@ export const DoctorPatientsPage: React.FC = () => {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-slate-400 text-xs">
+                  <TableCell colSpan={6} className="text-center py-12 text-slate-400 text-xs">
                     No patients have scheduled consultations with you yet.
                   </TableCell>
                 </TableRow>

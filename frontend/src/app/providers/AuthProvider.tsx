@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   User,
   LoginCredentials,
@@ -8,6 +9,7 @@ import {
   AuthResponse,
 } from '@/features/auth/types/auth.types';
 import { authApi } from '@/features/auth/api/authApi';
+import { queryKeys } from '@/lib/queryKeys';
 
 interface AuthContextType {
   user: User | null;
@@ -26,93 +28,96 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<any | null>(null);
-  const [token, setToken] = useState<string | null>(localStorage.getItem('medicare_token'));
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const queryClient = useQueryClient();
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem('medicare_token'));
+  const [isActionLoading, setIsActionLoading] = useState<boolean>(false);
 
-  const refreshUser = useCallback(async () => {
-    const currentToken = localStorage.getItem('medicare_token');
-    if (!currentToken) {
-      setUser(null);
-      setProfile(null);
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      const data = await authApi.me();
-      setUser(data.user);
-      setProfile(data.profile);
-      localStorage.setItem('medicare_user', JSON.stringify(data.user));
-    } catch (err) {
-      console.warn('Authentication check failed:', err);
-      localStorage.removeItem('medicare_token');
-      localStorage.removeItem('medicare_user');
-      setUser(null);
-      setProfile(null);
-      setToken(null);
-    } finally {
-      setIsLoading(false);
-    }
+  // Clean up any legacy user object from localStorage; only token may stay in storage
+  useEffect(() => {
+    localStorage.removeItem('medicare_user');
   }, []);
 
+  // Single Source of Truth for authenticated user via React Query
+  const {
+    data: authData,
+    isLoading: isQueryLoading,
+    refetch,
+    error: authError,
+  } = useQuery({
+    queryKey: queryKeys.auth.me,
+    queryFn: authApi.me,
+    enabled: !!token,
+    staleTime: 1000 * 30, // 30 seconds
+    refetchOnWindowFocus: true,
+  });
+
+  // Handle auth error (token invalid/expired)
   useEffect(() => {
-    refreshUser();
-  }, [refreshUser]);
+    if (authError) {
+      localStorage.removeItem('medicare_token');
+      localStorage.removeItem('medicare_user');
+      setToken(null);
+      queryClient.setQueryData(queryKeys.auth.me, null);
+    }
+  }, [authError, queryClient]);
+
+  const user = authData?.user ?? null;
+  const profile = authData?.profile ?? null;
+  const isAuthenticated = !!token && !!user;
+  const isLoading = (!!token && isQueryLoading) || isActionLoading;
+
+  const refreshUser = useCallback(async () => {
+    if (token) {
+      await refetch();
+    }
+  }, [token, refetch]);
 
   const login = async (credentials: LoginCredentials): Promise<User> => {
-    setIsLoading(true);
+    setIsActionLoading(true);
     try {
       const res = await authApi.login(credentials);
       localStorage.setItem('medicare_token', res.token);
-      localStorage.setItem('medicare_user', JSON.stringify(res.user));
       setToken(res.token);
-      setUser(res.user);
-      setProfile(res.profile);
+      queryClient.setQueryData(queryKeys.auth.me, { user: res.user, profile: res.profile });
       return res.user;
     } finally {
-      setIsLoading(false);
+      setIsActionLoading(false);
     }
   };
 
   const doctorLogin = async (credentials: LoginCredentials): Promise<User> => {
-    setIsLoading(true);
+    setIsActionLoading(true);
     try {
       const res = await authApi.doctorLogin(credentials);
       localStorage.setItem('medicare_token', res.token);
-      localStorage.setItem('medicare_user', JSON.stringify(res.user));
       setToken(res.token);
-      setUser(res.user);
-      setProfile(res.profile);
+      queryClient.setQueryData(queryKeys.auth.me, { user: res.user, profile: res.profile });
       return res.user;
     } finally {
-      setIsLoading(false);
+      setIsActionLoading(false);
     }
   };
 
   const register = async (data: PatientRegisterData | RegisterData): Promise<User> => {
-    setIsLoading(true);
+    setIsActionLoading(true);
     try {
       const res = await authApi.register(data);
       localStorage.setItem('medicare_token', res.token);
-      localStorage.setItem('medicare_user', JSON.stringify(res.user));
       setToken(res.token);
-      setUser(res.user);
-      setProfile(res.profile);
+      queryClient.setQueryData(queryKeys.auth.me, { user: res.user, profile: res.profile });
       return res.user;
     } finally {
-      setIsLoading(false);
+      setIsActionLoading(false);
     }
   };
 
   const doctorRegister = async (data: DoctorRegisterData | FormData): Promise<AuthResponse> => {
-    setIsLoading(true);
+    setIsActionLoading(true);
     try {
       const res = await authApi.doctorRegister(data);
       return res;
     } finally {
-      setIsLoading(false);
+      setIsActionLoading(false);
     }
   };
 
@@ -121,8 +126,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('medicare_token');
     localStorage.removeItem('medicare_user');
     setToken(null);
-    setUser(null);
-    setProfile(null);
+    queryClient.clear();
+
     if (redirect) {
       window.location.href = isDoctorPortal ? '/doctor/login' : '/login';
     }
@@ -134,7 +139,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         profile,
         token,
-        isAuthenticated: !!user && !!token,
+        isAuthenticated,
         isLoading,
         login,
         doctorLogin,

@@ -27,6 +27,7 @@ export interface AdminDoctor {
   thumbnailPath?: string | null;
   departmentName?: string;
   departmentId?: number;
+  updatedAt?: string;
 }
 
 export interface AdminPatient {
@@ -72,6 +73,27 @@ export const adminApi = {
 
   toggleDoctorStatus: async (id: number, status: string): Promise<void> => {
     await apiClient.patch(`/admin/doctors/${id}/status`, { status });
+  },
+
+  getDoctorDeleteImpact: async (id: number): Promise<{
+    doctorId: number;
+    doctor: AdminDoctor;
+    totalAppointments: number;
+    upcomingAppointments: number;
+  }> => {
+    const response = await apiClient.get<
+      ApiResponse<{
+        doctorId: number;
+        doctor: AdminDoctor;
+        totalAppointments: number;
+        upcomingAppointments: number;
+      }>
+    >(`/admin/doctors/${id}/delete-impact`);
+    return response.data.data!;
+  },
+
+  deleteDoctor: async (id: number): Promise<void> => {
+    await apiClient.delete(`/admin/doctors/${id}`);
   },
 
   getPatients: async (): Promise<AdminPatient[]> => {

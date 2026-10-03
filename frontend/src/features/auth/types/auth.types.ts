@@ -8,6 +8,12 @@ export interface User {
   phone?: string;
   status: string;
   createdAt: string;
+  updatedAt?: string;
+  imagePath?: string | null;
+  thumbnailPath?: string | null;
+  licenseNumber?: string;
+  specialization?: string;
+  qualification?: string;
 }
 
 export interface AuthState {

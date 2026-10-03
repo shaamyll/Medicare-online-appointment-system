@@ -9,9 +9,9 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
+import { Badge, StatusBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/Table';
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableHeadSerial, TableCellSerial } from '@/components/ui/Table';
 import { useToast } from '@/components/ui/Toast';
 import { useDoctors } from '@/features/doctors/hooks/useDoctors';
 import { useAppointments, useCancelAppointment } from '@/features/appointments/hooks/useAppointments';
@@ -171,6 +171,7 @@ export const DashboardPage: React.FC = () => {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHeadSerial />
                 <TableHead>Reference #</TableHead>
                 <TableHead>Doctor & Specialty</TableHead>
                 <TableHead>Date & Time</TableHead>
@@ -181,8 +182,9 @@ export const DashboardPage: React.FC = () => {
             </TableHeader>
             <TableBody>
               {upcomingApts.length > 0 ? (
-                upcomingApts.map((apt) => (
+                upcomingApts.map((apt, idx) => (
                   <TableRow key={apt.id}>
+                    <TableCellSerial index={idx} />
                     <TableCell className="font-mono text-xs font-semibold text-slate-800">
                       {apt.appointmentNumber}
                     </TableCell>
@@ -204,17 +206,7 @@ export const DashboardPage: React.FC = () => {
                     </TableCell>
 
                     <TableCell>
-                      <Badge
-                        variant={
-                          apt.status === 'APPROVED' || apt.status === 'CONFIRMED'
-                            ? 'success'
-                            : apt.status === 'PENDING'
-                            ? 'warning'
-                            : 'default'
-                        }
-                      >
-                        {apt.status}
-                      </Badge>
+                      <StatusBadge status={apt.status} />
                     </TableCell>
 
                     <TableCell className="text-right">
@@ -233,7 +225,7 @@ export const DashboardPage: React.FC = () => {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-slate-400 text-xs">
+                  <TableCell colSpan={7} className="text-center py-12 text-slate-400 text-xs">
                     No upcoming appointments scheduled.
                   </TableCell>
                 </TableRow>

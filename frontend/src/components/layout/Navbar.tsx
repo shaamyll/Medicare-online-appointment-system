@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Stethoscope, LogOut, Calendar } from 'lucide-react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
+import { Avatar } from '@/components/ui/Avatar';
 import { LogoutConfirmModal } from '@/components/ui/LogoutConfirmModal';
 
 export const Navbar: React.FC = () => {
@@ -49,9 +50,12 @@ export const Navbar: React.FC = () => {
                 </Link>
 
                 <div className="flex items-center gap-2 pl-3 border-l border-slate-200">
-                  <div className="h-8 w-8 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-bold uppercase">
-                    {user.name.charAt(0)}
-                  </div>
+                  <Avatar
+                    src={(user as any)?.thumbnailPath || (user as any)?.imagePath}
+                    name={user.name}
+                    size="sm"
+                    version={(user as any)?.updatedAt}
+                  />
                   <div className="hidden md:block text-left">
                     <p className="text-xs font-semibold text-slate-900 leading-tight">{user.name}</p>
                     <p className="text-[11px] font-medium text-emerald-700 uppercase tracking-wide">{user.role}</p>

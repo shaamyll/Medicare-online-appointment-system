@@ -36,7 +36,21 @@ export const DoctorLayout: React.FC = () => {
     { label: 'Settings', href: '/doctor/settings', icon: Settings },
   ];
 
-  const photoPath = profile?.thumbnail_path || profile?.image_path || profile?.thumbnailPath || profile?.imagePath;
+  const photoPath =
+    profile?.thumbnail_path ||
+    profile?.image_path ||
+    profile?.thumbnailPath ||
+    profile?.imagePath ||
+    (user as any)?.thumbnailPath ||
+    (user as any)?.imagePath ||
+    (user as any)?.thumbnail_path ||
+    (user as any)?.image_path;
+
+  const photoVersion =
+    (user as any)?.updatedAt ||
+    (user as any)?.updated_at ||
+    (profile as any)?.updatedAt ||
+    (profile as any)?.updated_at;
 
   return (
     <div className="h-screen w-full overflow-hidden flex bg-slate-50">
@@ -86,6 +100,7 @@ export const DoctorLayout: React.FC = () => {
               name={user?.name}
               size="md"
               shape="rounded"
+              version={photoVersion}
             />
             <div className="min-w-0 flex-1">
               <p className="text-xs font-bold text-slate-900 truncate">{user?.name}</p>
@@ -164,6 +179,7 @@ export const DoctorLayout: React.FC = () => {
               name={user?.name}
               size="sm"
               shape="circle"
+              version={photoVersion}
             />
             <button
               type="button"
