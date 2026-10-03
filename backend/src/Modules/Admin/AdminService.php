@@ -77,6 +77,35 @@ class AdminService {
         ");
         $recentAppointments = $stmt->fetchAll();
 
+        // Doctor earnings & consultation revenue breakdown
+        $docRevStmt = $this->db->query("
+            SELECT 
+                doc.id AS doctorId,
+                doc.name AS doctorName,
+                dp.specialization,
+                d.name AS departmentName,
+                dp.image_path AS imagePath,
+                dp.thumbnail_path AS thumbnailPath,
+                COALESCE(SUM(CASE WHEN pm.status = 'paid' THEN pm.amount ELSE 0 END), 0) AS totalEarned,
+                SUM(CASE WHEN pm.status = 'paid' THEN 1 ELSE 0 END) AS paidAppointments,
+                COUNT(a.id) AS totalAppointments
+            FROM users doc
+            JOIN doctor_profiles dp ON dp.user_id = doc.id
+            LEFT JOIN departments d ON d.id = dp.department_id
+            LEFT JOIN appointments a ON a.doctor_id = doc.id
+            LEFT JOIN payments pm ON pm.appointment_id = a.id
+            WHERE doc.role = 'doctor'
+            GROUP BY doc.id, doc.name, dp.specialization, d.name, dp.image_path, dp.thumbnail_path
+            ORDER BY totalEarned DESC, paidAppointments DESC
+        ");
+        $doctorRevenue = array_map(function ($row) {
+            $row['doctorId'] = (int)$row['doctorId'];
+            $row['totalEarned'] = (float)$row['totalEarned'];
+            $row['paidAppointments'] = (int)$row['paidAppointments'];
+            $row['totalAppointments'] = (int)$row['totalAppointments'];
+            return $row;
+        }, $docRevStmt->fetchAll());
+
         return [
             'totalDoctors' => $totalDoctors,
             'pendingApprovals' => $pendingApprovals,
@@ -88,6 +117,13 @@ class AdminService {
             'paidCount' => $paidCount,
             'unpaidCount' => $unpaidCount,
             'refundedCount' => $refundedCount,
+            'payment' => [
+                'totalRevenue' => $totalRevenue,
+                'paidCount' => $paidCount,
+                'unpaidCount' => $unpaidCount,
+                'refundedCount' => $refundedCount,
+            ],
+            'doctorRevenue' => $doctorRevenue,
             'recentAppointments' => array_map(function ($row) {
                 $row['startTime'] = substr($row['startTime'], 0, 5);
                 $row['status'] = strtoupper($row['status']);

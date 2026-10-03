@@ -288,8 +288,8 @@ export const DashboardPage: React.FC = () => {
       <div>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-lg font-bold text-gray-900">Featured Hospital Physicians</h2>
-            <p className="text-xs text-gray-500">Book directly with certified specialists</p>
+            <h2 className="text-lg font-bold text-gray-900">Featured Physicians & Specialists</h2>
+            <p className="text-xs text-gray-500">Book directly with certified independent and clinic specialists</p>
           </div>
           <Button
             variant="ghost"

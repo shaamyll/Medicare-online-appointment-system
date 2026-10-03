@@ -110,7 +110,7 @@ export const LandingPage: React.FC = () => {
               Specialized Medical Departments
             </h2>
             <p className="text-gray-500 text-sm mt-2">
-              Browse top hospital specialties and schedule with board-certified physicians.
+              Browse top medical specialties and schedule with board-certified independent and clinic physicians.
             </p>
           </div>
 

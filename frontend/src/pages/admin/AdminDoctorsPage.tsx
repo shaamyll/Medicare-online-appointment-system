@@ -118,14 +118,14 @@ export const AdminDoctorsPage: React.FC = () => {
   ];
 
   if (isLoading) {
-    return <LoadingState message="Loading hospital medical staff..." />;
+    return <LoadingState message="Loading registered healthcare providers..." />;
   }
 
   if (isError) {
     return (
       <div className="p-8 text-center bg-white rounded-xl border border-rose-200 shadow-xs space-y-3">
         <AlertCircle className="h-10 w-10 text-rose-500 mx-auto" />
-        <h3 className="text-base font-bold text-gray-900">Failed to load medical staff</h3>
+        <h3 className="text-base font-bold text-gray-900">Failed to load healthcare providers</h3>
         <p className="text-xs text-gray-500 max-w-md mx-auto">
           {(error as any)?.message || 'An error occurred while fetching the doctors directory.'}
         </p>
@@ -140,8 +140,8 @@ export const AdminDoctorsPage: React.FC = () => {
     <div className="space-y-6">
       {/* Header */}
       <PageHeader
-        title="Hospital Medical Staff"
-        subtitle="Overview of all registered doctors, specialties, departments, and practice statuses"
+        title="Registered Healthcare Providers"
+        subtitle="Directory of registered independent and clinic doctors, specialties, and practice statuses"
       />
 
       {/* Filter Bar */}

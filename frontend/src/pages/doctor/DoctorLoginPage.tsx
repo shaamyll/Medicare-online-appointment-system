@@ -240,7 +240,7 @@ export const DoctorLoginPage: React.FC = () => {
             <h2 className="text-xl font-bold text-white mb-2">Doctor Application Submitted!</h2>
             <p className="text-xs text-slate-300 mb-6 leading-relaxed">
               Thank you, <span className="font-semibold text-teal-300">{name}</span>. Your clinical credentials have
-              been submitted to Medi-Care. In compliance with hospital governance, your account is currently{' '}
+              been submitted to Medi-Care. In compliance with platform medical credentialing, your account is currently{' '}
               <span className="font-bold text-amber-400">Pending Administrative Approval</span>.
             </p>
 
@@ -249,9 +249,9 @@ export const DoctorLoginPage: React.FC = () => {
                 <Clock className="w-4 h-4 text-amber-400" />
                 What happens next?
               </p>
-              <p className="text-slate-300">1. Hospital Administration verifies your license and department affiliation.</p>
-              <p className="text-slate-300">2. Upon review, your doctor account will be transitioned to Approved.</p>
-              <p className="text-slate-300">3. You can then log in using your email and password to start consulting.</p>
+              <p className="text-slate-300">1. Platform Administration verifies your medical license and practice credentials.</p>
+              <p className="text-slate-300">2. Upon review, your provider account will be transitioned to Approved.</p>
+              <p className="text-slate-300">3. You can then log in using your email and password to manage your practice.</p>
             </div>
 
             <Button
@@ -282,15 +282,15 @@ export const DoctorLoginPage: React.FC = () => {
           </span>
         </Link>
         <div className="inline-block px-3 py-1 rounded-full bg-teal-500/15 border border-teal-500/30 text-teal-300 text-xs font-semibold mb-2">
-          Physician & Clinical Portal
+          Physician & Provider Portal
         </div>
         <h2 className="text-2xl font-bold tracking-tight text-white">
-          {activeTab === 'login' ? 'Doctor Clinical Sign In' : 'Join as a Medical Specialist'}
+          {activeTab === 'login' ? 'Doctor Clinical Sign In' : 'Register as a Healthcare Provider'}
         </h2>
         <p className="mt-1 text-xs text-slate-400">
           {activeTab === 'login'
             ? 'Manage appointments, patient history, and weekly schedules'
-            : 'Register your medical credentials for hospital appointment booking'}
+            : 'Register your medical credentials to receive patient consultation bookings'}
         </p>
       </div>
 
@@ -632,7 +632,7 @@ export const DoctorLoginPage: React.FC = () => {
                 <label className="block text-xs font-medium text-slate-300 mb-1">Bio / Profile Summary</label>
                 <textarea
                   rows={2}
-                  placeholder="Brief clinical background, specialties, and hospital achievements..."
+                  placeholder="Brief clinical background, specialties, and professional achievements..."
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
                   className="w-full rounded-lg border border-slate-700 bg-slate-900/70 p-2 text-xs text-white placeholder-slate-500 focus:border-teal-500 focus:outline-none"

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Users,
@@ -10,29 +10,41 @@ import {
   ArrowRight,
   AlertTriangle,
   CreditCard,
+  Eye,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge, StatusBadge } from '@/components/ui/Badge';
+import { Avatar } from '@/components/ui/Avatar';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableHeadSerial, TableCellSerial } from '@/components/ui/Table';
 import { useAdminStats } from '@/features/admin/hooks/useAdmin';
 import { LoadingState } from '@/components/ui/LoadingState';
+import { DoctorDetailsModal } from './DoctorDetailsModal';
 
 export const AdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { data: stats, isLoading } = useAdminStats();
+  const [selectedDoctorId, setSelectedDoctorId] = useState<number | null>(null);
 
   if (isLoading) {
     return <LoadingState message="Loading administrative intelligence..." />;
   }
 
+  const totalRevenue = stats?.payment?.totalRevenue ?? stats?.totalRevenue ?? 0;
+  const paidCount = stats?.payment?.paidCount ?? stats?.paidCount ?? 0;
+  const unpaidCount = stats?.payment?.unpaidCount ?? stats?.unpaidCount ?? 0;
+  const refundedCount = stats?.payment?.refundedCount ?? stats?.refundedCount ?? 0;
+  const doctorRevenueList = (stats?.doctorRevenue ?? []).filter(
+    (doc) => doc.totalAppointments > 0 || doc.totalEarned > 0
+  );
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Top Banner */}
       <PageHeader
-        title="Hospital Operations Overview"
-        subtitle="Real-time appointment schedule oversight and medical staff administration"
+        title="Platform Operations Overview"
+        subtitle="Real-time consultation oversight and healthcare provider administration"
         badge={<Badge variant="success">Live Data</Badge>}
         actions={
           <div className="flex items-center gap-3">
@@ -144,8 +156,8 @@ export const AdminDashboardPage: React.FC = () => {
               <CreditCard className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-gray-900">Hospital Consultation Revenue & Payments</h2>
-              <p className="text-xs text-gray-500">Real-time settlement status of consultation fees and patient transactions</p>
+              <h2 className="text-base font-bold text-gray-900">Platform Consultation Revenue & Payments</h2>
+              <p className="text-xs text-gray-500">Real-time settlement status of provider consultation fees and patient transactions</p>
             </div>
           </div>
           <span className="text-[11px] font-semibold text-gray-400 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-200">
@@ -159,9 +171,9 @@ export const AdminDashboardPage: React.FC = () => {
               Total Revenue (Collected)
             </span>
             <div className="text-2xl font-black text-emerald-950 mt-1">
-              Rs. {Number(stats?.payment?.totalRevenue ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              Rs. {Number(totalRevenue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
-            <p className="text-[11px] text-emerald-700 mt-1 font-medium">Across all paid visits</p>
+            <p className="text-[11px] text-emerald-700 mt-1 font-medium">Across all paid consultations</p>
           </div>
 
           <div className="p-4 rounded-xl bg-white border border-gray-200">
@@ -169,9 +181,9 @@ export const AdminDashboardPage: React.FC = () => {
               Paid Appointments
             </span>
             <div className="text-2xl font-black text-emerald-600 mt-1">
-              {stats?.payment?.paidCount ?? 0}
+              {paidCount}
             </div>
-            <p className="text-[11px] text-gray-500 mt-1 font-medium">Fully settled fees</p>
+            <p className="text-[11px] text-gray-500 mt-1 font-medium">Fully settled consultation fees</p>
           </div>
 
           <div className="p-4 rounded-xl bg-white border border-gray-200">
@@ -179,9 +191,9 @@ export const AdminDashboardPage: React.FC = () => {
               Unpaid Invoices
             </span>
             <div className="text-2xl font-black text-amber-600 mt-1">
-              {stats?.payment?.unpaidCount ?? 0}
+              {unpaidCount}
             </div>
-            <p className="text-[11px] text-gray-500 mt-1 font-medium">Pending clinic settlement</p>
+            <p className="text-[11px] text-gray-500 mt-1 font-medium">Pending patient settlement</p>
           </div>
 
           <div className="p-4 rounded-xl bg-white border border-gray-200">
@@ -189,11 +201,104 @@ export const AdminDashboardPage: React.FC = () => {
               Refunded Amounts
             </span>
             <div className="text-2xl font-black text-gray-700 mt-1">
-              {stats?.payment?.refundedCount ?? 0}
+              {refundedCount}
             </div>
-            <p className="text-[11px] text-gray-500 mt-1 font-medium">Cancelled/rejected visits</p>
+            <p className="text-[11px] text-gray-500 mt-1 font-medium">Cancelled/declined bookings</p>
           </div>
         </div>
+
+        {/* Doctor Earnings & Paid Consultation Breakdown */}
+        {doctorRevenueList.length > 0 && (
+          <div className="mt-6 pt-5 border-t border-gray-100">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider">
+                  Provider Earnings & Settlement Breakdown
+                </h3>
+                <p className="text-[11px] text-gray-500">
+                  Revenue collected across registered independent and clinic physicians for completed consultations
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/admin/doctors')}
+                className="text-xs text-brand-600 hover:text-brand-700"
+              >
+                All Providers &rarr;
+              </Button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-gray-100 text-gray-400 uppercase text-[10px] font-bold tracking-wider">
+                    <th className="py-2.5 px-3">Physician</th>
+                    <th className="py-2.5 px-3">Department</th>
+                    <th className="py-2.5 px-3 text-center">Paid Visits</th>
+                    <th className="py-2.5 px-3 text-center">Total Visits</th>
+                    <th className="py-2.5 px-3 text-right">Revenue Earned</th>
+                    <th className="py-2.5 px-3 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {doctorRevenueList.map((doc) => {
+                    const share = totalRevenue > 0 ? ((doc.totalEarned / totalRevenue) * 100).toFixed(1) : '0';
+                    return (
+                      <tr key={doc.doctorId} className="hover:bg-gray-50/70 transition-colors">
+                        <td className="py-3 px-3">
+                          <div className="flex items-center gap-2.5">
+                            <Avatar
+                              src={doc.thumbnailPath || doc.imagePath}
+                              name={doc.doctorName}
+                              size="sm"
+                            />
+                            <div>
+                              <p className="font-bold text-gray-900 leading-tight">{doc.doctorName}</p>
+                              <p className="text-[11px] text-gray-500 leading-tight">{doc.specialization}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-gray-100 text-gray-700">
+                            {doc.departmentName || 'General'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-center font-bold text-emerald-600">
+                          {doc.paidAppointments}
+                        </td>
+                        <td className="py-3 px-3 text-center text-gray-500">
+                          {doc.totalAppointments}
+                        </td>
+                        <td className="py-3 px-3 text-right">
+                          <div className="font-extrabold text-gray-900">
+                            Rs. {doc.totalEarned.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </div>
+                          {doc.totalEarned > 0 && (
+                            <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
+                              {share}% of platform revenue
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 text-right">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedDoctorId(doc.doctorId)}
+                            className="text-xs h-7 px-2.5"
+                            leftIcon={<Eye className="w-3.5 h-3.5 mr-1 text-gray-500" />}
+                          >
+                            View
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Quick Navigation Panels */}
@@ -203,9 +308,9 @@ export const AdminDashboardPage: React.FC = () => {
             <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-4">
               <Stethoscope className="w-5 h-5" />
             </div>
-            <h3 className="text-base font-bold text-gray-900">Manage Doctors & Shifts</h3>
+            <h3 className="text-base font-bold text-gray-900">Manage Providers & Shifts</h3>
             <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">
-              View active physicians, assign clinical departments, examine consultation fees, and toggle access states.
+              View registered independent and clinic physicians, assign specialties, examine consultation fees, and toggle access states.
             </p>
           </div>
           <Button
@@ -215,7 +320,7 @@ export const AdminDashboardPage: React.FC = () => {
             rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
             className="mt-5 w-full justify-between"
           >
-            <span>Physician Directory</span>
+            <span>Provider Directory</span>
           </Button>
         </Card>
 
@@ -224,9 +329,9 @@ export const AdminDashboardPage: React.FC = () => {
             <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center mb-4">
               <AlertTriangle className="w-5 h-5" />
             </div>
-            <h3 className="text-base font-bold text-gray-900">Doctor Approval Queue</h3>
+            <h3 className="text-base font-bold text-gray-900">Doctor Registration Queue</h3>
             <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">
-              Verify credentials, qualifications, and department affiliations for newly registered medical practitioners.
+              Verify credentials, medical licenses, and practice details for newly registered independent and clinic doctors.
             </p>
           </div>
           <Button
@@ -245,9 +350,9 @@ export const AdminDashboardPage: React.FC = () => {
             <div className="w-10 h-10 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center mb-4">
               <Building2 className="w-5 h-5" />
             </div>
-            <h3 className="text-base font-bold text-gray-900">Clinical Departments</h3>
+            <h3 className="text-base font-bold text-gray-900">Medical Specialties & Departments</h3>
             <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">
-              Configure medical divisions (Cardiology, Neurology, Pediatrics, etc.) and assign clinical icons.
+              Configure medical specialties (Cardiology, Neurology, Pediatrics, etc.) available for provider registrations.
             </p>
           </div>
           <Button
@@ -257,7 +362,7 @@ export const AdminDashboardPage: React.FC = () => {
             rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
             className="mt-5 w-full justify-between"
           >
-            <span>Departments Setup</span>
+            <span>Specialties Setup</span>
           </Button>
         </Card>
       </div>
@@ -267,7 +372,7 @@ export const AdminDashboardPage: React.FC = () => {
         <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-gray-100">
           <div>
             <CardTitle>Recent Appointments</CardTitle>
-            <p className="text-xs text-gray-500 mt-0.5">Most recent appointments booked across all hospital departments</p>
+            <p className="text-xs text-gray-500 mt-0.5">Most recent consultations booked across registered physicians and clinics</p>
           </div>
           <Button
             variant="ghost"
@@ -322,6 +427,13 @@ export const AdminDashboardPage: React.FC = () => {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Doctor Dossier Modal */}
+      <DoctorDetailsModal
+        doctorId={selectedDoctorId}
+        isOpen={!!selectedDoctorId}
+        onClose={() => setSelectedDoctorId(null)}
+      />
     </div>
   );
 };

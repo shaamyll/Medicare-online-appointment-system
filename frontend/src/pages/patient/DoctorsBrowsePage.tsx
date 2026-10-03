@@ -58,7 +58,7 @@ export const DoctorsBrowsePage: React.FC = () => {
       {/* Header */}
       <PageHeader
         title="Medical Specialists Directory"
-        subtitle="Browse verified hospital doctors, view credentials, and book consultation time slots"
+        subtitle="Browse verified independent and clinic doctors, view credentials, and book consultation time slots"
       />
 
       {/* Filter Toolbar */}

@@ -7,6 +7,18 @@ export interface PaymentSummaryStats {
   refundedCount: number;
 }
 
+export interface DoctorRevenueItem {
+  doctorId: number;
+  doctorName: string;
+  specialization: string;
+  departmentName?: string | null;
+  imagePath?: string | null;
+  thumbnailPath?: string | null;
+  totalEarned: number;
+  paidAppointments: number;
+  totalAppointments: number;
+}
+
 export interface AdminStats {
   totalDoctors: number;
   pendingApprovals: number;
@@ -14,7 +26,12 @@ export interface AdminStats {
   todayAppointments: number;
   upcomingAppointments: number;
   totalDepartments: number;
+  totalRevenue?: number;
+  paidCount?: number;
+  unpaidCount?: number;
+  refundedCount?: number;
   payment?: PaymentSummaryStats;
+  doctorRevenue?: DoctorRevenueItem[];
   recentAppointments: any[];
 }
 

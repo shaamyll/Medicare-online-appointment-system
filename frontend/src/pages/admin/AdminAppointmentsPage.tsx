@@ -122,8 +122,8 @@ export const AdminAppointmentsPage: React.FC = () => {
     <div className="space-y-6">
       {/* Header */}
       <PageHeader
-        title="Hospital Appointments"
-        subtitle="Comprehensive hospital appointment ledger, payment records, and doctor scheduling"
+        title="Platform Appointments & Consultations"
+        subtitle="Comprehensive appointment ledger, consultation payments, and provider scheduling records"
       />
 
       {/* Filter Bar */}

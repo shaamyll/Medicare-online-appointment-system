@@ -271,7 +271,7 @@ class AppointmentService {
             );
         } else {
             // Cancelled by doctor or admin -> patient receives notification
-            $by = $user['role'] === 'admin' ? 'hospital administration' : ('Dr. ' . ($apt['doctor']['name'] ?? 'Doctor'));
+            $by = $user['role'] === 'admin' ? 'platform administration' : ('Dr. ' . ($apt['doctor']['name'] ?? 'Doctor'));
             $patMeta = NotificationTypes::build(NotificationTypes::APPOINTMENT_CANCELLED, [
                 'appointmentNumber' => $apt['appointmentNumber'],
                 'cancelledBy' => $by,

@@ -158,28 +158,28 @@ class NotificationTypes
             case self::DOCTOR_APPROVED:
                 return [
                     'title' => 'Medical Credentials Approved!',
-                    'message' => 'Your doctor registration has been verified and approved by the hospital administration. You can now configure your clinical shifts.',
+                    'message' => 'Your doctor registration has been verified and approved by the platform administration. You can now configure your clinical shifts.',
                     'link' => '/doctor/dashboard',
                 ];
 
             case self::DOCTOR_REJECTED:
                 return [
                     'title' => 'Doctor Registration Update',
-                    'message' => 'Your doctor registration request was not approved by the medical board. Please contact administration for credential clarification.',
+                    'message' => 'Your doctor registration request was not approved by platform administration. Please contact support for credential clarification.',
                     'link' => '/doctor/login',
                 ];
 
             case self::DOCTOR_DEACTIVATED:
                 return [
-                    'title' => 'Clinical Account Deactivated',
-                    'message' => 'Your medical staff account has been set to inactive by hospital administration.',
+                    'title' => 'Provider Account Deactivated',
+                    'message' => 'Your healthcare provider account has been set to inactive by platform administration.',
                     'link' => '/doctor/login',
                 ];
 
             case self::DOCTOR_ACTIVATED:
                 return [
-                    'title' => 'Clinical Account Activated',
-                    'message' => 'Your medical staff account has been re-activated by hospital administration.',
+                    'title' => 'Provider Account Activated',
+                    'message' => 'Your healthcare provider account has been re-activated by platform administration.',
                     'link' => '/doctor/dashboard',
                 ];
 

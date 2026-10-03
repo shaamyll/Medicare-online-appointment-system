@@ -81,14 +81,14 @@ export const AdminDepartmentsPage: React.FC = () => {
   };
 
   if (isLoading) {
-    return <LoadingState message="Loading hospital departments..." />;
+    return <LoadingState message="Loading medical specialties & departments..." />;
   }
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Hospital Departments"
-        subtitle="Define medical specialties, clinic wings, and clinical descriptions for patient scheduling"
+        title="Medical Specialties & Departments"
+        subtitle="Define clinical specialties, practice divisions, and medical categories for provider registration and patient scheduling"
         actions={
           <div className="flex items-center gap-3">
             <div className="flex bg-gray-100 p-0.5 rounded-lg border border-gray-200">

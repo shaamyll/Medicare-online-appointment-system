@@ -87,6 +87,26 @@ if (!$existingAdmin) {
     echo "Admin {$adminEmail} already exists.\n";
 }
 
+// Seed Secondary Admin Account: admin123@medicare.com / 123456
+$admin2Email = 'admin123@medicare.com';
+$admin2Pass = '123456';
+$admin2Name = 'System Administrator';
+
+$stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+$stmt->execute([$admin2Email]);
+$existingAdmin2 = $stmt->fetch();
+$hashedAdmin2Pass = password_hash($admin2Pass, PASSWORD_BCRYPT);
+
+if (!$existingAdmin2) {
+    $stmt = $pdo->prepare("INSERT INTO users (name, email, password, role, status) VALUES (?, ?, ?, 'admin', 'active')");
+    $stmt->execute([$admin2Name, $admin2Email, $hashedAdmin2Pass]);
+    echo "Seeded Admin: {$admin2Email} / {$admin2Pass}\n";
+} else {
+    $stmt = $pdo->prepare("UPDATE users SET password = ?, role = 'admin', status = 'active' WHERE id = ?");
+    $stmt->execute([$hashedAdmin2Pass, $existingAdmin2['id']]);
+    echo "Updated Admin: {$admin2Email} / {$admin2Pass}\n";
+}
+
 // Seed Departments
 $departments = [
     [
