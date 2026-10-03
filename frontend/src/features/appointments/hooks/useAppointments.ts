@@ -3,7 +3,7 @@ import { appointmentsApi } from '../api/appointmentsApi';
 import { BookAppointmentData } from '../types/appointment.types';
 import { queryKeys } from '@/lib/queryKeys';
 
-export const useAppointments = (params?: { status?: string; date?: string }) => {
+export const useAppointments = (params?: { status?: string; date?: string; doctorId?: number }) => {
   return useQuery({
     queryKey: queryKeys.appointments.list(params),
     queryFn: () => appointmentsApi.getAll(params),
@@ -16,6 +16,14 @@ export const useDoctorSlots = (doctorId: number, date: string) => {
     queryKey: queryKeys.appointments.slots(doctorId, date),
     queryFn: () => appointmentsApi.getSlots(doctorId, date),
     enabled: !!doctorId && !!date,
+  });
+};
+
+export const useAppointmentDetail = (id: number) => {
+  return useQuery({
+    queryKey: queryKeys.appointments.detail(id),
+    queryFn: () => appointmentsApi.getById(id),
+    enabled: !!id,
   });
 };
 
@@ -34,7 +42,25 @@ export const useBookAppointment = () => {
 export const useCancelAppointment = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => appointmentsApi.cancel(id),
+    mutationFn: (args: number | { id: number; reason?: string }) => {
+      const id = typeof args === 'number' ? args : args.id;
+      const reason = typeof args === 'number' ? undefined : args.reason;
+      return appointmentsApi.cancel(id, reason);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
+      queryClient.invalidateQueries({ queryKey: ['appointments', 'slots'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.reports });
+    },
+  });
+};
+
+export const useRescheduleAppointment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, date, startTime }: { id: number; date: string; startTime: string }) =>
+      appointmentsApi.reschedule(id, { date, startTime }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
       queryClient.invalidateQueries({ queryKey: ['appointments', 'slots'] });
@@ -46,12 +72,14 @@ export const useCancelAppointment = () => {
 export const useUpdateAppointmentStatus = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, status }: { id: number; status: string }) =>
-      appointmentsApi.updateStatus(id, status),
+    mutationFn: ({ id, status, reason }: { id: number; status: string; reason?: string }) =>
+      appointmentsApi.updateStatus(id, status, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
       queryClient.invalidateQueries({ queryKey: ['appointments', 'slots'] });
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.reports });
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
     },
   });
 };

@@ -43,4 +43,17 @@ export const queryKeys = {
       ['notifications', 'list', { page, filter }] as const,
     unreadCount: ['notifications', 'unreadCount'] as const,
   },
+  payments: {
+    all: ['payments'] as const,
+    receipt: (appointmentId: number | string) => ['payments', 'receipt', appointmentId] as const,
+  },
+  feedback: {
+    all: ['feedback'] as const,
+    doctor: (doctorId: number | string, page: number = 1, limit: number = 10) =>
+      ['feedback', 'doctor', doctorId, { page, limit }] as const,
+    doctorOwn: (page: number = 1, limit: number = 10) =>
+      ['feedback', 'doctorOwn', { page, limit }] as const,
+    admin: (filters?: { doctorId?: number; rating?: number; page?: number; limit?: number }) =>
+      ['feedback', 'admin', filters ?? {}] as const,
+  },
 };

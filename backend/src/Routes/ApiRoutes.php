@@ -12,6 +12,8 @@ use App\Modules\Department\DepartmentController;
 use App\Modules\Doctor\DoctorController;
 use App\Modules\Appointment\AppointmentController;
 use App\Modules\Admin\AdminController;
+use App\Modules\Payment\PaymentController;
+use App\Modules\Feedback\FeedbackController;
 
 class ApiRoutes {
     public static function register(Router $router): void {
@@ -36,17 +38,33 @@ class ApiRoutes {
         // Doctors (Public viewing)
         $router->get('/doctors', [DoctorController::class, 'index']);
         $router->get('/doctors/{id}', [DoctorController::class, 'show']);
+        $router->get('/doctors/{id}/feedback', [FeedbackController::class, 'getDoctorFeedback']);
 
         // Available Slots
         $router->get('/appointments/slots', [AppointmentController::class, 'slots']);
 
         // Appointments (Authenticated: Patient, Doctor, Admin)
         $router->get('/appointments', [AppointmentController::class, 'index'], [AuthMiddleware::class]);
+        $router->get('/appointments/{id}', [AppointmentController::class, 'show'], [AuthMiddleware::class]);
         $router->post('/appointments', [AppointmentController::class, 'book'], [
             AuthMiddleware::class,
             fn($req) => RoleMiddleware::hasRole($req, ['patient'])
         ]);
         $router->post('/appointments/{id}/cancel', [AppointmentController::class, 'cancel'], [AuthMiddleware::class]);
+        $router->patch('/appointments/{id}/reschedule', [AppointmentController::class, 'reschedule'], [AuthMiddleware::class]);
+
+        // Demo Payment
+        $router->post('/appointments/{id}/pay', [PaymentController::class, 'pay'], [
+            AuthMiddleware::class,
+            fn($req) => RoleMiddleware::hasRole($req, ['patient'])
+        ]);
+        $router->get('/appointments/{id}/receipt', [PaymentController::class, 'receipt'], [AuthMiddleware::class]);
+
+        // Feedback & Reviews (Patient submitting review)
+        $router->post('/appointments/{id}/feedback', [FeedbackController::class, 'create'], [
+            AuthMiddleware::class,
+            fn($req) => RoleMiddleware::hasRole($req, ['patient'])
+        ]);
 
         // Doctor Portal
         $doctorAuth = [
@@ -60,6 +78,7 @@ class ApiRoutes {
         $router->post('/doctor/profile', [DoctorController::class, 'updateMyProfile'], $doctorAuth);
         $router->patch('/appointments/{id}/status', [AppointmentController::class, 'updateStatus'], $doctorAuth);
         $router->post('/appointments/{id}/consultation', [AppointmentController::class, 'addConsultation'], $doctorAuth);
+        $router->get('/doctor/feedback', [FeedbackController::class, 'getDoctorOwnFeedback'], $doctorAuth);
 
         // Admin Portal
         $adminAuth = [
@@ -76,6 +95,8 @@ class ApiRoutes {
         $router->delete('/admin/doctors/{id}', [AdminController::class, 'deleteDoctor'], $adminAuth);
         $router->get('/admin/patients', [AdminController::class, 'patients'], $adminAuth);
         $router->get('/admin/reports', [AdminController::class, 'reports'], $adminAuth);
+        $router->get('/admin/feedback', [FeedbackController::class, 'getAdminList'], $adminAuth);
+        $router->delete('/admin/feedback/{id}', [FeedbackController::class, 'delete'], $adminAuth);
 
         // Department CRUD (Admin only)
         $router->post('/departments', [DepartmentController::class, 'create'], $adminAuth);

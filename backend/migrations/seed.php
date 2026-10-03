@@ -20,25 +20,33 @@ foreach ($queries as $query) {
 }
 echo "Schema migrated successfully.\n";
 
-// Ensure new columns exist on doctor_profiles idempotently
+// Ensure new columns exist on doctor_profiles and appointments idempotently
 $requiredColumns = [
-    'license_number' => "ALTER TABLE `doctor_profiles` ADD COLUMN `license_number` VARCHAR(50) NULL UNIQUE AFTER `qualification`",
-    'image_path' => "ALTER TABLE `doctor_profiles` ADD COLUMN `image_path` VARCHAR(255) NULL AFTER `bio`",
-    'thumbnail_path' => "ALTER TABLE `doctor_profiles` ADD COLUMN `thumbnail_path` VARCHAR(255) NULL AFTER `image_path`"
+    'doctor_profiles' => [
+        'license_number' => "ALTER TABLE `doctor_profiles` ADD COLUMN `license_number` VARCHAR(50) NULL UNIQUE AFTER `qualification`",
+        'image_path' => "ALTER TABLE `doctor_profiles` ADD COLUMN `image_path` VARCHAR(255) NULL AFTER `bio`",
+        'thumbnail_path' => "ALTER TABLE `doctor_profiles` ADD COLUMN `thumbnail_path` VARCHAR(255) NULL AFTER `image_path`"
+    ],
+    'appointments' => [
+        'rejection_reason' => "ALTER TABLE `appointments` ADD COLUMN `rejection_reason` VARCHAR(255) NULL AFTER `reason_for_visit`",
+        'reschedule_count' => "ALTER TABLE `appointments` ADD COLUMN `reschedule_count` INT DEFAULT 0 AFTER `rejection_reason`"
+    ]
 ];
 
-foreach ($requiredColumns as $colName => $alterSql) {
-    $colCheck = $pdo->prepare("
-        SELECT COUNT(*) 
-        FROM information_schema.COLUMNS 
-        WHERE TABLE_SCHEMA = DATABASE() 
-          AND TABLE_NAME = 'doctor_profiles' 
-          AND COLUMN_NAME = ?
-    ");
-    $colCheck->execute([$colName]);
-    if ((int)$colCheck->fetchColumn() === 0) {
-        $pdo->exec($alterSql);
-        echo "Added column '{$colName}' to doctor_profiles.\n";
+foreach ($requiredColumns as $tableName => $cols) {
+    foreach ($cols as $colName => $alterSql) {
+        $colCheck = $pdo->prepare("
+            SELECT COUNT(*) 
+            FROM information_schema.COLUMNS 
+            WHERE TABLE_SCHEMA = DATABASE() 
+              AND TABLE_NAME = ? 
+              AND COLUMN_NAME = ?
+        ");
+        $colCheck->execute([$tableName, $colName]);
+        if ((int)$colCheck->fetchColumn() === 0) {
+            $pdo->exec($alterSql);
+            echo "Added column '{$colName}' to {$tableName}.\n";
+        }
     }
 }
 
@@ -206,11 +214,169 @@ if (!$existingPending) {
 $patientEmail = 'patient@medicare.com';
 $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
 $stmt->execute([$patientEmail]);
-if (!$stmt->fetch()) {
+$patient = $stmt->fetch();
+if (!$patient) {
     $patientPass = password_hash('Patient123!', PASSWORD_BCRYPT);
     $stmt = $pdo->prepare("INSERT INTO users (name, email, password, role, phone, status) VALUES (?, ?, ?, 'patient', ?, 'active')");
     $stmt->execute(['Johnathan Doe', $patientEmail, $patientPass, '+1 555-012-3456']);
+    $patientId = (int)$pdo->lastInsertId();
     echo "Seeded Demo Patient: {$patientEmail} / Patient123!\n";
+} else {
+    $patientId = (int)$patient['id'];
+}
+
+// Fetch approved doctor ID
+$stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+$stmt->execute(['dr.sarah@medicare.com']);
+$docUser = $stmt->fetch();
+$approvedDocId = $docUser ? (int)$docUser['id'] : null;
+
+// Backfill payments for all existing appointments that lack a payment row
+$unpaidAppts = $pdo->query("
+    SELECT a.id, a.doctor_id, dp.consultation_fee 
+    FROM appointments a
+    LEFT JOIN payments p ON p.appointment_id = a.id
+    LEFT JOIN doctor_profiles dp ON dp.user_id = a.doctor_id
+    WHERE p.id IS NULL
+")->fetchAll(PDO::FETCH_ASSOC);
+
+if (!empty($unpaidAppts)) {
+    $payStmt = $pdo->prepare("INSERT INTO payments (appointment_id, amount, status) VALUES (?, ?, 'unpaid')");
+    foreach ($unpaidAppts as $uAppt) {
+        $amount = (float)($uAppt['consultation_fee'] ?: 100.00);
+        $payStmt->execute([$uAppt['id'], $amount]);
+    }
+    echo "Backfilled payments for " . count($unpaidAppts) . " existing appointments.\n";
+}
+
+// Ensure sample appointments exist for demonstration if database has fewer than 4 appointments
+$apptCount = (int)$pdo->query("SELECT COUNT(*) FROM appointments")->fetchColumn();
+if ($apptCount < 4 && $approvedDocId && $patientId) {
+    echo "Seeding diverse sample appointments (Pending, Approved, Completed, Rejected)...\n";
+    $sampleData = [
+        [
+            'num' => 'APT-202610-0001',
+            'date' => date('Y-m-d', strtotime('+2 days')),
+            'start' => '09:00:00',
+            'end' => '09:30:00',
+            'status' => 'pending',
+            'reason' => 'Routine cardiology consultation and BP checkup.',
+            'pay_status' => 'unpaid',
+            'pay_method' => null,
+            'pay_ref' => null,
+            'is_completed' => false,
+            'is_rescheduled' => false,
+        ],
+        [
+            'num' => 'APT-202610-0002',
+            'date' => date('Y-m-d', strtotime('+3 days')),
+            'start' => '10:00:00',
+            'end' => '10:30:00',
+            'status' => 'approved',
+            'reason' => 'Follow up on previous ECG findings and chest tightness.',
+            'pay_status' => 'paid',
+            'pay_method' => 'upi',
+            'pay_ref' => 'MC-20261001-A1B2C3',
+            'is_completed' => false,
+            'is_rescheduled' => true,
+        ],
+        [
+            'num' => 'APT-202609-0003',
+            'date' => date('Y-m-d', strtotime('-5 days')),
+            'start' => '11:00:00',
+            'end' => '11:30:00',
+            'status' => 'completed',
+            'reason' => 'Chest pain evaluation after physical exercise.',
+            'pay_status' => 'paid',
+            'pay_method' => 'card',
+            'pay_ref' => 'MC-20260928-XY89ZK',
+            'is_completed' => true,
+            'is_rescheduled' => false,
+        ],
+        [
+            'num' => 'APT-202609-0004',
+            'date' => date('Y-m-d', strtotime('-1 days')),
+            'start' => '14:00:00',
+            'end' => '14:30:00',
+            'status' => 'rejected',
+            'reason' => 'Annual heart health assessment.',
+            'rejection_reason' => 'Doctor called for emergency cardiovascular surgery at regional hospital.',
+            'pay_status' => 'refunded',
+            'pay_method' => 'upi',
+            'pay_ref' => 'MC-20261002-REF001',
+            'is_completed' => false,
+            'is_rescheduled' => false,
+        ],
+    ];
+
+    foreach ($sampleData as $item) {
+        $chk = $pdo->prepare("SELECT id FROM appointments WHERE appointment_number = ?");
+        $chk->execute([$item['num']]);
+        if ($chk->fetch()) {
+            continue;
+        }
+
+        $insAppt = $pdo->prepare("
+            INSERT INTO appointments (appointment_number, patient_id, doctor_id, appointment_date, start_time, end_time, status, reason_for_visit, rejection_reason, reschedule_count)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        $resCount = $item['is_rescheduled'] ? 1 : 0;
+        $rejReason = $item['rejection_reason'] ?? null;
+        $insAppt->execute([
+            $item['num'],
+            $patientId,
+            $approvedDocId,
+            $item['date'],
+            $item['start'],
+            $item['end'],
+            $item['status'],
+            $item['reason'],
+            $rejReason,
+            $resCount
+        ]);
+        $apptId = (int)$pdo->lastInsertId();
+
+        // Payment
+        $payIns = $pdo->prepare("
+            INSERT INTO payments (appointment_id, amount, status, method, transaction_ref, paid_at)
+            VALUES (?, 120.00, ?, ?, ?, ?)
+        ");
+        $paidAt = $item['pay_status'] === 'unpaid' ? null : date('Y-m-d H:i:s', strtotime('-1 hour'));
+        $payIns->execute([$apptId, $item['pay_status'], $item['pay_method'], $item['pay_ref'], $paidAt]);
+
+        // Reschedule log if applicable
+        if ($item['is_rescheduled']) {
+            $oldDate = date('Y-m-d', strtotime('+1 day'));
+            $resIns = $pdo->prepare("
+                INSERT INTO appointment_reschedules (appointment_id, old_date, old_start_time, new_date, new_start_time, rescheduled_by)
+                VALUES (?, ?, '11:00:00', ?, ?, ?)
+            ");
+            $resIns->execute([$apptId, $oldDate, $item['date'], $item['start'], $patientId]);
+        }
+
+        // Completed consultation record & feedback
+        if ($item['is_completed']) {
+            $consIns = $pdo->prepare("
+                INSERT INTO consultation_records (appointment_id, diagnosis, prescription, consultation_notes)
+                VALUES (?, ?, ?, ?)
+            ");
+            $consIns->execute([
+                $apptId,
+                'Mild benign sinus tachycardia; no structural coronary anomaly detected on resting ECG.',
+                'Metoprolol Succinate 25mg once daily morning for 30 days. Maintain hydration.',
+                'Patient advised to monitor resting pulse rate and reduce caffeine intake. Follow-up in 6 weeks if symptoms persist.'
+            ]);
+
+            // Feedback
+            $fbIns = $pdo->prepare("
+                INSERT INTO feedback (appointment_id, patient_id, doctor_id, rating, comment)
+                VALUES (?, ?, ?, 5, 'Dr. Sarah was exceptionally thorough and explained my ECG results with great clarity. Highly recommended!')
+            ");
+            $fbIns->execute([$apptId, $patientId, $approvedDocId]);
+        }
+    }
+    echo "Sample appointments and feedback seeded successfully.\n";
 }
 
 echo "Database seeding finished successfully!\n";
+

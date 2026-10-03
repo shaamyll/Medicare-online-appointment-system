@@ -1,5 +1,12 @@
 import apiClient, { ApiResponse } from '@/lib/axios';
 
+export interface PaymentSummaryStats {
+  totalRevenue: number;
+  paidCount: number;
+  unpaidCount: number;
+  refundedCount: number;
+}
+
 export interface AdminStats {
   totalDoctors: number;
   pendingApprovals: number;
@@ -7,6 +14,7 @@ export interface AdminStats {
   todayAppointments: number;
   upcomingAppointments: number;
   totalDepartments: number;
+  payment?: PaymentSummaryStats;
   recentAppointments: any[];
 }
 
@@ -43,6 +51,7 @@ export interface AdminPatient {
 export interface AdminReports {
   appointmentsByStatus: { status: string; count: number }[];
   doctorsByDepartment: { name: string; count: number }[];
+  payment?: PaymentSummaryStats;
 }
 
 export const adminApi = {

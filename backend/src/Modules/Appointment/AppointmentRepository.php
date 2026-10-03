@@ -31,66 +31,50 @@ class AppointmentRepository {
         return (int)$this->db->lastInsertId();
     }
 
-    public function findById(int $id): ?array {
-        $stmt = $this->db->prepare("
+    public function getConnection(): PDO {
+        return $this->db;
+    }
+
+    private function getBaseSelect(): string {
+        return "
             SELECT a.*,
                    p.name AS patient_name, p.email AS patient_email, p.phone AS patient_phone,
                    doc.name AS doctor_name, doc.email AS doctor_email, doc.phone AS doctor_phone,
                    dp.specialization AS doctor_specialization, dp.consultation_fee AS consultationFee,
                    d.name AS department_name,
-                   cr.diagnosis, cr.prescription, cr.consultation_notes
+                   cr.diagnosis, cr.prescription, cr.consultation_notes,
+                   pm.id AS payment_id, pm.amount AS payment_amount, pm.status AS payment_status,
+                   pm.method AS payment_method, pm.transaction_ref AS payment_transaction_ref, pm.paid_at AS payment_paid_at,
+                   fb.id AS feedback_id, fb.rating AS feedback_rating, fb.comment AS feedback_comment, fb.created_at AS feedback_created_at
             FROM appointments a
             JOIN users p ON p.id = a.patient_id
             JOIN users doc ON doc.id = a.doctor_id
             LEFT JOIN doctor_profiles dp ON dp.user_id = doc.id
             LEFT JOIN departments d ON d.id = dp.department_id
             LEFT JOIN consultation_records cr ON cr.appointment_id = a.id
-            WHERE a.id = ?
-            LIMIT 1
-        ");
+            LEFT JOIN payments pm ON pm.appointment_id = a.id
+            LEFT JOIN feedback fb ON fb.appointment_id = a.id
+        ";
+    }
+
+    public function findById(int $id): ?array {
+        $sql = $this->getBaseSelect() . " WHERE a.id = ? LIMIT 1 ";
+        $stmt = $this->db->prepare($sql);
         $stmt->execute([$id]);
         $row = $stmt->fetch();
         return $row ? $this->formatAppointmentRow($row) : null;
     }
 
     public function findByPatient(int $patientId): array {
-        $stmt = $this->db->prepare("
-            SELECT a.*,
-                   p.name AS patient_name, p.email AS patient_email, p.phone AS patient_phone,
-                   doc.name AS doctor_name, doc.email AS doctor_email, doc.phone AS doctor_phone,
-                   dp.specialization AS doctor_specialization, dp.consultation_fee AS consultationFee,
-                   d.name AS department_name,
-                   cr.diagnosis, cr.prescription, cr.consultation_notes
-            FROM appointments a
-            JOIN users p ON p.id = a.patient_id
-            JOIN users doc ON doc.id = a.doctor_id
-            LEFT JOIN doctor_profiles dp ON dp.user_id = doc.id
-            LEFT JOIN departments d ON d.id = dp.department_id
-            LEFT JOIN consultation_records cr ON cr.appointment_id = a.id
-            WHERE a.patient_id = ?
-            ORDER BY a.appointment_date DESC, a.start_time DESC
-        ");
+        $sql = $this->getBaseSelect() . " WHERE a.patient_id = ? ORDER BY a.appointment_date DESC, a.start_time DESC ";
+        $stmt = $this->db->prepare($sql);
         $stmt->execute([$patientId]);
         $rows = $stmt->fetchAll();
         return array_map([$this, 'formatAppointmentRow'], $rows);
     }
 
     public function findByDoctor(int $doctorId, ?string $status = null): array {
-        $sql = "
-            SELECT a.*,
-                   p.name AS patient_name, p.email AS patient_email, p.phone AS patient_phone,
-                   doc.name AS doctor_name, doc.email AS doctor_email, doc.phone AS doctor_phone,
-                   dp.specialization AS doctor_specialization, dp.consultation_fee AS consultationFee,
-                   d.name AS department_name,
-                   cr.diagnosis, cr.prescription, cr.consultation_notes
-            FROM appointments a
-            JOIN users p ON p.id = a.patient_id
-            JOIN users doc ON doc.id = a.doctor_id
-            LEFT JOIN doctor_profiles dp ON dp.user_id = doc.id
-            LEFT JOIN departments d ON d.id = dp.department_id
-            LEFT JOIN consultation_records cr ON cr.appointment_id = a.id
-            WHERE a.doctor_id = ?
-        ";
+        $sql = $this->getBaseSelect() . " WHERE a.doctor_id = ? ";
         $params = [$doctorId];
 
         if ($status !== null && trim($status) !== '') {
@@ -106,22 +90,8 @@ class AppointmentRepository {
         return array_map([$this, 'formatAppointmentRow'], $rows);
     }
 
-    public function findAll(?string $status = null, ?string $date = null): array {
-        $sql = "
-            SELECT a.*,
-                   p.name AS patient_name, p.email AS patient_email, p.phone AS patient_phone,
-                   doc.name AS doctor_name, doc.email AS doctor_email, doc.phone AS doctor_phone,
-                   dp.specialization AS doctor_specialization, dp.consultation_fee AS consultationFee,
-                   d.name AS department_name,
-                   cr.diagnosis, cr.prescription, cr.consultation_notes
-            FROM appointments a
-            JOIN users p ON p.id = a.patient_id
-            JOIN users doc ON doc.id = a.doctor_id
-            LEFT JOIN doctor_profiles dp ON dp.user_id = doc.id
-            LEFT JOIN departments d ON d.id = dp.department_id
-            LEFT JOIN consultation_records cr ON cr.appointment_id = a.id
-            WHERE 1=1
-        ";
+    public function findAll(?string $status = null, ?string $date = null, ?int $doctorId = null): array {
+        $sql = $this->getBaseSelect() . " WHERE 1=1 ";
         $params = [];
 
         if ($status) {
@@ -132,6 +102,10 @@ class AppointmentRepository {
             $sql .= " AND a.appointment_date = ? ";
             $params[] = $date;
         }
+        if ($doctorId) {
+            $sql .= " AND a.doctor_id = ? ";
+            $params[] = $doctorId;
+        }
 
         $sql .= " ORDER BY a.appointment_date DESC, a.start_time DESC ";
 
@@ -141,31 +115,106 @@ class AppointmentRepository {
         return array_map([$this, 'formatAppointmentRow'], $rows);
     }
 
-    public function updateStatus(int $id, string $status): bool {
+    public function updateStatus(int $id, string $status, ?string $rejectionReason = null): bool {
+        if ($rejectionReason !== null) {
+            $stmt = $this->db->prepare("UPDATE appointments SET status = ?, rejection_reason = ? WHERE id = ?");
+            return $stmt->execute([$status, $rejectionReason, $id]);
+        }
         $stmt = $this->db->prepare("UPDATE appointments SET status = ? WHERE id = ?");
         return $stmt->execute([$status, $id]);
     }
 
-    public function isSlotBooked(int $doctorId, string $date, string $startTime): bool {
+    public function recordReschedule(
+        int $appointmentId,
+        string $oldDate,
+        string $oldStartTime,
+        string $newDate,
+        string $newStartTime,
+        string $newEndTime,
+        string $newStatus,
+        int $rescheduledBy
+    ): void {
+        $this->db->beginTransaction();
+        try {
+            // Update appointment
+            $upStmt = $this->db->prepare("
+                UPDATE appointments 
+                SET appointment_date = ?, start_time = ?, end_time = ?, status = ?, reschedule_count = reschedule_count + 1
+                WHERE id = ?
+            ");
+            $upStmt->execute([$newDate, $newStartTime, $newEndTime, $newStatus, $appointmentId]);
+
+            // Insert reschedule log
+            $logStmt = $this->db->prepare("
+                INSERT INTO appointment_reschedules (appointment_id, old_date, old_start_time, new_date, new_start_time, rescheduled_by)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ");
+            $logStmt->execute([$appointmentId, $oldDate, $oldStartTime, $newDate, $newStartTime, $rescheduledBy]);
+
+            $this->db->commit();
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+    }
+
+    public function getReschedules(int $appointmentId): array {
         $stmt = $this->db->prepare("
+            SELECT ar.*, u.name AS rescheduled_by_name, u.role AS rescheduled_by_role
+            FROM appointment_reschedules ar
+            JOIN users u ON u.id = ar.rescheduled_by
+            WHERE ar.appointment_id = ?
+            ORDER BY ar.created_at ASC
+        ");
+        $stmt->execute([$appointmentId]);
+        return array_map(function ($row) {
+            return [
+                'id' => (int)$row['id'],
+                'appointmentId' => (int)$row['appointment_id'],
+                'oldDate' => $row['old_date'],
+                'oldStartTime' => substr($row['old_start_time'], 0, 5),
+                'newDate' => $row['new_date'],
+                'newStartTime' => substr($row['new_start_time'], 0, 5),
+                'rescheduledBy' => (int)$row['rescheduled_by'],
+                'rescheduledByName' => $row['rescheduled_by_name'],
+                'rescheduledByRole' => $row['rescheduled_by_role'],
+                'createdAt' => $row['created_at'],
+            ];
+        }, $stmt->fetchAll());
+    }
+
+    public function isSlotBooked(int $doctorId, string $date, string $startTime, ?int $excludeAppointmentId = null): bool {
+        $sql = "
             SELECT COUNT(*) AS total
             FROM appointments
             WHERE doctor_id = ? AND appointment_date = ? AND start_time = ?
               AND status NOT IN ('cancelled', 'rejected')
-        ");
-        $stmt->execute([$doctorId, $date, $startTime]);
+        ";
+        $params = [$doctorId, $date, $startTime];
+        if ($excludeAppointmentId !== null) {
+            $sql .= " AND id != ? ";
+            $params[] = $excludeAppointmentId;
+        }
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
         $row = $stmt->fetch();
         return ($row['total'] ?? 0) > 0;
     }
 
-    public function getBookedSlotsForDoctorAndDate(int $doctorId, string $date): array {
-        $stmt = $this->db->prepare("
+    public function getBookedSlotsForDoctorAndDate(int $doctorId, string $date, ?int $excludeAppointmentId = null): array {
+        $sql = "
             SELECT start_time, end_time
             FROM appointments
             WHERE doctor_id = ? AND appointment_date = ?
               AND status NOT IN ('cancelled', 'rejected')
-        ");
-        $stmt->execute([$doctorId, $date]);
+        ";
+        $params = [$doctorId, $date];
+        if ($excludeAppointmentId !== null) {
+            $sql .= " AND id != ? ";
+            $params[] = $excludeAppointmentId;
+        }
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
         return $stmt->fetchAll();
     }
 
@@ -195,6 +244,8 @@ class AppointmentRepository {
             'endTime' => substr($row['end_time'], 0, 5),
             'status' => strtoupper($row['status']),
             'reasonForVisit' => $row['reason_for_visit'],
+            'rejectionReason' => $row['rejection_reason'] ?? null,
+            'rescheduleCount' => (int)($row['reschedule_count'] ?? 0),
             'createdAt' => $row['created_at'],
             'patient' => [
                 'id' => (int)$row['patient_id'],
@@ -211,6 +262,21 @@ class AppointmentRepository {
                 'department' => $row['department_name'] ?? 'General',
                 'consultationFee' => (float)($row['consultationFee'] ?? 0)
             ],
+            'payment' => !empty($row['payment_id']) ? [
+                'id' => (int)$row['payment_id'],
+                'amount' => (float)$row['payment_amount'],
+                'status' => $row['payment_status'],
+                'method' => $row['payment_method'],
+                'transactionRef' => $row['payment_transaction_ref'],
+                'paidAt' => $row['payment_paid_at']
+            ] : null,
+            'feedback' => !empty($row['feedback_id']) ? [
+                'id' => (int)$row['feedback_id'],
+                'rating' => (int)$row['feedback_rating'],
+                'comment' => $row['feedback_comment'],
+                'createdAt' => $row['feedback_created_at']
+            ] : null,
+            'reschedules' => $this->getReschedules((int)$row['id']),
             'consultation' => !empty($row['diagnosis']) || !empty($row['prescription']) || !empty($row['consultation_notes']) ? [
                 'diagnosis' => $row['diagnosis'],
                 'prescription' => $row['prescription'],

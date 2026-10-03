@@ -13,6 +13,7 @@ import {
   Menu,
   X,
   Bell,
+  MessageSquare,
 } from 'lucide-react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { LogoutConfirmModal } from '@/components/ui/LogoutConfirmModal';
@@ -37,6 +38,7 @@ export const AdminLayout: React.FC = () => {
     { label: 'Patients', href: '/admin/patients', icon: Users },
     { label: 'Departments', href: '/admin/departments', icon: Building2 },
     { label: 'Appointments', href: '/admin/appointments', icon: Calendar },
+    { label: 'Feedback', href: '/admin/feedback', icon: MessageSquare },
     { label: 'Notifications', href: '/admin/notifications', icon: Bell, badge: unreadCount },
     { label: 'Settings', href: '/admin/settings', icon: Settings },
   ];

@@ -10,6 +10,9 @@ class NotificationTypes
     public const APPOINTMENT_REJECTED = 'appointment_rejected';
     public const APPOINTMENT_CANCELLED = 'appointment_cancelled';
     public const APPOINTMENT_COMPLETED = 'appointment_completed';
+    public const APPOINTMENT_RESCHEDULED = 'appointment_rescheduled';
+    public const PAYMENT_CONFIRMED = 'payment_confirmed';
+    public const PAYMENT_REFUNDED = 'payment_refunded';
 
     // Doctor events
     public const NEW_APPOINTMENT_REQUEST = 'new_appointment_request';
@@ -18,6 +21,8 @@ class NotificationTypes
     public const DOCTOR_REJECTED = 'doctor_rejected';
     public const DOCTOR_DEACTIVATED = 'doctor_deactivated';
     public const DOCTOR_ACTIVATED = 'doctor_activated';
+    public const PAYMENT_RECEIVED = 'payment_received';
+    public const NEW_FEEDBACK = 'new_feedback';
 
     // Admin events
     public const NEW_DOCTOR_REGISTRATION = 'new_doctor_registration';
@@ -96,6 +101,56 @@ class NotificationTypes
                     'title' => 'Patient Cancelled Appointment',
                     'message' => "{$patient} has cancelled scheduled appointment #{$ref}.",
                     'link' => '/doctor/appointments',
+                ];
+
+            case self::APPOINTMENT_RESCHEDULED:
+                $ref = $ctx['appointmentNumber'] ?? 'N/A';
+                $by = $ctx['rescheduledBy'] ?? 'The other party';
+                $newDate = $ctx['newDate'] ?? '';
+                $newTime = $ctx['newStartTime'] ?? '';
+                $isDoctor = ($ctx['recipientRole'] ?? '') === 'doctor';
+                return [
+                    'title' => 'Appointment Rescheduled',
+                    'message' => "Appointment #{$ref} was rescheduled by {$by} to {$newDate} at {$newTime}.",
+                    'link' => $isDoctor ? '/doctor/appointments' : '/dashboard/appointments',
+                ];
+
+            case self::PAYMENT_CONFIRMED:
+                $ref = $ctx['appointmentNumber'] ?? 'N/A';
+                $txRef = $ctx['transactionRef'] ?? '';
+                $amount = $ctx['amount'] ?? '';
+                return [
+                    'title' => 'Payment Confirmed',
+                    'message' => "Your consultation fee of Rs. {$amount} for appointment #{$ref} is marked as paid (Ref: {$txRef}).",
+                    'link' => '/dashboard/appointments',
+                ];
+
+            case self::PAYMENT_RECEIVED:
+                $ref = $ctx['appointmentNumber'] ?? 'N/A';
+                $patient = $ctx['patientName'] ?? 'A patient';
+                $amount = $ctx['amount'] ?? '';
+                return [
+                    'title' => 'Consultation Fee Paid',
+                    'message' => "{$patient} has paid the consultation fee of Rs. {$amount} for appointment #{$ref}.",
+                    'link' => '/doctor/appointments',
+                ];
+
+            case self::PAYMENT_REFUNDED:
+                $ref = $ctx['appointmentNumber'] ?? 'N/A';
+                $amount = $ctx['amount'] ?? '';
+                return [
+                    'title' => 'Consultation Fee Refunded',
+                    'message' => "Appointment #{$ref} was cancelled/rejected. The fee of Rs. {$amount} has been marked as refunded.",
+                    'link' => '/dashboard/appointments',
+                ];
+
+            case self::NEW_FEEDBACK:
+                $patient = $ctx['patientName'] ?? 'A patient';
+                $rating = $ctx['rating'] ?? 5;
+                return [
+                    'title' => 'New Patient Review',
+                    'message' => "{$patient} left you a {$rating}-star review for their recent consultation.",
+                    'link' => '/doctor/reviews',
                 ];
 
             case self::DOCTOR_APPROVED:

@@ -81,9 +81,9 @@ class UploadService {
             throw new Exception('Failed to save uploaded image.', 500);
         }
 
-        // Generate 300x300 cropped thumbnail using GD
+        // Generate 480x480 cropped thumbnail using GD
         try {
-            $this->createCroppedThumbnail($targetImagePath, $targetThumbPath, $mime, 300, 300);
+            $this->createCroppedThumbnail($targetImagePath, $targetThumbPath, $mime, 480, 480);
         } catch (\Throwable $e) {
             // Cleanup main image if thumbnail creation fails
             @unlink($targetImagePath);
@@ -99,9 +99,45 @@ class UploadService {
     }
 
     /**
+     * Regenerate 480x480 thumbnail from an existing image path.
+     *
+     * @param string $imageRelativePath Relative path e.g. uploads/doctors/xyz.jpg
+     * @return string|null New thumbnail relative path or null on failure
+     */
+    public function regenerateThumbnailForImage(string $imageRelativePath): ?string {
+        if (str_contains($imageRelativePath, 'uploads/defaults/')) {
+            return null; // Skip default avatar
+        }
+
+        $publicDir = dirname(__DIR__, 2) . '/public';
+        $fullSource = $publicDir . '/' . ltrim($imageRelativePath, '/');
+        if (!is_file($fullSource)) {
+            return null;
+        }
+
+        $finfo = new \finfo(FILEINFO_MIME_TYPE);
+        $mime = $finfo->file($fullSource);
+        if (!array_key_exists($mime, self::ALLOWED_MIME_TYPES)) {
+            return null;
+        }
+
+        $thumbDir = $this->uploadBaseDir . '/doctors/thumbs';
+        if (!is_dir($thumbDir)) {
+            @mkdir($thumbDir, 0777, true);
+        }
+
+        $filename = basename($fullSource);
+        $targetThumbPath = $thumbDir . '/' . $filename;
+
+        $this->createCroppedThumbnail($fullSource, $targetThumbPath, $mime, 480, 480);
+
+        return 'uploads/doctors/thumbs/' . $filename;
+    }
+
+    /**
      * Create a centered square crop and resize to target dimension.
      */
-    private function createCroppedThumbnail(string $sourcePath, string $destPath, string $mime, int $targetWidth = 300, int $targetHeight = 300): void {
+    public function createCroppedThumbnail(string $sourcePath, string $destPath, string $mime, int $targetWidth = 480, int $targetHeight = 480): void {
         if (!extension_loaded('gd')) {
             throw new Exception('PHP GD extension is not enabled.');
         }

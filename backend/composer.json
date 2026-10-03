@@ -13,6 +13,9 @@
             "App\\": "src/"
         }
     },
+    "config": {
+        "process-timeout": 0
+    },
     "scripts": {
         "ws:start": "php bin/websocket.php"
     }

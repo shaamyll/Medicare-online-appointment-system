@@ -68,6 +68,8 @@ CREATE TABLE IF NOT EXISTS `appointments` (
     `end_time` TIME NOT NULL,
     `status` ENUM('pending', 'approved', 'rejected', 'completed', 'cancelled') DEFAULT 'pending',
     `reason_for_visit` TEXT NULL,
+    `rejection_reason` VARCHAR(255) NULL,
+    `reschedule_count` INT DEFAULT 0,
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (`patient_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
@@ -85,6 +87,49 @@ CREATE TABLE IF NOT EXISTS `consultation_records` (
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (`appointment_id`) REFERENCES `appointments`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `appointment_reschedules` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `appointment_id` INT NOT NULL,
+    `old_date` DATE NOT NULL,
+    `old_start_time` TIME NOT NULL,
+    `new_date` DATE NOT NULL,
+    `new_start_time` TIME NOT NULL,
+    `rescheduled_by` INT NOT NULL,
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`appointment_id`) REFERENCES `appointments`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`rescheduled_by`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    INDEX `idx_reschedule_appointment` (`appointment_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `payments` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `appointment_id` INT NOT NULL UNIQUE,
+    `amount` DECIMAL(10,2) NOT NULL,
+    `status` ENUM('unpaid', 'paid', 'refunded') DEFAULT 'unpaid',
+    `method` ENUM('upi', 'card', 'cash') NULL,
+    `transaction_ref` VARCHAR(50) NULL UNIQUE,
+    `paid_at` DATETIME NULL,
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`appointment_id`) REFERENCES `appointments`(`id`) ON DELETE CASCADE,
+    INDEX `idx_payment_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `feedback` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `appointment_id` INT NOT NULL UNIQUE,
+    `patient_id` INT NOT NULL,
+    `doctor_id` INT NOT NULL,
+    `rating` TINYINT NOT NULL,
+    `comment` VARCHAR(500) NULL,
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`appointment_id`) REFERENCES `appointments`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`patient_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`doctor_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    INDEX `idx_feedback_doctor` (`doctor_id`),
+    INDEX `idx_feedback_rating` (`rating`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `notifications` (

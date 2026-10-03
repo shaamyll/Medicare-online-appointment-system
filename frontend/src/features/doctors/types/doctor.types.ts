@@ -26,5 +26,8 @@ export interface Doctor {
   licenseNumber?: string;
   imagePath?: string | null;
   thumbnailPath?: string | null;
+  ratingAvg?: number;
+  ratingCount?: number;
+  nextAvailable?: string | null;
   schedules?: DoctorSchedule[];
 }

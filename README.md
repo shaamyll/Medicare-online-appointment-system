@@ -27,10 +27,14 @@ The application is turnkey and ready to run locally for development, evaluation,
 
 ### 👤 Patient / User Portal
 - **Authentication & Security**: Account registration, secure login with JWT sessions, token expiration handling, and clean logout.
-- **Browse Specialties & Doctors**: Real-time search by doctor name, specialization, or medical department with detailed qualification and consultation fee display.
-- **Doctor Profiles & Schedules**: View doctor credentials, biography, room number, fees, and weekly consultation availability.
-- **Slot Discovery & Booking**: Interactive booking modal fetching available slots for any chosen date while dynamically locking out conflicting appointments.
-- **Appointment Management**: View upcoming visits, appointment history, status indicators (`PENDING`, `APPROVED`, `COMPLETED`, `CANCELLED`), and self-service appointment cancellation.
+- **Redesigned Doctor Cards**: Browsing directory and landing page feature modern cards with 4:5 portraits, zoom hover effect, average rating chip, verified badges, next-available shift pill, and consultation fees.
+- **Doctor Profiles & Detailed Reviews**: View doctor credentials, biography, room number, fees, weekly consultation schedule, aggregated rating summary (1–5 star distribution), and paginated patient reviews.
+- **Slot Discovery & Booking**: Interactive booking modal fetching available slots for any chosen date while dynamically locking out conflicting appointments. Booking automatically creates an unpaid demo payment record.
+- **Appointment Management & Tabs**: Redesigned appointments view divided into **Upcoming** and **History** tabs with live badge indicators:
+  - **Status State Machine**: Displays current status badge (`PENDING`, `APPROVED`, `COMPLETED`, `REJECTED`, `CANCELLED`) with contextual patient guidance (e.g. "Waiting for doctor confirmation", "Confirmed", or "Rejected: <reason>").
+  - **Self-Service Rescheduling**: Reschedule pending or approved appointments up to 2 times, at least 2 hours before the current start time. Rescheduling an approved appointment resets status to `pending` so the doctor can re-confirm.
+  - **Demo Payment & Printable Receipt**: Secure simulated checkout (UPI, Card, Pay at Clinic) with zero real money charged; generates transaction reference (e.g. `MC-20260101-AB12CD`) and instant printable receipt.
+  - **Patient Visit Reviews**: Submit 1–5 star rating and comment for completed visits with instant recalculation of doctor score.
 - **Clinical History**: Access doctor consultation notes, diagnoses, and medical prescriptions recorded during completed appointments.
 
 ### 🩺 Doctor Clinical Portal
@@ -50,19 +54,28 @@ The application is turnkey and ready to run locally for development, evaluation,
   ```
 - **Clinical Dashboard**: Real-time overview of today's schedule, pending appointments, active patient count, and upcoming consultations.
 - **Schedule Management**: Weekly schedule builder to configure working days, shift hours (`start_time` - `end_time`), slot duration (default 30 mins), and toggle daily availability.
-- **Appointment Processing**: Review patient requests, approve appointments, mark visits as completed, or reject/cancel conflicts.
-- **Consultation Records & EMR Notes**: Record patient diagnosis, prescriptions, and clinical visit notes linked directly to the appointment.
-- **Doctor Profile Settings**: Update biography, contact phone, consultation fees, department assignment, room/office location, and upload a new profile photo (re-generates thumbnail and purges old image files). License number is displayed as read-only.
+- **Appointments Management**: Segmented by **Requests (Pending)**, **Upcoming Visits**, and **Consultation History**:
+  - **Approve / Decline Requests**: Approve with one click or decline with an optional rejection reason shared with the patient.
+  - **Doctor Reschedule**: Direct slot reschedule preserving confirmed status without reset.
+  - **Payment Tracking**: Integrated payment badges (`unpaid`, `paid`, `refunded`) visible across all rows.
+  - **Complete & Prescribe**: Electronic medical records modal to record clinical diagnosis, prescription items, and consultation advice.
+- **Patient Reviews & Ratings (`/doctor/reviews`)**: Dedicated reviews hub displaying overall rating score, 5-star distribution chart, and paginated patient feedback cards.
+- **Doctor Profile Settings**: Update biography, contact phone, consultation fees, department assignment, room/office location, and upload a new profile photo (re-generates 480x480 thumbnail and purges old image files). License number is displayed as read-only.
 
 ### 🛡️ Administrator Control Center
 - **Protected Administrative Access**: Admin accounts are pre-seeded via configuration and cannot be registered publicly via client endpoints.
-- **Real-Time Analytics & Stats**: High-level KPIs tracking total active doctors, pending doctor approval requests, registered patients, today's appointments, upcoming bookings, and active departments.
-- **Doctor Credentialing & Approval Queue**: Dedicated review inbox to examine doctor registration requests, review qualifications and departments, with single-click Approve (`active`) or Reject (`rejected`) actions.
+- **Real-Time Analytics & Financial Metrics**: High-level KPIs tracking total active doctors, pending doctor approval requests, registered patients, today's appointments, upcoming bookings, and a dedicated **Revenue & Payment Intelligence** block:
+  - Total collected consultation revenue (`paid`)
+  - Paid appointments count
+  - Unpaid invoices count
+  - Refunded transactions count
+- **Doctor Credentialing & Approval Queue**: Dedicated review inbox to examine doctor registration requests, review qualifications, department, license number, and photo, with single-click Approve (`active`) or Reject (`rejected`) actions.
 - **Doctor Directory Management**: Filter and manage doctors across all statuses (`active`, `pending`, `rejected`, `inactive`) with account status toggles.
 - **Patient Management**: Central directory of all registered patients, contact details, account status, and appointment visit history counts.
 - **Department Administration**: Full CRUD capabilities to create, edit, activate, or deactivate clinical departments and icons.
-- **Central Appointment Oversight**: Comprehensive monitoring of all hospital appointments with multi-criteria filtering by date and status.
-- **Hospital Reports & Breakdown**: Visual breakdowns of appointments categorized by status and doctors distributed across departments.
+- **Central Appointment Oversight**: Comprehensive monitoring of all hospital appointments with multi-criteria filtering by doctor, date, and status, with serial numbers, payment badges, and pagination.
+- **Feedback & Review Moderation (`/admin/feedback`)**: Full moderation interface to monitor patient reviews, filter by doctor and star rating, inspect comments, and delete abusive/inappropriate reviews with real-time recalculation of doctor rating aggregates.
+- **Hospital Reports & Breakdown**: Visual breakdowns of appointments categorized by status, payment metrics, and doctors distributed across departments.
 
 ---
 
@@ -436,15 +449,56 @@ All API endpoints are hosted by `BE/` and prefixed with `/api` (or accessed dire
 | `GET` | `/api/doctors` | Public | Browse approved doctors (filters: `departmentId`, `search`) |
 | `GET` | `/api/doctors/{id}` | Public | Detailed doctor profile including weekly schedule |
 
-### 📅 Appointments & Scheduling
+### 📅 Appointments, Status Flow & Rescheduling
+
+#### Appointment Status State Machine
+```
+              ┌───────────────┐
+              │    pending    │
+              └───────┬───────┘
+         ┌────────────┼────────────┐
+         ▼            ▼            ▼
+  ┌────────────┐┌────────────┐┌────────────┐
+  │  approved  ││  rejected  ││ cancelled  │
+  └──────┬─────┘│  (final)   ││  (final)   │
+    ┌────┴────┐ └────────────┘└────────────┘
+    ▼         ▼
+┌──────────┐┌──────────┐
+│completed ││cancelled │
+│ (final)  ││ (final)  │
+└──────────┘└──────────┘
+```
+- Server-side state machine enforced in `AppointmentService` (invalid moves return `422 Unprocessable Entity`).
+- Rejecting or doctor-cancelling stores an optional `rejection_reason` (max 255 chars) shown directly to the patient.
+- Patient reschedule on an approved appointment returns status to `pending` so the doctor re-confirms.
+- Doctor reschedule keeps current status.
+- Rescheduling is permitted at least 2 hours before the appointment and max 2 times per booking.
+
 | Method | Endpoint | Role Required | Description |
 | :--- | :--- | :--- | :--- |
 | `GET` | `/api/appointments/slots` | Public / All | Get generated 30-min slots for a doctor & date (`?doctorId=&date=`) |
 | `GET` | `/api/appointments` | Authenticated | Retrieve appointments (scoped to patient, doctor, or all for admin) |
-| `POST` | `/api/appointments` | Patient | Book a specific appointment slot |
-| `POST` | `/api/appointments/{id}/cancel` | Authenticated | Cancel an appointment (Patient, Doctor, or Admin) |
-| `PATCH`| `/api/appointments/{id}/status` | Doctor | Update appointment status (`approved`, `completed`, `cancelled`, `rejected`) |
-| `POST` | `/api/appointments/{id}/consultation` | Doctor | Save diagnosis, prescription, and consultation notes |
+| `GET` | `/api/appointments/{id}` | Authenticated | Get full appointment details, payment, feedback, and reschedule history |
+| `POST` | `/api/appointments` | Patient | Book a specific appointment slot (auto-creates unpaid payment record) |
+| `PATCH`| `/api/appointments/{id}/reschedule` | Patient / Doctor | Reschedule appointment date and slot with row locking (max 2 times, >= 2h prior) |
+| `POST` | `/api/appointments/{id}/cancel` | Authenticated | Cancel an appointment with optional reason; refunds payment if paid |
+| `PATCH`| `/api/appointments/{id}/status` | Doctor | Update status (`approved`, `completed`, `cancelled`, `rejected`) with optional reason |
+| `POST` | `/api/appointments/{id}/consultation` | Doctor | Save diagnosis, prescription, and consultation notes; marks completed |
+
+### 💳 Demo Payments & Receipts
+| Method | Endpoint | Role Required | Description |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/appointments/{id}/pay` | Owning Patient | Simulated payment checkout (`upi`, `card`, `cash`); sets paid, generates ref |
+| `GET` | `/api/appointments/{id}/receipt` | Authenticated | Retrieve printable receipt data (patient, doctor of appointment, or admin) |
+
+### ⭐ Feedback & Reviews
+| Method | Endpoint | Role Required | Description |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/appointments/{id}/feedback`| Owning Patient | Submit 1–5 star rating and comment for completed appointment (once only) |
+| `GET` | `/api/doctors/{id}/feedback` | Public | Paginated reviews & rating distribution for a doctor (privacy-masked patient name) |
+| `GET` | `/api/doctor/feedback` | Doctor | Doctor's own ratings, 1-5 star distribution, and paginated patient reviews |
+| `GET` | `/api/admin/feedback` | Admin | Moderation list of all reviews with filters (`?doctorId=&rating=&page=`) |
+| `DELETE`| `/api/admin/feedback/{id}` | Admin | Moderation removal of review; recalculates doctor average rating |
 
 ### 🩺 Doctor Workspace
 | Method | Endpoint | Role Required | Description |
@@ -453,11 +507,12 @@ All API endpoints are hosted by `BE/` and prefixed with `/api` (or accessed dire
 | `PUT` | `/api/doctor/schedule` | Doctor | Save/update weekly schedule availability |
 | `GET` | `/api/doctor/profile` | Doctor | Retrieve authenticated doctor's profile |
 | `PUT` | `/api/doctor/profile` | Doctor | Update bio, room number, fee, qualification, specialization |
+| `GET` | `/api/doctor/feedback` | Doctor | View doctor's own patient ratings and reviews |
 
 ### 🛡️ Administrator Operations
 | Method | Endpoint | Role Required | Description |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/api/admin/stats` | Admin | Aggregate dashboard counters and recent appointments |
+| `GET` | `/api/admin/stats` | Admin | Aggregate dashboard counters, recent appointments, and payment revenue |
 | `GET` | `/api/admin/doctors` | Admin | List all doctors (supports filter `?status=`) |
 | `GET` | `/api/admin/doctor-requests`| Admin | Retrieve pending doctor registrations awaiting approval |
 | `POST` | `/api/admin/doctors/{id}/approve` | Admin | Approve a pending doctor account |
@@ -466,7 +521,9 @@ All API endpoints are hosted by `BE/` and prefixed with `/api` (or accessed dire
 | `GET` | `/api/admin/doctors/{id}/delete-impact` | Admin | Return total & upcoming appointments affected by doctor deletion |
 | `DELETE`| `/api/admin/doctors/{id}` | Admin | Hard delete doctor, schedules, consultation notes, appointments, user, and avatar files |
 | `GET` | `/api/admin/patients` | Admin | List all registered patients with appointment counts |
-| `GET` | `/api/admin/reports` | Admin | Distribution analytics (appointments by status, doctors per dept) |
+| `GET` | `/api/admin/reports` | Admin | Distribution analytics (appointments by status, revenue, doctors per dept) |
+| `GET` | `/api/admin/feedback` | Admin | Moderation review list with filtering and pagination |
+| `DELETE`| `/api/admin/feedback/{id}` | Admin | Delete a patient review and recompute rating aggregates |
 
 ### 🔔 Notifications (All Authenticated Roles)
 | Method | Endpoint | Role Required | Description |
@@ -487,8 +544,13 @@ Doctor profile photos and thumbnails are processed and managed entirely on the b
 - **Native PHP Uploads**: File uploads are processed directly by native PHP business logic (`App\Services\UploadService`), **NOT** multer (which is Node.js-only).
 - **Storage Locations**:
   - Full Images: `backend/public/uploads/doctors/`
-  - Cropped Thumbnails (300x300 via GD): `backend/public/uploads/doctors/thumbs/`
+  - Cropped Thumbnails (480x480 via GD): `backend/public/uploads/doctors/thumbs/`
   - Default Avatar Placeholder: `backend/public/uploads/defaults/doctor-default.png`
+- **Thumbnail Regeneration Utility**:
+  - To regenerate high-resolution 480x480 thumbnails for existing doctor portraits (skipping defaults, idempotent), run:
+    ```bash
+    php bin/regenerate-thumbnails.php
+    ```
 - **Allowed Types & Limits**:
   - Allowed MIME types: `image/jpeg`, `image/png`, `image/webp` (validated strictly using PHP `finfo` against file contents, not just client file extensions).
   - Maximum file size: `2 MB`.
@@ -497,7 +559,7 @@ Doctor profile photos and thumbnails are processed and managed entirely on the b
   - PHP script execution is disabled inside `backend/public/uploads/.htaccess` and enforced at the router level.
   - Orphan files are automatically deleted via database transactions and cleanup routines on failure or photo update.
 - **PHP Extension Requirements**:
-  - `ext-gd`: Required for image cropping and generating 300x300 thumbnails.
+  - `ext-gd`: Required for image cropping and generating 480x480 thumbnails.
   - `ext-fileinfo`: Required for verifying actual MIME types.
   - *Enabling in XAMPP*: In `C:\xampp\php\php.ini`, ensure `extension=gd` and `extension=fileinfo` are uncommented (remove the leading semicolon `;`), then restart Apache.
 
@@ -540,7 +602,7 @@ The relational database (`medicare_appointment_db`) contains the following table
 | `qualification` | `VARCHAR(200)` | NOT NULL |
 | `license_number` | `VARCHAR(50)` | NULL, **UNIQUE**, Indexed (5–30 chars, alphanumeric + hyphens/slashes) |
 | `image_path` | `VARCHAR(255)` | NULL (Relative path to full image in `uploads/doctors/`) |
-| `thumbnail_path` | `VARCHAR(255)` | NULL (Relative path to 300x300 thumbnail in `uploads/doctors/thumbs/`) |
+| `thumbnail_path` | `VARCHAR(255)` | NULL (Relative path to 480x480 thumbnail in `uploads/doctors/thumbs/`) |
 | `experience_years`| `INT` | DEFAULT 0 |
 | `consultation_fee`| `DECIMAL(10,2)` | DEFAULT 0.00 |
 | `bio` | `TEXT` | NULL |
@@ -572,8 +634,45 @@ The relational database (`medicare_appointment_db`) contains the following table
 | `end_time` | `TIME` | NOT NULL |
 | `status` | `ENUM('pending', 'approved', 'rejected', 'completed', 'cancelled')` | DEFAULT 'pending', Indexed |
 | `reason_for_visit` | `TEXT` | NULL |
+| `rejection_reason` | `VARCHAR(255)` | NULL (Explanation provided when doctor rejects or cancels) |
+| `reschedule_count` | `INT` | DEFAULT 0 (Tracks reschedule operations, max 2 allowed) |
 | `created_at` | `DATETIME` | DEFAULT CURRENT_TIMESTAMP |
 | `updated_at` | `DATETIME` | DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP |
+
+### `appointment_reschedules`
+| Column | Type | Constraints / Description |
+| :--- | :--- | :--- |
+| `id` | `INT` | PRIMARY KEY, AUTO_INCREMENT |
+| `appointment_id` | `INT` | NOT NULL, FOREIGN KEY (`appointments.id`) ON DELETE CASCADE |
+| `old_date` | `DATE` | NOT NULL |
+| `old_start_time` | `TIME` | NOT NULL |
+| `new_date` | `DATE` | NOT NULL |
+| `new_start_time` | `TIME` | NOT NULL |
+| `rescheduled_by` | `INT` | NOT NULL, FOREIGN KEY (`users.id`) ON DELETE CASCADE |
+| `created_at` | `DATETIME` | DEFAULT CURRENT_TIMESTAMP |
+
+### `payments`
+| Column | Type | Constraints / Description |
+| :--- | :--- | :--- |
+| `id` | `INT` | PRIMARY KEY, AUTO_INCREMENT |
+| `appointment_id` | `INT` | NOT NULL, UNIQUE, FOREIGN KEY (`appointments.id`) ON DELETE CASCADE |
+| `amount` | `DECIMAL(10,2)` | NOT NULL (Snapshot of doctor fee at booking time) |
+| `status` | `ENUM('unpaid', 'paid', 'refunded')` | DEFAULT 'unpaid', Indexed |
+| `method` | `ENUM('upi', 'card', 'cash')` | NULL |
+| `transaction_ref` | `VARCHAR(100)` | NULL (e.g. `MC-20260101-AB12CD`) |
+| `paid_at` | `DATETIME` | NULL |
+| `created_at` | `DATETIME` | DEFAULT CURRENT_TIMESTAMP |
+
+### `feedback`
+| Column | Type | Constraints / Description |
+| :--- | :--- | :--- |
+| `id` | `INT` | PRIMARY KEY, AUTO_INCREMENT |
+| `appointment_id` | `INT` | NOT NULL, UNIQUE, FOREIGN KEY (`appointments.id`) ON DELETE CASCADE |
+| `patient_id` | `INT` | NOT NULL, FOREIGN KEY (`users.id`) ON DELETE CASCADE |
+| `doctor_id` | `INT` | NOT NULL, FOREIGN KEY (`users.id`) ON DELETE CASCADE |
+| `rating` | `TINYINT` | NOT NULL (Rating between 1 and 5) |
+| `comment` | `VARCHAR(500)` | NULL |
+| `created_at` | `DATETIME` | DEFAULT CURRENT_TIMESTAMP |
 
 ### `consultation_records`
 | Column | Type | Constraints / Description |
@@ -667,7 +766,7 @@ The WebSocket server runs as an independent daemon process alongside Apache and 
 To ensure high performance, security, and a focused clinical appointment lifecycle, the following features are **intentionally out of scope**:
 
 - ❌ Pharmacy and physical medication inventory management.
-- ❌ Payment gateway integration (Stripe, PayPal) and billing/invoicing automation.
+- ❌ Payment gateway integration: Only a demo payment (no gateway, no real money charged, zero credit card storage) exists for simulated clinical billing and receipt generation.
 - ❌ Full Hospital EMR / inpatient bed management.
 - ❌ Nurse, ward staff, or lab technician workflows.
 - ❌ Real-time WebRTC audio/video calling.

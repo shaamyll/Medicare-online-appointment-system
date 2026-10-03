@@ -60,6 +60,39 @@ export function getNotificationMeta(type: string): NotificationMeta {
         defaultLink: '/dashboard/appointments',
       };
 
+    case 'appointment_rescheduled':
+      return {
+        icon: CalendarClock,
+        iconColor: 'text-indigo-600',
+        iconBg: 'bg-indigo-50 border-indigo-100',
+        defaultLink: '/dashboard/appointments',
+      };
+
+    case 'payment_confirmed':
+    case 'payment_received':
+      return {
+        icon: CheckCircle2,
+        iconColor: 'text-emerald-600',
+        iconBg: 'bg-emerald-50 border-emerald-100',
+        defaultLink: '/dashboard/appointments',
+      };
+
+    case 'payment_refunded':
+      return {
+        icon: AlertTriangle,
+        iconColor: 'text-amber-600',
+        iconBg: 'bg-amber-50 border-amber-100',
+        defaultLink: '/dashboard/appointments',
+      };
+
+    case 'new_feedback':
+      return {
+        icon: Bell,
+        iconColor: 'text-amber-500',
+        iconBg: 'bg-amber-50 border-amber-100',
+        defaultLink: '/doctor/reviews',
+      };
+
     case 'new_appointment_request':
       return {
         icon: CalendarPlus,

@@ -13,6 +13,7 @@ import {
   X,
   Activity,
   Bell,
+  Star,
 } from 'lucide-react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { Avatar } from '@/components/ui/Avatar';
@@ -34,6 +35,7 @@ export const DoctorLayout: React.FC = () => {
   const navItems = [
     { label: 'Dashboard', href: '/doctor/dashboard', icon: LayoutDashboard },
     { label: 'Appointments', href: '/doctor/appointments', icon: Calendar },
+    { label: 'Reviews', href: '/doctor/reviews', icon: Star },
     { label: 'Schedule', href: '/doctor/schedule', icon: Clock },
     { label: 'Patients', href: '/doctor/patients', icon: Users },
     { label: 'Notifications', href: '/doctor/notifications', icon: Bell, badge: unreadCount },

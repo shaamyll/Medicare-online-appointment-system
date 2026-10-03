@@ -32,10 +32,17 @@ class DoctorRepository {
                 dp.bio,
                 dp.room_number AS roomNumber,
                 d.id AS department_id,
-                d.name AS department_name
+                d.name AS department_name,
+                COALESCE(fb.rating_avg, 0.0) AS rating_avg,
+                COALESCE(fb.rating_count, 0) AS rating_count
             FROM users u
             JOIN doctor_profiles dp ON dp.user_id = u.id
             LEFT JOIN departments d ON d.id = dp.department_id
+            LEFT JOIN (
+                SELECT doctor_id, ROUND(AVG(rating), 1) AS rating_avg, COUNT(*) AS rating_count 
+                FROM feedback 
+                GROUP BY doctor_id
+            ) fb ON fb.doctor_id = u.id
             WHERE u.role = 'doctor' AND u.status = 'active'
         ";
         $params = [];
@@ -59,7 +66,24 @@ class DoctorRepository {
         $stmt->execute($params);
         $rows = $stmt->fetchAll();
 
-        return array_map([$this, 'formatDoctorRow'], $rows);
+        // Fetch all active schedules in one query for efficient next_available calculation (no N+1)
+        $schedRows = $this->db->query("
+            SELECT doctor_id, day_of_week, start_time, end_time 
+            FROM doctor_schedules 
+            WHERE is_available = 1
+        ")->fetchAll();
+
+        $schedMap = [];
+        foreach ($schedRows as $s) {
+            $schedMap[$s['doctor_id']][] = $s;
+        }
+
+        return array_map(function ($row) use ($schedMap) {
+            $formatted = $this->formatDoctorRow($row);
+            $docSchedules = $schedMap[$row['user_id']] ?? [];
+            $formatted['nextAvailable'] = $this->computeNextAvailable($docSchedules);
+            return $formatted;
+        }, $rows);
     }
 
     public function findById(int $userId): ?array {
@@ -82,10 +106,17 @@ class DoctorRepository {
                 dp.bio,
                 dp.room_number AS roomNumber,
                 d.id AS department_id,
-                d.name AS department_name
+                d.name AS department_name,
+                COALESCE(fb.rating_avg, 0.0) AS rating_avg,
+                COALESCE(fb.rating_count, 0) AS rating_count
             FROM users u
             JOIN doctor_profiles dp ON dp.user_id = u.id
             LEFT JOIN departments d ON d.id = dp.department_id
+            LEFT JOIN (
+                SELECT doctor_id, ROUND(AVG(rating), 1) AS rating_avg, COUNT(*) AS rating_count 
+                FROM feedback 
+                GROUP BY doctor_id
+            ) fb ON fb.doctor_id = u.id
             WHERE u.role = 'doctor' AND u.id = ?
             LIMIT 1
         ";
@@ -98,8 +129,47 @@ class DoctorRepository {
         }
 
         $doctor = $this->formatDoctorRow($row);
-        $doctor['schedules'] = $this->getSchedules($userId);
+        $schedules = $this->getSchedules($userId);
+        $doctor['schedules'] = $schedules;
+        $doctor['nextAvailable'] = $this->computeNextAvailable($schedules);
         return $doctor;
+    }
+
+    /**
+     * Efficiently derive next available slot/day from weekly schedule
+     */
+    private function computeNextAvailable(array $schedules): ?string {
+        if (empty($schedules)) {
+            return null;
+        }
+
+        $now = new \DateTime();
+        $currentTime = $now->format('H:i:s');
+
+        for ($dayOffset = 0; $dayOffset < 7; $dayOffset++) {
+            $checkDate = (clone $now)->modify("+{$dayOffset} days");
+            $dayName = $checkDate->format('l');
+
+            foreach ($schedules as $sched) {
+                $schedDay = $sched['day_of_week'] ?? $sched['dayOfWeek'] ?? '';
+                $isAvail = isset($sched['is_available']) ? (bool)$sched['is_available'] : (isset($sched['isAvailable']) ? (bool)$sched['isAvailable'] : true);
+
+                if (strcasecmp($schedDay, $dayName) === 0 && $isAvail) {
+                    $endTime = $sched['end_time'] ?? $sched['endTime'] ?? '23:59:59';
+                    if (strlen($endTime) === 5) $endTime .= ':00';
+
+                    if ($dayOffset === 0) {
+                        if ($currentTime < $endTime) {
+                            return 'Today';
+                        }
+                    } else {
+                        return $checkDate->format('D, j M'); // e.g. "Mon, 12 Jan"
+                    }
+                }
+            }
+        }
+
+        return null;
     }
 
     public function getSchedules(int $doctorUserId): array {
@@ -233,6 +303,8 @@ class DoctorRepository {
             'consultationFee' => (float)$row['consultationFee'],
             'bio' => $row['bio'],
             'roomNumber' => $row['roomNumber'],
+            'ratingAvg' => (float)($row['rating_avg'] ?? 0),
+            'ratingCount' => (int)($row['rating_count'] ?? 0),
             'user' => [
                 'id' => (int)$row['user_id'],
                 'name' => $row['name'],

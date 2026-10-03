@@ -17,6 +17,7 @@ class AppointmentController {
         $user = $request->getUser();
         $status = $request->getQuery('status');
         $date = $request->getQuery('date');
+        $doctorId = $request->getQuery('doctorId') ? (int)$request->getQuery('doctorId') : null;
 
         try {
             if ($user['role'] === 'patient') {
@@ -24,7 +25,7 @@ class AppointmentController {
             } elseif ($user['role'] === 'doctor') {
                 $appointments = $this->service->getDoctorAppointments($user['id'], $status);
             } else { // admin
-                $appointments = $this->service->getAllAppointments($status, $date);
+                $appointments = $this->service->getAllAppointments($status, $date, $doctorId);
             }
             Response::success($appointments);
         } catch (Exception $e) {
@@ -62,13 +63,59 @@ class AppointmentController {
         }
     }
 
+    public function show(Request $request): void {
+        $id = (int)$request->getRouteParam('id');
+        $user = $request->getUser();
+
+        try {
+            $apt = $this->service->getAppointmentById($id);
+            if (!$apt) {
+                Response::error('Appointment not found.', 404);
+                return;
+            }
+            if ($user['role'] === 'patient' && $apt['patient']['id'] !== $user['id']) {
+                Response::error('Unauthorized.', 403);
+                return;
+            }
+            if ($user['role'] === 'doctor' && $apt['doctor']['id'] !== $user['id']) {
+                Response::error('Unauthorized.', 403);
+                return;
+            }
+            Response::success($apt);
+        } catch (Exception $e) {
+            $code = $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 400;
+            Response::error($e->getMessage(), $code);
+        }
+    }
+
     public function cancel(Request $request): void {
         $user = $request->getUser();
         $id = (int)$request->getRouteParam('id');
+        $reason = $request->get('reason');
 
         try {
-            $appointment = $this->service->cancelAppointment($id, $user);
+            $appointment = $this->service->cancelAppointment($id, $user, $reason);
             Response::success($appointment, 'Appointment cancelled successfully');
+        } catch (Exception $e) {
+            $code = $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 400;
+            Response::error($e->getMessage(), $code);
+        }
+    }
+
+    public function reschedule(Request $request): void {
+        $user = $request->getUser();
+        $id = (int)$request->getRouteParam('id');
+        $date = $request->get('date') ?? $request->get('appointmentDate');
+        $startTime = $request->get('startTime');
+
+        if (!$date || !$startTime) {
+            Response::error('Date and startTime are required to reschedule.', 400);
+            return;
+        }
+
+        try {
+            $appointment = $this->service->rescheduleAppointment($id, $date, $startTime, $user);
+            Response::success($appointment, 'Appointment rescheduled successfully');
         } catch (Exception $e) {
             $code = $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 400;
             Response::error($e->getMessage(), $code);

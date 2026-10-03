@@ -3,15 +3,18 @@ import { Doctor } from '../types/doctor.types';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { Avatar } from '@/components/ui/Avatar';
 import { getImageUrl } from '@/lib/utils';
+import { useDoctorFeedback } from '@/features/feedback/hooks/useFeedback';
+import { RatingSummary } from '@/features/feedback/components/RatingSummary';
+import { ReviewCard } from '@/features/feedback/components/ReviewCard';
 import {
   Calendar,
   Award,
   Clock,
-  DollarSign,
   ShieldCheck,
-  MapPin,
+  DoorOpen,
+  MessageSquare,
+  Sparkles,
 } from 'lucide-react';
 
 interface DoctorDetailsModalProps {
@@ -29,85 +32,111 @@ export const DoctorDetailsModal: React.FC<DoctorDetailsModalProps> = ({
 }) => {
   if (!doctor) return null;
 
-  const fullImageUrl = doctor.imagePath ? getImageUrl(doctor.imagePath) : undefined;
+  const rawPhoto = doctor.thumbnailPath || doctor.imagePath;
+  const fullImageUrl = rawPhoto ? getImageUrl(rawPhoto) : undefined;
+  const { data: feedbackData } = useDoctorFeedback(doctor.id, 1, 5);
+
+  const initials = doctor.user?.name
+    ? doctor.user.name
+        .split(' ')
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((n) => n[0].toUpperCase())
+        .join('')
+    : 'DR';
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} maxWidth="lg" title="Doctor Profile & Credentials">
-      <div className="space-y-6 pt-2">
+    <Modal isOpen={isOpen} onClose={onClose} maxWidth="xl" title="Doctor Profile & Reviews">
+      <div className="space-y-6 pt-2 max-h-[75vh] overflow-y-auto px-1">
         {/* Top Header Card */}
-        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 p-4 rounded-2xl bg-gradient-to-br from-emerald-50/70 via-teal-50/40 to-slate-50 border border-emerald-100/80">
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 p-6 rounded-2xl bg-gradient-to-br from-emerald-50/70 via-teal-50/40 to-slate-50 border border-emerald-100/80 shadow-2xs">
           <div className="relative shrink-0">
             {fullImageUrl ? (
               <img
                 src={fullImageUrl}
                 alt={doctor.user.name}
-                className="w-28 h-28 sm:w-32 sm:h-32 rounded-2xl object-cover border-2 border-white shadow-md"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).style.display = 'none';
-                }}
+                className="w-28 h-36 sm:w-32 sm:h-40 rounded-2xl object-cover object-top border-2 border-white shadow-md"
               />
             ) : (
-              <Avatar
-                src={doctor.thumbnailPath}
-                name={doctor.user.name}
-                size="xl"
-                className="border-2 border-white shadow-md text-2xl"
-              />
+              <div className="w-28 h-36 sm:w-32 sm:h-40 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-700 text-white flex flex-col items-center justify-center font-black text-3xl shadow-md border-2 border-white">
+                {initials}
+              </div>
             )}
-            <div className="absolute -bottom-2 -right-2 bg-emerald-600 text-white p-1 rounded-full shadow">
+            <div className="absolute -bottom-2 -right-2 bg-emerald-600 text-white p-1.5 rounded-full shadow-md">
               <ShieldCheck className="w-4 h-4" />
             </div>
           </div>
 
-          <div className="text-center sm:text-left flex-1">
-            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-1">
-              <h2 className="text-xl font-bold text-slate-900">{doctor.user.name}</h2>
+          <div className="text-center sm:text-left flex-1 space-y-2">
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+              <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                {doctor.user.name}
+              </h2>
               <Badge variant="success">Verified Physician</Badge>
             </div>
-            <p className="text-sm font-semibold text-emerald-700">{doctor.specialization}</p>
-            <p className="text-xs text-slate-500 mt-0.5">{doctor.department?.name || 'General Clinical Department'}</p>
+
+            <p className="text-sm font-bold text-emerald-700">{doctor.specialization}</p>
+            <p className="text-xs text-slate-500 font-medium">
+              Department of {doctor.department?.name || 'General Clinical Medicine'}
+            </p>
 
             {doctor.licenseNumber && (
-              <div className="mt-2.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-50 border border-blue-200 text-blue-800 text-xs font-mono font-medium">
-                <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white border border-slate-200 text-slate-700 text-xs font-mono font-semibold shadow-2xs">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                 <span>Lic: {doctor.licenseNumber}</span>
               </div>
             )}
+
+            <div className="pt-2 flex flex-wrap items-center justify-center sm:justify-start gap-3">
+              <Button
+                variant="primary"
+                onClick={() => {
+                  onClose();
+                  onBookAppointment(doctor.id);
+                }}
+                className="flex items-center gap-2 shadow-xs"
+              >
+                <Calendar className="w-4 h-4" />
+                <span>Book Appointment</span>
+              </Button>
+            </div>
           </div>
         </div>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-center">
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 text-center">
             <Award className="w-4 h-4 text-emerald-600 mx-auto mb-1" />
-            <p className="text-slate-400 text-[11px]">Qualification</p>
-            <p className="font-semibold text-slate-800 mt-0.5">{doctor.qualification || 'MD / MBBS'}</p>
+            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Qualification</p>
+            <p className="font-bold text-slate-800 mt-0.5 truncate">{doctor.qualification || 'MD / MBBS'}</p>
           </div>
 
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-center">
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 text-center">
             <Clock className="w-4 h-4 text-sky-600 mx-auto mb-1" />
-            <p className="text-slate-400 text-[11px]">Clinical Exp.</p>
-            <p className="font-semibold text-slate-800 mt-0.5">{doctor.experienceYears} Years</p>
+            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Experience</p>
+            <p className="font-bold text-slate-800 mt-0.5">{doctor.experienceYears} Years</p>
           </div>
 
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-center">
-            <DollarSign className="w-4 h-4 text-amber-600 mx-auto mb-1" />
-            <p className="text-slate-400 text-[11px]">Consultation Fee</p>
-            <p className="font-bold text-emerald-700 mt-0.5">${doctor.consultationFee?.toFixed(2)}</p>
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 text-center">
+            <Sparkles className="w-4 h-4 text-amber-600 mx-auto mb-1" />
+            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Consultation Fee</p>
+            <p className="font-black text-emerald-700 mt-0.5 text-sm">
+              Rs. {Number(doctor.consultationFee || 0).toFixed(0)}
+            </p>
           </div>
 
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-center">
-            <MapPin className="w-4 h-4 text-purple-600 mx-auto mb-1" />
-            <p className="text-slate-400 text-[11px]">Room / Clinic</p>
-            <p className="font-semibold text-slate-800 mt-0.5">{doctor.roomNumber || 'Room 101'}</p>
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 text-center">
+            <DoorOpen className="w-4 h-4 text-indigo-600 mx-auto mb-1" />
+            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Room</p>
+            <p className="font-bold text-slate-800 mt-0.5 truncate">{doctor.roomNumber || 'Room 101'}</p>
           </div>
         </div>
 
         {/* Bio */}
         {doctor.bio && (
           <div className="space-y-1.5">
-            <h4 className="text-xs font-semibold text-slate-700 uppercase tracking-wider">About Doctor</h4>
-            <p className="text-xs text-slate-600 leading-relaxed bg-slate-50/60 p-3 rounded-xl border border-slate-100">
+            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">About Physician</h4>
+            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed bg-slate-50/70 p-4 rounded-xl border border-slate-100">
               {doctor.bio}
             </p>
           </div>
@@ -116,14 +145,14 @@ export const DoctorDetailsModal: React.FC<DoctorDetailsModalProps> = ({
         {/* Weekly Availability Schedule */}
         {doctor.schedules && doctor.schedules.length > 0 && (
           <div className="space-y-2">
-            <h4 className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Weekly Schedule</h4>
+            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Weekly Schedule & Shifts</h4>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {doctor.schedules
                 .filter((s) => s.isAvailable)
                 .map((schedule, idx) => (
-                  <div key={idx} className="p-2.5 rounded-lg border border-slate-200/80 bg-white text-xs">
+                  <div key={idx} className="p-3 rounded-xl border border-slate-200/80 bg-white text-xs">
                     <p className="font-bold text-slate-800 capitalize">{schedule.dayOfWeek}</p>
-                    <p className="text-[11px] text-emerald-700 font-medium mt-0.5">
+                    <p className="text-[11px] text-emerald-700 font-semibold mt-0.5">
                       {schedule.startTime} - {schedule.endTime}
                     </p>
                   </div>
@@ -132,21 +161,58 @@ export const DoctorDetailsModal: React.FC<DoctorDetailsModalProps> = ({
           </div>
         )}
 
+        {/* Reviews Section */}
+        <div className="space-y-4 pt-2">
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+              <MessageSquare className="w-4 h-4 text-amber-500" />
+              Patient Reviews & Ratings
+            </h4>
+            <span className="text-xs text-slate-500">
+              {feedbackData?.total ?? doctor.ratingCount ?? 0} total reviews
+            </span>
+          </div>
+
+          <RatingSummary
+            ratingAvg={feedbackData?.ratingAvg ?? doctor.ratingAvg ?? 0}
+            ratingCount={feedbackData?.ratingCount ?? doctor.ratingCount ?? 0}
+            distribution={feedbackData?.distribution}
+          />
+
+          {feedbackData && feedbackData.items.length > 0 ? (
+            <div className="space-y-3">
+              {feedbackData.items.map((rev) => (
+                <ReviewCard
+                  key={rev.id}
+                  patientName={rev.patientName || 'Verified Patient'}
+                  rating={rev.rating}
+                  comment={rev.comment}
+                  createdAt={rev.createdAt}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-400 italic text-center py-4 bg-slate-50 rounded-xl">
+              No written reviews submitted for Dr. {doctor.user.name} yet.
+            </p>
+          )}
+        </div>
+
         {/* Modal Actions */}
         <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
-          <Button variant="outline" size="sm" onClick={onClose}>
+          <Button variant="outline" onClick={onClose}>
             Close
           </Button>
           <Button
-            size="sm"
+            variant="primary"
             onClick={() => {
               onClose();
               onBookAppointment(doctor.id);
             }}
-            leftIcon={<Calendar className="w-4 h-4" />}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            className="flex items-center gap-1.5"
           >
-            Book Appointment
+            <Calendar className="w-4 h-4" />
+            <span>Book Appointment</span>
           </Button>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowRight,
@@ -11,13 +11,16 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { Avatar } from '@/components/ui/Avatar';
 import { Navbar } from '@/components/layout/Navbar';
+import { DoctorCard } from '@/features/doctors/components/DoctorCard';
+import { DoctorDetailsModal } from '@/features/doctors/components/DoctorDetailsModal';
+import { Doctor } from '@/features/doctors/types/doctor.types';
 import { useDepartments } from '@/features/departments/hooks/useDepartments';
 import { useDoctors } from '@/features/doctors/hooks/useDoctors';
 
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
+  const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const { data: departments } = useDepartments();
   const { data: doctors } = useDoctors();
 
@@ -151,44 +154,27 @@ export const LandingPage: React.FC = () => {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {doctors.slice(0, 3).map((doctor) => (
-                <Card key={doctor.id} hover className="border-slate-200 flex flex-col justify-between">
-                  <div className="p-6">
-                    <div className="flex items-center gap-4 mb-4">
-                      <Avatar
-                        src={doctor.thumbnailPath || doctor.imagePath}
-                        name={doctor.user.name}
-                        size="lg"
-                        className="border border-slate-200/80 shadow-xs shrink-0"
-                      />
-                      <div>
-                        <h3 className="text-base font-bold text-slate-900">{doctor.user.name}</h3>
-                        <p className="text-xs text-emerald-700 font-semibold">{doctor.specialization}</p>
-                        <p className="text-[11px] text-slate-400">{doctor.department?.name || 'General Clinic'}</p>
-                      </div>
-                    </div>
-                    {doctor.bio && (
-                      <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
-                        {doctor.bio}
-                      </p>
-                    )}
-                  </div>
-                  <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between rounded-b-xl">
-                    <span className="text-xs font-bold text-emerald-700">
-                      ${doctor.consultationFee?.toFixed(2)} / visit
-                    </span>
-                    <Button
-                      size="sm"
-                      onClick={() => navigate('/login?tab=register')}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs"
-                    >
-                      Book Visit
-                    </Button>
-                  </div>
-                </Card>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {doctors.slice(0, 4).map((doctor) => (
+                <DoctorCard
+                  key={doctor.id}
+                  doctor={doctor}
+                  onBook={() => navigate('/login?tab=register')}
+                  onViewProfile={(doc) => setSelectedDoctor(doc)}
+                />
               ))}
             </div>
+
+            {/* Doctor Details Modal showing all information */}
+            <DoctorDetailsModal
+              isOpen={selectedDoctor !== null}
+              onClose={() => setSelectedDoctor(null)}
+              doctor={selectedDoctor}
+              onBookAppointment={() => {
+                setSelectedDoctor(null);
+                navigate('/login?tab=register');
+              }}
+            />
           </div>
         </section>
       )}

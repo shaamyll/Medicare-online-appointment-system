@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   ArrowRight,
   AlertTriangle,
+  CreditCard,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -140,6 +141,66 @@ export const AdminDashboardPage: React.FC = () => {
           </div>
           <p className="text-xs text-slate-500 mt-3 font-medium">Future confirmed shifts</p>
         </Card>
+      </div>
+
+      {/* Revenue & Payment Intelligence (Demo Gateway) */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
+              <CreditCard className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-slate-900">Hospital Consultation Revenue & Payments</h2>
+              <p className="text-xs text-slate-500">Real-time settlement status of consultation fees and patient transactions</p>
+            </div>
+          </div>
+          <span className="text-[11px] font-semibold text-slate-400 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200">
+            Demo Payment Tracking
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="p-4 rounded-xl bg-emerald-50/70 border border-emerald-100">
+            <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider block">
+              Total Revenue (Collected)
+            </span>
+            <div className="text-2xl font-black text-emerald-950 mt-1">
+              Rs. {Number(stats?.payment?.totalRevenue ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+            <p className="text-[11px] text-emerald-700 mt-1 font-medium">Across all paid visits</p>
+          </div>
+
+          <div className="p-4 rounded-xl bg-white border border-slate-200">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+              Paid Appointments
+            </span>
+            <div className="text-2xl font-black text-emerald-600 mt-1">
+              {stats?.payment?.paidCount ?? 0}
+            </div>
+            <p className="text-[11px] text-slate-500 mt-1 font-medium">Fully settled fees</p>
+          </div>
+
+          <div className="p-4 rounded-xl bg-white border border-slate-200">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+              Unpaid Invoices
+            </span>
+            <div className="text-2xl font-black text-amber-600 mt-1">
+              {stats?.payment?.unpaidCount ?? 0}
+            </div>
+            <p className="text-[11px] text-slate-500 mt-1 font-medium">Pending clinic settlement</p>
+          </div>
+
+          <div className="p-4 rounded-xl bg-white border border-slate-200">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+              Refunded Amounts
+            </span>
+            <div className="text-2xl font-black text-slate-700 mt-1">
+              {stats?.payment?.refundedCount ?? 0}
+            </div>
+            <p className="text-[11px] text-slate-500 mt-1 font-medium">Cancelled/rejected visits</p>
+          </div>
+        </div>
       </div>
 
       {/* Quick Navigation Panels */}
