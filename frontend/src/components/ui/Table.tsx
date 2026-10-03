@@ -145,8 +145,9 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
           disabled={page <= 1}
           className="h-8 px-2.5"
           aria-label="Previous Page"
+          leftIcon={<ChevronLeft className="h-4 w-4" />}
         >
-          <ChevronLeft className="h-4 w-4" />
+          
           <span className="hidden sm:inline">Previous</span>
         </Button>
 
@@ -188,9 +189,10 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
           disabled={page >= totalPages}
           className="h-8 px-2.5"
           aria-label="Next Page"
+          rightIcon={<ChevronRight className="h-4 w-4" />}
         >
           <span className="hidden sm:inline">Next</span>
-          <ChevronRight className="h-4 w-4" />
+          
         </Button>
       </div>
     </div>

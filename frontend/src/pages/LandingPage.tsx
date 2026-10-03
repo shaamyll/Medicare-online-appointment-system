@@ -159,7 +159,9 @@ export const LandingPage: React.FC = () => {
                 <DoctorCard
                   key={doctor.id}
                   doctor={doctor}
-                  onBook={() => navigate('/login?tab=register')}
+                  onBook={(docId) =>
+                    navigate(`/login?redirect=${encodeURIComponent(`/dashboard/doctors?bookDoctor=${docId}`)}`)
+                  }
                   onViewProfile={(doc) => setSelectedDoctor(doc)}
                 />
               ))}
@@ -170,9 +172,9 @@ export const LandingPage: React.FC = () => {
               isOpen={selectedDoctor !== null}
               onClose={() => setSelectedDoctor(null)}
               doctor={selectedDoctor}
-              onBookAppointment={() => {
+              onBookAppointment={(docId) => {
                 setSelectedDoctor(null);
-                navigate('/login?tab=register');
+                navigate(`/login?redirect=${encodeURIComponent(`/dashboard/doctors?bookDoctor=${docId}`)}`);
               }}
             />
           </div>

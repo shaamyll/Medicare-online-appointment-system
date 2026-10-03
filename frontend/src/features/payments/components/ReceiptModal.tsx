@@ -2,7 +2,7 @@ import React from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { useReceipt } from '../hooks/usePayments';
-import { Printer, CheckCircle2, ShieldCheck, HeartPulse, Building2, Calendar, Clock, User, Phone, Mail } from 'lucide-react';
+import { Printer, CheckCircle2, ShieldCheck, HeartPulse, Calendar, Clock, Hash } from 'lucide-react';
 
 export interface ReceiptModalProps {
   isOpen: boolean;
@@ -26,7 +26,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Consultation Receipt & Bill"
-      maxWidth="lg"
+      maxWidth="4xl"
     >
       {isLoading ? (
         <div className="py-12 text-center text-slate-400 text-xs">
@@ -37,161 +37,157 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
           Unable to generate receipt. Please try again later.
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Printable Receipt Container */}
           <div
             id="printable-receipt"
-            className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-2xs font-sans text-slate-800 print:border-none print:shadow-none print:p-0"
+            className="bg-white rounded-xl border border-slate-200 font-sans text-slate-800 print:border-none print:rounded-none"
           >
-            {/* Clinic Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 pb-5 gap-4">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 py-5 border-b border-slate-100">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shrink-0 shadow-xs">
-                  <HeartPulse className="w-6 h-6" />
+                <div className="w-10 h-10 rounded-lg bg-slate-900 text-white flex items-center justify-center shrink-0">
+                  <HeartPulse className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-black text-slate-900 tracking-tight">
+                  <h2 className="text-base font-semibold text-slate-900 tracking-tight leading-tight">
                     {receiptData.clinic.name}
                   </h2>
-                  <p className="text-xs text-emerald-700 font-semibold">
-                    {receiptData.clinic.tagline}
-                  </p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    {receiptData.clinic.address} &bull; {receiptData.clinic.phone}
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    {receiptData.clinic.tagline} &bull; {receiptData.clinic.address} &bull; {receiptData.clinic.phone}
                   </p>
                 </div>
               </div>
 
-              <div className="text-left sm:text-right">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase tracking-wider">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
+              <div className="flex items-center gap-4 sm:text-right">
+                <div>
+                  <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
+                    Reference
+                  </p>
+                  <p className="text-xs font-mono font-semibold text-slate-800">
+                    {receiptData.receipt.transactionRef}
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    {receiptData.receipt.paidAt ? new Date(receiptData.receipt.paidAt).toLocaleString() : 'N/A'}
+                  </p>
+                </div>
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-semibold bg-slate-100 text-slate-700 uppercase tracking-wider whitespace-nowrap">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                   Official Receipt
                 </span>
-                <p className="text-xs font-mono font-bold text-slate-700 mt-1.5">
-                  Ref: {receiptData.receipt.transactionRef}
-                </p>
-                <p className="text-[11px] text-slate-400">
-                  Issued: {receiptData.receipt.paidAt ? new Date(receiptData.receipt.paidAt).toLocaleString() : 'N/A'}
-                </p>
               </div>
             </div>
 
-            {/* Patient & Doctor Two-Column Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 py-5 border-b border-slate-200 text-xs">
-              {/* Patient Info */}
-              <div className="bg-slate-50/60 p-4 rounded-xl border border-slate-100">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
-                  Billed To (Patient)
-                </span>
-                <h4 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
-                  <User className="w-3.5 h-3.5 text-slate-400" />
-                  {receiptData.patient.name}
-                </h4>
-                <div className="mt-1.5 space-y-0.5 text-slate-600">
-                  <p className="flex items-center gap-1.5">
-                    <Mail className="w-3 h-3 text-slate-400" />
-                    {receiptData.patient.email}
+            {/* Body: details (left) + charges (right) */}
+            <div className="grid grid-cols-1 md:grid-cols-12">
+              {/* Details column */}
+              <div className="md:col-span-5 px-6 py-5 space-y-5 border-b md:border-b-0 md:border-r border-slate-100 text-xs">
+                <div>
+                  <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1.5">
+                    Billed To
                   </p>
+                  <p className="text-sm font-semibold text-slate-900">
+                    {receiptData.patient.name}
+                  </p>
+                  <p className="text-slate-500 mt-0.5 break-all">{receiptData.patient.email}</p>
                   {receiptData.patient.phone && (
-                    <p className="flex items-center gap-1.5">
-                      <Phone className="w-3 h-3 text-slate-400" />
-                      {receiptData.patient.phone}
-                    </p>
+                    <p className="text-slate-500">{receiptData.patient.phone}</p>
                   )}
                 </div>
+
+                <div>
+                  <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1.5">
+                    Consulting Physician
+                  </p>
+                  <p className="text-sm font-semibold text-slate-900">
+                    Dr. {receiptData.doctor.name}
+                  </p>
+                  <p className="text-slate-500 mt-0.5">
+                    {receiptData.doctor.specialization} &bull; {receiptData.doctor.department}
+                  </p>
+                </div>
+
+                <div className="space-y-1.5 pt-4 border-t border-slate-100">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="flex items-center gap-1.5 text-slate-500">
+                      <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                      Date
+                    </span>
+                    <span className="font-medium text-slate-900">
+                      {receiptData.appointment.appointmentDate}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="flex items-center gap-1.5 text-slate-500">
+                      <Clock className="w-3.5 h-3.5 text-slate-400" />
+                      Time Slot
+                    </span>
+                    <span className="font-medium text-slate-900">
+                      {receiptData.appointment.startTime} - {receiptData.appointment.endTime}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="flex items-center gap-1.5 text-slate-500">
+                      <Hash className="w-3.5 h-3.5 text-slate-400" />
+                      Appointment
+                    </span>
+                    <span className="font-mono font-medium text-slate-900">
+                      {receiptData.appointment.appointmentNumber}
+                    </span>
+                  </div>
+                </div>
               </div>
 
-              {/* Doctor Info */}
-              <div className="bg-slate-50/60 p-4 rounded-xl border border-slate-100">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
-                  Consulting Physician
-                </span>
-                <h4 className="text-sm font-bold text-slate-900">
-                  Dr. {receiptData.doctor.name}
-                </h4>
-                <div className="mt-1.5 space-y-0.5 text-slate-600">
-                  <p className="text-emerald-700 font-semibold">
-                    {receiptData.doctor.specialization}
-                  </p>
-                  <p className="flex items-center gap-1.5">
-                    <Building2 className="w-3 h-3 text-slate-400" />
-                    Department of {receiptData.doctor.department}
-                  </p>
+              {/* Charges column */}
+              <div className="md:col-span-7 px-6 py-5 flex flex-col">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-slate-400 text-left font-medium uppercase tracking-wider text-[10px]">
+                      <th className="pb-2">Description</th>
+                      <th className="pb-2 text-center">Method</th>
+                      <th className="pb-2 text-center">Status</th>
+                      <th className="pb-2 text-right">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="py-3 pr-3 font-medium text-slate-900">
+                        General Clinical Consultation & Assessment
+                        <span className="block text-[11px] font-normal text-slate-500 mt-0.5">
+                          Physician evaluation, diagnosis review, and treatment prescription
+                        </span>
+                      </td>
+                      <td className="py-3 text-center uppercase font-medium text-slate-600">
+                        {receiptData.receipt.method}
+                      </td>
+                      <td className="py-3 text-center">
+                        <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-50 text-emerald-700">
+                          {receiptData.receipt.status}
+                        </span>
+                      </td>
+                      <td className="py-3 text-right font-semibold text-slate-900">
+                        Rs. {receiptData.receipt.amount.toFixed(2)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                {/* Total */}
+                <div className="mt-auto pt-4">
+                  <div className="flex items-center justify-between rounded-lg bg-slate-50 px-4 py-3">
+                    <span className="text-sm font-medium text-slate-600">Total Paid</span>
+                    <span className="text-lg font-semibold text-slate-900 tracking-tight">
+                      Rs. {receiptData.receipt.amount.toFixed(2)}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Appointment Schedule Details */}
-            <div className="py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4 text-xs">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-emerald-600" />
-                <span className="font-semibold text-slate-700">Date:</span>
-                <span className="font-bold text-slate-900">{receiptData.appointment.appointmentDate}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-emerald-600" />
-                <span className="font-semibold text-slate-700">Time Slot:</span>
-                <span className="font-bold text-slate-900">
-                  {receiptData.appointment.startTime} - {receiptData.appointment.endTime}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-slate-700">Appointment #:</span>
-                <span className="font-mono font-bold text-slate-900">
-                  {receiptData.appointment.appointmentNumber}
-                </span>
-              </div>
-            </div>
-
-            {/* Line Item Table */}
-            <div className="py-5">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-slate-200 text-slate-400 text-left font-bold uppercase tracking-wider text-[10px]">
-                    <th className="py-2">Description</th>
-                    <th className="py-2 text-center">Payment Method</th>
-                    <th className="py-2 text-center">Status</th>
-                    <th className="py-2 text-right">Amount</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  <tr>
-                    <td className="py-3 font-semibold text-slate-900">
-                      General Clinical Consultation & Assessment
-                      <span className="block text-[11px] font-normal text-slate-500">
-                        Physician evaluation, diagnosis review, and treatment prescription
-                      </span>
-                    </td>
-                    <td className="py-3 text-center uppercase font-bold text-slate-700">
-                      {receiptData.receipt.method}
-                    </td>
-                    <td className="py-3 text-center">
-                      <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                        {receiptData.receipt.status}
-                      </span>
-                    </td>
-                    <td className="py-3 text-right font-black text-slate-900 text-sm">
-                      Rs. {receiptData.receipt.amount.toFixed(2)}
-                    </td>
-                  </tr>
-                </tbody>
-                <tfoot>
-                  <tr className="border-t-2 border-slate-900">
-                    <td colSpan={3} className="py-3 font-bold text-slate-900 text-sm">
-                      Total Paid
-                    </td>
-                    <td className="py-3 text-right font-black text-slate-900 text-base">
-                      Rs. {receiptData.receipt.amount.toFixed(2)}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-
-            {/* Footer Notice */}
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
-              <div className="flex items-center gap-1.5 text-amber-700 bg-amber-50/60 px-2.5 py-1 rounded-md">
-                <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
+            {/* Footer */}
+            <div className="px-6 py-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-slate-400">
+              <div className="flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 <span>{receiptData.receipt.note}</span>
               </div>
               <span>Thank you for choosing Medi-Care.</span>
@@ -208,8 +204,8 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               variant="primary"
               onClick={handlePrint}
               className="flex items-center gap-1.5"
+              leftIcon={<Printer className="w-4 h-4" />}
             >
-              <Printer className="w-4 h-4" />
               <span>Print Receipt</span>
             </Button>
           </div>

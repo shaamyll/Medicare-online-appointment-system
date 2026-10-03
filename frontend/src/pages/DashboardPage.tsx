@@ -3,21 +3,22 @@ import { useNavigate } from 'react-router-dom';
 import {
   Calendar,
   Stethoscope,
-  PlusCircle,
   CheckCircle2,
   ArrowRight,
+  Star,
+  Compass,
 } from 'lucide-react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/Card';
-import { Badge, StatusBadge } from '@/components/ui/Badge';
+import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { PageHeader } from '@/components/ui/PageHeader';
+import { Avatar } from '@/components/ui/Avatar';
+import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableHeadSerial, TableCellSerial } from '@/components/ui/Table';
 import { useToast } from '@/components/ui/Toast';
 import { useDoctors } from '@/features/doctors/hooks/useDoctors';
 import { useAppointments, useCancelAppointment } from '@/features/appointments/hooks/useAppointments';
-import { AppointmentBookingModal } from '@/features/appointments/components/AppointmentBookingModal';
 import { LoadingState } from '@/components/ui/LoadingState';
 
 export const DashboardPage: React.FC = () => {
@@ -25,9 +26,7 @@ export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [cancellingApt, setCancellingApt] = useState<{ id: number; ref: string } | null>(null);
-  const [selectedDoctorId, setSelectedDoctorId] = useState<number | undefined>(undefined);
 
   const { data: doctors, isLoading: isLoadingDoctors } = useDoctors();
   const { data: appointments, isLoading: isLoadingApts } = useAppointments();
@@ -45,51 +44,109 @@ export const DashboardPage: React.FC = () => {
   );
   const completedApts = allApts.filter((a) => a.status === 'COMPLETED');
 
+  // Pending reviews: completed visits with no review, up to 3
+  const pendingReviews = allApts
+    .filter(
+      (a) =>
+        a.status === 'COMPLETED' &&
+        (!a.review || !a.review.rating) &&
+        (!a.feedback || !a.feedback.rating)
+    )
+    .slice(0, 3);
+
   const handleCancelConfirm = async () => {
     if (!cancellingApt) return;
     try {
-      await cancelMutation.mutateAsync(cancellingApt.id);
+      await cancelMutation.mutateAsync({ id: cancellingApt.id });
       toast('Appointment cancelled', 'info');
       setCancellingApt(null);
     } catch (err: any) {
-      toast(err.message || 'Failed to cancel appointment', 'error');
+      toast(err?.response?.data?.message || err.message || 'Failed to cancel appointment', 'error');
     }
   };
 
-  const openBookingForDoctor = (docId: number) => {
-    setSelectedDoctorId(docId);
-    setIsBookingModalOpen(true);
-  };
-
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Welcome Banner */}
-      <PageHeader
-        title={`Welcome back, ${user?.name || 'Patient'}!`}
-        subtitle={`Medi-Care Healthcare Portal • Today is ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}`}
-        badge={<Badge variant="success">Patient Portal</Badge>}
-        actions={
-          <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate('/dashboard/doctors')}
-            >
-              Find Doctors
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => {
-                setSelectedDoctorId(undefined);
-                setIsBookingModalOpen(true);
-              }}
-              leftIcon={<PlusCircle className="w-4 h-4" />}
-            >
-              Book Appointment
-            </Button>
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Avatar name={user?.name} size="xl" shape="circle" />
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
+                Welcome back, {user?.name || 'Patient'}!
+              </h1>
+              <Badge variant="success">Patient</Badge>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Medi-Care Healthcare Portal &bull; Today is{' '}
+              {new Date().toLocaleDateString('en-US', {
+                weekday: 'long',
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+              })}
+            </p>
           </div>
-        }
-      />
+        </div>
+
+        <div className="flex items-center gap-3">
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => navigate('/dashboard/doctors')}
+            leftIcon={<Compass className="w-4 h-4" />}
+          >
+            Find a Doctor
+          </Button>
+        </div>
+      </div>
+
+      {/* Pending Reviews Card (hidden when empty per specification) */}
+      {pendingReviews.length > 0 && (
+        <Card className="border-amber-200 bg-amber-50/40 rounded-xl overflow-hidden shadow-xs">
+          <CardHeader className="pb-3 border-b border-amber-200/60 flex flex-row items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-amber-100 text-amber-700 rounded-lg">
+                <Star className="h-4 w-4 fill-amber-500 text-amber-500" />
+              </div>
+              <div>
+                <CardTitle className="text-sm font-bold text-amber-950">Pending Visit Reviews</CardTitle>
+                <p className="text-xs text-amber-800/80">
+                  Share your experience to help other patients choose the right physician
+                </p>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 space-y-3">
+            {pendingReviews.map((apt) => (
+              <div
+                key={apt.id}
+                className="bg-white rounded-lg border border-amber-200/80 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs"
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-gray-900 text-sm">Dr. {apt.doctor.name}</span>
+                    <span className="text-xs text-emerald-700 font-semibold">{apt.doctor.specialization}</span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Visit on {apt.appointmentDate} at {apt.startTime} &bull; Ref #{apt.appointmentNumber}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="primary"
+                  className="bg-amber-500 hover:bg-amber-600 text-white shrink-0"
+                  leftIcon={<Star className="h-3.5 w-3.5 fill-current" />}
+                  onClick={() => navigate(`/dashboard/appointments?tab=history&rate=${apt.id}`)}
+                >
+                  Rate now
+                </Button>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
@@ -142,7 +199,7 @@ export const DashboardPage: React.FC = () => {
         </Card>
       </div>
 
-      {/* Upcoming Appointments */}
+      {/* Upcoming Appointments Table */}
       <Card className="rounded-xl border-gray-200 shadow-sm overflow-hidden">
         <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-gray-100">
           <div>
@@ -182,7 +239,7 @@ export const DashboardPage: React.FC = () => {
                     </TableCell>
 
                     <TableCell>
-                      <p className="font-semibold text-gray-900 text-sm">{apt.doctor.name}</p>
+                      <p className="font-semibold text-gray-900 text-sm">Dr. {apt.doctor.name}</p>
                       <p className="text-xs text-gray-500">
                         {apt.doctor.specialization} &bull; {apt.doctor.department || 'General'}
                       </p>
@@ -254,7 +311,7 @@ export const DashboardPage: React.FC = () => {
                     {doc.user.name.split(' ').map((n) => n[0]).slice(0, 2).join('')}
                   </div>
                   <div>
-                    <h3 className="font-bold text-gray-900 text-sm">{doc.user.name}</h3>
+                    <h3 className="font-bold text-gray-900 text-sm">Dr. {doc.user.name}</h3>
                     <p className="text-xs text-emerald-700 font-semibold">{doc.specialization}</p>
                   </div>
                 </div>
@@ -266,7 +323,7 @@ export const DashboardPage: React.FC = () => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-400">Consultation Fee:</span>
-                    <span className="font-bold text-emerald-700">${doc.consultationFee?.toFixed(2)}</span>
+                    <span className="font-bold text-emerald-700">Rs. {Number(doc.consultationFee || 0).toFixed(0)}</span>
                   </div>
                 </div>
               </div>
@@ -274,7 +331,7 @@ export const DashboardPage: React.FC = () => {
               <CardFooter className="p-3 bg-gray-50">
                 <Button
                   size="sm"
-                  onClick={() => openBookingForDoctor(doc.id)}
+                  onClick={() => navigate(`/dashboard/doctors?bookDoctor=${doc.id}`)}
                   className="w-full text-xs"
                 >
                   Schedule Consultation
@@ -284,13 +341,6 @@ export const DashboardPage: React.FC = () => {
           ))}
         </div>
       </div>
-
-      {/* Booking Modal */}
-      <AppointmentBookingModal
-        isOpen={isBookingModalOpen}
-        onClose={() => setIsBookingModalOpen(false)}
-        preselectedDoctorId={selectedDoctorId}
-      />
 
       {/* Cancellation Modal */}
       {cancellingApt && (

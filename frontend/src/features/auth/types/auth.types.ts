@@ -9,6 +9,9 @@ export interface User {
   status: string;
   createdAt: string;
   updatedAt?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  age?: number | null;
   imagePath?: string | null;
   thumbnailPath?: string | null;
   licenseNumber?: string;

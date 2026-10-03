@@ -11,6 +11,7 @@ import {
   X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { Avatar } from '@/components/ui/Avatar';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { PaymentBadge } from '@/components/ui/PaymentBadge';
 import { Modal } from '@/components/ui/Modal';
@@ -281,11 +282,16 @@ export const DoctorAppointmentsPage: React.FC = () => {
 
                         <TableCell>
                           <div className="flex items-start gap-2.5">
-                            <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold text-xs shrink-0 border border-emerald-100">
-                              {apt.patient.name.charAt(0)}
-                            </div>
+                            <Avatar name={apt.patient.name} size="sm" shape="circle" />
                             <div>
-                              <p className="font-semibold text-gray-900 text-xs sm:text-sm">{apt.patient.name}</p>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className="font-semibold text-gray-900 text-xs sm:text-sm">{apt.patient.name}</p>
+                                {apt.patient.age !== undefined && apt.patient.age !== null && (
+                                  <span className="text-[10px] font-semibold text-gray-600 bg-gray-100 border border-gray-200 px-1.5 py-0.2 rounded-md">
+                                    {apt.patient.age}y{apt.patient.gender ? ` • ${apt.patient.gender}` : ''}
+                                  </span>
+                                )}
+                              </div>
                               <div className="flex items-center gap-2 mt-0.5 text-[11px] text-gray-500">
                                 <span>{apt.patient.email}</span>
                                 {apt.patient.phone && (

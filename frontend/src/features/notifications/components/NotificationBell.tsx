@@ -117,9 +117,10 @@ export const NotificationBell: React.FC = () => {
                 size="sm"
                 onClick={handleMarkAllRead}
                 disabled={markAllReadMutation.isPending}
+                leftIcon={<CheckCheck className="h-4 w-4" />}
                 className="h-7 px-2 text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50/60"
               >
-                <CheckCheck className="h-3.5 w-3.5" />
+                
                 <span>Mark all as read</span>
               </Button>
             )}

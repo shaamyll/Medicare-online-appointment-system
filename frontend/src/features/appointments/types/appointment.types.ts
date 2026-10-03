@@ -16,7 +16,11 @@ export interface FeedbackInfo {
   id: number;
   rating: number;
   comment?: string | null;
+  tags?: string[] | null;
   createdAt: string;
+  updatedAt?: string | null;
+  editableUntil?: string | null;
+  isEditable?: boolean;
 }
 
 export interface AppointmentReschedule {
@@ -59,6 +63,9 @@ export interface Appointment {
     name: string;
     email: string;
     phone?: string;
+    gender?: string | null;
+    dateOfBirth?: string | null;
+    age?: number | null;
   };
   doctor: {
     id: number;
@@ -68,6 +75,8 @@ export interface Appointment {
     consultationFee?: number;
     phone?: string;
     email?: string;
+    imagePath?: string | null;
+    thumbnailPath?: string | null;
   };
   appointmentDate: string;
   startTime: string;
@@ -78,6 +87,18 @@ export interface Appointment {
   rescheduleCount?: number;
   payment?: PaymentInfo | null;
   feedback?: FeedbackInfo | null;
+  canReview?: boolean;
+  can_review?: boolean;
+  review?: {
+    id?: number;
+    rating: number;
+    comment?: string | null;
+    tags?: string[] | null;
+    createdAt?: string;
+    updatedAt?: string | null;
+    editableUntil?: string | null;
+    isEditable?: boolean;
+  } | null;
   reschedules?: AppointmentReschedule[] | null;
   createdAt: string;
   consultation?: ConsultationRecord | null;

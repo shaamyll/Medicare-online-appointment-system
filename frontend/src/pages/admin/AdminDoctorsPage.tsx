@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { PowerOff, Power, Trash2, AlertCircle } from 'lucide-react';
+import { PowerOff, Power, Trash2, AlertCircle, Eye } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Avatar } from '@/components/ui/Avatar';
 import {
@@ -21,6 +21,7 @@ import { IconButton } from '@/components/ui/IconButton';
 import { Button } from '@/components/ui/Button';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { DoctorDetailsModal } from './DoctorDetailsModal';
 import { useToast } from '@/components/ui/Toast';
 import {
   useAdminDoctors,
@@ -37,6 +38,7 @@ export const AdminDoctorsPage: React.FC = () => {
   const pageSize = 10;
 
   // Modals state
+  const [detailsDoctorId, setDetailsDoctorId] = useState<number | null>(null);
   const [deactivatingDoctor, setDeactivatingDoctor] = useState<{ id: number; name: string } | null>(null);
   const [deletingDoctor, setDeletingDoctor] = useState<{
     id: number;
@@ -187,7 +189,11 @@ export const AdminDoctorsPage: React.FC = () => {
                 <TableRow key={doc.id}>
                   <TableCellSerial index={(page - 1) * pageSize + idx} />
                   <TableCell>
-                    <div className="flex items-center gap-3">
+                    <div
+                      className="flex items-center gap-3 cursor-pointer group"
+                      onClick={() => setDetailsDoctorId(doc.id)}
+                      title="Click to view full dossier"
+                    >
                       <Avatar
                         src={doc.thumbnailPath || doc.imagePath}
                         name={doc.name}
@@ -196,7 +202,9 @@ export const AdminDoctorsPage: React.FC = () => {
                         version={doc.updatedAt}
                       />
                       <div>
-                        <p className="font-bold text-gray-900 text-sm">Dr. {doc.name}</p>
+                        <p className="font-bold text-gray-900 text-sm group-hover:text-emerald-700 transition-colors">
+                          Dr. {doc.name}
+                        </p>
                         <p className="text-xs text-gray-500">{doc.email}</p>
                         {doc.phone && <p className="text-[11px] text-gray-400">{doc.phone}</p>}
                         {doc.licenseNumber && (
@@ -229,6 +237,17 @@ export const AdminDoctorsPage: React.FC = () => {
 
                   <TableCell className="text-right pr-6">
                     <div className="flex items-center justify-end gap-2">
+                      {/* View Details Eye Button */}
+                      <IconButton
+                        variant="outline"
+                        size="sm"
+                        icon={<Eye className="h-4 w-4 text-sky-600" />}
+                        title="View details"
+                        aria-label="View details"
+                        onClick={() => setDetailsDoctorId(doc.id)}
+                        className="border-sky-200 hover:bg-sky-50 shadow-2xs"
+                      />
+
                       {doc.status === 'active' ? (
                         <IconButton
                           variant="danger"
@@ -334,6 +353,13 @@ export const AdminDoctorsPage: React.FC = () => {
         confirmLabel="Yes, Delete Doctor"
         variant="danger"
         isLoading={deleteMutation.isPending}
+      />
+
+      {/* Doctor Dossier Details Modal */}
+      <DoctorDetailsModal
+        doctorId={detailsDoctorId}
+        isOpen={!!detailsDoctorId}
+        onClose={() => setDetailsDoctorId(null)}
       />
     </div>
   );

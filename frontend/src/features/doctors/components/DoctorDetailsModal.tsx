@@ -12,7 +12,7 @@ import {
   Award,
   Clock,
   ShieldCheck,
-  DoorOpen,
+  Star,
   MessageSquare,
   Sparkles,
 } from 'lucide-react';
@@ -35,6 +35,9 @@ export const DoctorDetailsModal: React.FC<DoctorDetailsModalProps> = ({
   const rawPhoto = doctor.thumbnailPath || doctor.imagePath;
   const fullImageUrl = rawPhoto ? getImageUrl(rawPhoto) : undefined;
   const { data: feedbackData } = useDoctorFeedback(doctor.id, 1, 5);
+
+  const ratingAvg = feedbackData?.ratingAvg ?? doctor.ratingAvg ?? 0;
+  const ratingCount = feedbackData?.total ?? doctor.ratingCount ?? 0;
 
   const initials = doctor.user?.name
     ? doctor.user.name
@@ -78,14 +81,23 @@ export const DoctorDetailsModal: React.FC<DoctorDetailsModalProps> = ({
             <p className="text-sm font-bold text-emerald-700">{doctor.specialization}</p>
             <p className="text-xs text-slate-500 font-medium">
               Department of {doctor.department?.name || 'General Clinical Medicine'}
+              {doctor.roomNumber ? ` • ${doctor.roomNumber}` : ''}
             </p>
 
-            {doctor.licenseNumber && (
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white border border-slate-200 text-slate-700 text-xs font-mono font-semibold shadow-2xs">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Lic: {doctor.licenseNumber}</span>
-              </div>
-            )}
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-0.5">
+              {doctor.licenseNumber && (
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white border border-slate-200 text-slate-700 text-xs font-mono font-semibold shadow-2xs">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Lic: {doctor.licenseNumber}</span>
+                </div>
+              )}
+              {doctor.nextAvailable && (
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-semibold">
+                  <Clock className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Next: {doctor.nextAvailable}</span>
+                </div>
+              )}
+            </div>
 
             <div className="pt-2 flex flex-wrap items-center justify-center sm:justify-start gap-3">
               <Button
@@ -95,8 +107,8 @@ export const DoctorDetailsModal: React.FC<DoctorDetailsModalProps> = ({
                   onBookAppointment(doctor.id);
                 }}
                 className="flex items-center gap-2 shadow-xs"
+                leftIcon={<Calendar className="w-4 h-4" />}
               >
-                <Calendar className="w-4 h-4" />
                 <span>Book Appointment</span>
               </Button>
             </div>
@@ -126,9 +138,14 @@ export const DoctorDetailsModal: React.FC<DoctorDetailsModalProps> = ({
           </div>
 
           <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 text-center">
-            <DoorOpen className="w-4 h-4 text-indigo-600 mx-auto mb-1" />
-            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Room</p>
-            <p className="font-bold text-slate-800 mt-0.5 truncate">{doctor.roomNumber || 'Room 101'}</p>
+            <Star className="w-4 h-4 text-amber-500 fill-amber-400 mx-auto mb-1" />
+            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Patient Rating</p>
+            <p className="font-bold text-slate-800 mt-0.5 truncate">
+              {ratingAvg > 0 ? `${ratingAvg.toFixed(1)} ★` : '5.0 ★'}
+              {ratingCount > 0 && (
+                <span className="text-[10px] font-normal text-slate-400 ml-1">({ratingCount})</span>
+              )}
+            </p>
           </div>
         </div>
 
@@ -210,8 +227,8 @@ export const DoctorDetailsModal: React.FC<DoctorDetailsModalProps> = ({
               onBookAppointment(doctor.id);
             }}
             className="flex items-center gap-1.5"
+            leftIcon={<Calendar className="w-4 h-4" />}
           >
-            <Calendar className="w-4 h-4" />
             <span>Book Appointment</span>
           </Button>
         </div>

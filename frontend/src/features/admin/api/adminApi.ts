@@ -54,6 +54,74 @@ export interface AdminReports {
   payment?: PaymentSummaryStats;
 }
 
+export interface DoctorScheduleItem {
+  dayOfWeek: string;
+  startTime: string;
+  endTime: string;
+  slotDurationMinutes: number;
+  isAvailable: boolean;
+}
+
+export interface DoctorStats {
+  totalAppointments: number;
+  completedAppointments: number;
+  upcomingAppointments: number;
+  cancelledAppointments: number;
+  uniquePatients: number;
+  ratingAvg: number;
+  ratingCount: number;
+  totalRevenue: number;
+}
+
+export interface DoctorRecentReview {
+  id: number;
+  patientName: string;
+  rating: number;
+  comment?: string | null;
+  tags?: string[] | null;
+  createdAt: string;
+  updatedAt?: string | null;
+}
+
+export interface DoctorRecentAppointment {
+  id: number;
+  appointmentNumber: string;
+  patientName: string;
+  appointmentDate: string;
+  startTime: string;
+  status: string;
+  paymentStatus: string;
+}
+
+export interface AdminDoctorDetailResponse {
+  profile: {
+    id: number;
+    name: string;
+    email: string;
+    phone?: string;
+    status: string;
+    createdAt: string;
+    approvedAt?: string | null;
+    imagePath?: string | null;
+    thumbnailPath?: string | null;
+  };
+  professional: {
+    specialization: string;
+    departmentId?: number | null;
+    departmentName: string;
+    qualification: string;
+    experienceYears: number;
+    licenseNumber: string;
+    roomNumber: string;
+    consultationFee: number;
+    bio: string;
+  };
+  schedule: DoctorScheduleItem[];
+  stats: DoctorStats;
+  recentReviews: DoctorRecentReview[];
+  recentAppointments: DoctorRecentAppointment[];
+}
+
 export const adminApi = {
   getStats: async (): Promise<AdminStats> => {
     const response = await apiClient.get<ApiResponse<AdminStats>>('/admin/stats');
@@ -70,6 +138,14 @@ export const adminApi = {
   getDoctorRequests: async (): Promise<AdminDoctor[]> => {
     const response = await apiClient.get<ApiResponse<AdminDoctor[]>>('/admin/doctor-requests');
     return response.data.data || [];
+  },
+
+  getDoctorDetails: async (id: number): Promise<AdminDoctorDetailResponse> => {
+    const response = await apiClient.get<ApiResponse<AdminDoctorDetailResponse>>(`/admin/doctors/${id}`);
+    if (!response.data.data) {
+      throw new Error(response.data.message || 'Failed to fetch doctor details');
+    }
+    return response.data.data;
   },
 
   approveDoctor: async (id: number): Promise<void> => {

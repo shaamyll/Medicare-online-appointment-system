@@ -34,6 +34,14 @@ export const useDoctorDeleteImpact = (id: number, enabled: boolean = true) => {
   });
 };
 
+export const useAdminDoctorDetail = (id: number | null, enabled: boolean = true) => {
+  return useQuery({
+    queryKey: queryKeys.admin.doctorDetail(id ?? 0),
+    queryFn: () => adminApi.getDoctorDetails(id!),
+    enabled: !!id && enabled,
+  });
+};
+
 export const useApproveDoctor = () => {
   const queryClient = useQueryClient();
   return useMutation({

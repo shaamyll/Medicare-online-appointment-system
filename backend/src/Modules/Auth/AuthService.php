@@ -316,6 +316,16 @@ class AuthService {
             }
         }
 
+        $age = null;
+        if (!empty($user['date_of_birth'])) {
+            $dob = new \DateTime($user['date_of_birth']);
+            $now = new \DateTime();
+            $age = $now->diff($dob)->y;
+        }
+        $user['age'] = $age;
+        $user['gender'] = $user['gender'] ?? null;
+        $user['dateOfBirth'] = $user['date_of_birth'] ?? null;
+
         $user['createdAt'] = $user['created_at'] ?? null;
         $user['updatedAt'] = $user['updated_at'] ?? null;
         unset($user['password']);

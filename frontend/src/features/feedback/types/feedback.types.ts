@@ -18,7 +18,11 @@ export interface FeedbackItem {
   };
   rating: number;
   comment?: string | null;
+  tags?: string[] | null;
   createdAt: string;
+  updatedAt?: string | null;
+  editableUntil?: string;
+  isEditable?: boolean;
 }
 
 export type Feedback = FeedbackItem;
@@ -51,4 +55,5 @@ export interface AdminFeedbackListResponse {
 export interface CreateFeedbackData {
   rating: number;
   comment?: string;
+  tags?: string[];
 }

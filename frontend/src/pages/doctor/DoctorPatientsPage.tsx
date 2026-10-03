@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { FilterBar } from '@/components/ui/FilterBar';
 import { SearchInput } from '@/components/ui/SearchInput';
+import { Avatar } from '@/components/ui/Avatar';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableHeadSerial, TableCellSerial } from '@/components/ui/Table';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { useAppointments } from '@/features/appointments/hooks/useAppointments';
@@ -21,6 +22,8 @@ export const DoctorPatientsPage: React.FC = () => {
     name: string;
     email: string;
     phone?: string;
+    gender?: string | null;
+    age?: number | null;
     totalVisits: number;
     lastVisit: string;
     lastReason?: string;
@@ -34,6 +37,8 @@ export const DoctorPatientsPage: React.FC = () => {
         name: apt.patient.name,
         email: apt.patient.email,
         phone: apt.patient.phone,
+        gender: apt.patient.gender,
+        age: apt.patient.age,
         totalVisits: 1,
         lastVisit: apt.appointmentDate,
         lastReason: apt.reasonForVisit,
@@ -95,11 +100,16 @@ export const DoctorPatientsPage: React.FC = () => {
                     <TableCellSerial index={idx} />
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-xs">
-                          {p.name.charAt(0)}
-                        </div>
+                        <Avatar name={p.name} size="sm" shape="circle" />
                         <div>
-                          <p className="font-semibold text-gray-900 text-sm">{p.name}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold text-gray-900 text-sm">{p.name}</p>
+                            {p.age !== undefined && p.age !== null && (
+                              <span className="text-[10px] font-semibold text-gray-600 bg-gray-100 border border-gray-200 px-1.5 py-0.2 rounded-md">
+                                {p.age}y{p.gender ? ` • ${p.gender}` : ''}
+                              </span>
+                            )}
+                          </div>
                           <p className="text-xs text-gray-400">Patient ID #{p.id}</p>
                         </div>
                       </div>

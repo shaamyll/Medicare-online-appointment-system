@@ -26,15 +26,28 @@ The application is turnkey and ready to run locally for development, evaluation,
 ## 2. Features by Role
 
 ### 👤 Patient / User Portal
-- **Authentication & Security**: Account registration, secure login with JWT sessions, token expiration handling, and clean logout.
-- **Redesigned Doctor Cards**: Browsing directory and landing page feature modern cards with 4:5 portraits, zoom hover effect, average rating chip, verified badges, next-available shift pill, and consultation fees.
-- **Doctor Profiles & Detailed Reviews**: View doctor credentials, biography, room number, fees, weekly consultation schedule, aggregated rating summary (1–5 star distribution), and paginated patient reviews.
-- **Slot Discovery & Booking**: Interactive booking modal fetching available slots for any chosen date while dynamically locking out conflicting appointments. Booking automatically creates an unpaid demo payment record.
-- **Appointment Management & Tabs**: Redesigned appointments view divided into **Upcoming** and **History** tabs with live badge indicators:
-  - **Status State Machine**: Displays current status badge (`PENDING`, `APPROVED`, `COMPLETED`, `REJECTED`, `CANCELLED`) with contextual patient guidance (e.g. "Waiting for doctor confirmation", "Confirmed", or "Rejected: <reason>").
-  - **Self-Service Rescheduling**: Reschedule pending or approved appointments up to 2 times, at least 2 hours before the current start time. Rescheduling an approved appointment resets status to `pending` so the doctor can re-confirm.
-  - **Demo Payment & Printable Receipt**: Secure simulated checkout (UPI, Card, Pay at Clinic) with zero real money charged; generates transaction reference (e.g. `MC-20260101-AB12CD`) and instant printable receipt.
-  - **Patient Visit Reviews**: Submit 1–5 star rating and comment for completed visits with instant recalculation of doctor score.
+- **Authentication & Security**: Account registration, secure login with JWT sessions, token expiration handling, and clean logout. Unauthenticated visitors attempting to book a consultation are directed to `/login` and seamlessly returned to the doctor's booking modal after authentication.
+- **Doctor Discovery & Booking Only From Doctor Cards**:
+  - The appointment booking modal always receives a fixed chosen doctor from a `DoctorCard` or Doctor Details page. The doctor cannot be changed within the modal, and standalone doctor-select dropdowns have been removed.
+  - Doctor-less booking entry points have been removed from the patient dashboard and appointments header; subtle "Find a doctor" links direct patients to the physician directory (`/dashboard/doctors`).
+  - Read-only doctor summary card at the top (photo/thumbnail, name, specialization, department, consultation fee, rating), interactive 14-day date picker with doctor non-working days disabled, slot grid (available, booked, selected), 255-character reason textarea with live counter, and summary row with fee.
+- **Patient Profile (`/dashboard/profile`)**:
+  - Dedicated personal profile and security management view on a clean `bg-gray-100` layout.
+  - Left summary card with deterministic initials `Avatar` component, name, email, account role, and member-since date.
+  - Personal Information card: name (2–80 chars), email (read-only with lock indicator), phone (10–15 digits), gender (`male`, `female`, `other`), and date of birth (age 0–120) with dynamically calculated age.
+  - Security card: change password with current password verification (`password_verify`), minimum 8 characters with letter and number, and password strength indicator.
+  - Strict privacy: No patient avatar photo uploads, blood group, address, or emergency fields exist. Initials avatars are used consistently for patients everywhere.
+- **Patient Visit Reviews & Feedback**:
+  - Patients can rate only their own appointments, strictly when status is `COMPLETED`, with one review per appointment.
+  - Required 1–5 star rating with interactive hover/keyboard labels ("Poor" to "Excellent"), optional tags multi-select ("Good listener", "On time", "Clear explanation", "Friendly staff", "Long wait", "Rushed visit"), and optional comment (max 500 characters, tags stripped).
+  - 7-day edit/delete window enforced on the server (`PUT/DELETE /api/appointments/{id}/feedback`); displays "Edited" tag and locks reviews after 7 days.
+  - Doctor's aggregated average rating and total review counts recalculate atomically upon creation, edit, or deletion.
+  - When a doctor completes a visit, a notification link (`/dashboard/appointments?tab=history&rate={id}`) switches to the history tab, scrolls to the card, and opens the feedback modal.
+  - Patient dashboard features a "Pending visit reviews" alert card (up to 3 completed unrated visits), hidden when empty.
+- **Appointment Management & Tabs**: Redesigned appointments view divided into **Upcoming**, **Past Visits**, and **All Records** tabs with live badge indicators:
+  - Self-service rescheduling up to 2 times, keeping the doctor fixed.
+  - Demo payment and printable receipt modals.
+  - Review status: shows "Rate your visit" on completed unrated cards, read-only stars and comment with edit/delete buttons within 7 days, or a "Review locked" note.
 - **Clinical History**: Access doctor consultation notes, diagnoses, and medical prescriptions recorded during completed appointments.
 
 ### 🩺 Doctor Clinical Portal
@@ -64,11 +77,22 @@ The application is turnkey and ready to run locally for development, evaluation,
 
 ### 🛡️ Administrator Control Center
 - **Protected Administrative Access**: Admin accounts are pre-seeded via configuration and cannot be registered publicly via client endpoints.
-- **Real-Time Analytics & Financial Metrics**: High-level KPIs tracking total active doctors, pending doctor approval requests, registered patients, today's appointments, upcoming bookings, and a dedicated **Revenue & Payment Intelligence** block:
-  - Total collected consultation revenue (`paid`)
-  - Paid appointments count
-  - Unpaid invoices count
-  - Refunded transactions count
+- **Admin Doctor Dossier & Modal (`GET /api/admin/doctors/{id}`)**:
+  - Unified `DoctorDetailsModal` used across both **Admin > Doctors** and **Admin > Doctor Requests** tabs.
+  - Opened via an Eye icon button (blue outline, soft shadow, tooltip "View details") in the Actions column, by clicking the doctor row/name, or via "Review application" button on requests.
+  - Wide modal (`max-w-4xl`) with fixed header, internal scrollable body, and sticky action footer.
+  - Header strip with soft brand gradient: large doctor portrait (96–112px with initials fallback), name, specialization, department chip, status badge, verified check, and rating.
+  - Aggregated performance stat tiles on `bg-gray-50`: total visits, completed, upcoming, cancelled, unique patients, and total revenue.
+  - Segmented tabs:
+    - **Overview**: Contact channels, professional qualifications, license verification with one-click copy button, registration/approved dates, and full biography.
+    - **Weekly Timetable**: 7-day timetable with consultation hours, slot duration, and Available/Off badges.
+    - **Activity**: Recent appointments (up to 5) and verified patient reviews (up to 3).
+  - Status-aware action footer with `ConfirmModal` confirmations:
+    - `pending`: Approve & Activate (green) and Reject (red outline) with license verification reminder.
+    - `active`: Deactivate and Delete Doctor.
+    - `inactive` / `rejected`: Activate Doctor and Delete Doctor.
+  - Multi-query cache invalidation (`admin.doctors`, `admin.doctorRequests`, `admin.stats`, public doctors directory) ensures instant UI updates without manual refresh.
+- **Real-Time Analytics & Financial Metrics**: High-level KPIs tracking total active doctors, pending doctor approval requests, registered patients, today's appointments, upcoming bookings, and a dedicated **Revenue & Payment Intelligence** block.
 - **Doctor Credentialing & Approval Queue**: Dedicated review inbox to examine doctor registration requests, review qualifications, department, license number, and photo, with single-click Approve (`active`) or Reject (`rejected`) actions.
 - **Doctor Directory Management**: Filter and manage doctors across all statuses (`active`, `pending`, `rejected`, `inactive`) with account status toggles.
 - **Patient Management**: Central directory of all registered patients, contact details, account status, and appointment visit history counts.
@@ -301,10 +325,10 @@ cd "Medicare-online-appointment-system"
    Running migrations...
    Schema migrated successfully.
    Seeded Admin: admin@medicare.com / ********
-   Seeded departments.
    Seeded Approved Doctor: dr.sarah@medicare.com / ********
+   Seeded Inactive Doctor: dr.emily@medicare.com
    Seeded Pending Doctor Request: dr.michael@medicare.com
-   Seeded Demo Patient: patient@medicare.com / ********
+   Seeded Demo Patient: patient@medicare.com / ******** (with phone, gender, date of birth)
    Database seeding finished successfully!
    ```
 

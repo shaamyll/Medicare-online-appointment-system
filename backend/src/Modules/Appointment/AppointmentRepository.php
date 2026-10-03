@@ -39,13 +39,16 @@ class AppointmentRepository {
         return "
             SELECT a.*,
                    p.name AS patient_name, p.email AS patient_email, p.phone AS patient_phone,
+                   p.gender AS patient_gender, p.date_of_birth AS patient_dob,
                    doc.name AS doctor_name, doc.email AS doctor_email, doc.phone AS doctor_phone,
                    dp.specialization AS doctor_specialization, dp.consultation_fee AS consultationFee,
+                   dp.image_path AS doctor_image_path, dp.thumbnail_path AS doctor_thumbnail_path,
                    d.name AS department_name,
                    cr.diagnosis, cr.prescription, cr.consultation_notes,
                    pm.id AS payment_id, pm.amount AS payment_amount, pm.status AS payment_status,
                    pm.method AS payment_method, pm.transaction_ref AS payment_transaction_ref, pm.paid_at AS payment_paid_at,
-                   fb.id AS feedback_id, fb.rating AS feedback_rating, fb.comment AS feedback_comment, fb.created_at AS feedback_created_at
+                   fb.id AS feedback_id, fb.rating AS feedback_rating, fb.comment AS feedback_comment, fb.tags AS feedback_tags,
+                   fb.created_at AS feedback_created_at, fb.updated_at AS feedback_updated_at
             FROM appointments a
             JOIN users p ON p.id = a.patient_id
             JOIN users doc ON doc.id = a.doctor_id
@@ -236,6 +239,37 @@ class AppointmentRepository {
     }
 
     private function formatAppointmentRow(array $row): array {
+        $patientAge = null;
+        if (!empty($row['patient_dob'])) {
+            $dob = new \DateTime($row['patient_dob']);
+            $now = new \DateTime();
+            $patientAge = $now->diff($dob)->y;
+        }
+
+        $feedbackTags = null;
+        if (!empty($row['feedback_tags'])) {
+            $feedbackTags = is_string($row['feedback_tags']) ? json_decode($row['feedback_tags'], true) : $row['feedback_tags'];
+        }
+
+        $canReview = (strtolower($row['status']) === 'completed' && empty($row['feedback_id']));
+
+        $review = null;
+        if (!empty($row['feedback_id'])) {
+            $createdAtTs = strtotime($row['feedback_created_at']);
+            $editableUntilTs = $createdAtTs + (7 * 86400);
+            $isEditable = time() <= $editableUntilTs;
+            $review = [
+                'id' => (int)$row['feedback_id'],
+                'rating' => (int)$row['feedback_rating'],
+                'comment' => $row['feedback_comment'],
+                'tags' => $feedbackTags,
+                'createdAt' => $row['feedback_created_at'],
+                'updatedAt' => $row['feedback_updated_at'] ?? null,
+                'editableUntil' => date('c', $editableUntilTs),
+                'isEditable' => $isEditable,
+            ];
+        }
+
         return [
             'id' => (int)$row['id'],
             'appointmentNumber' => $row['appointment_number'],
@@ -252,6 +286,9 @@ class AppointmentRepository {
                 'name' => $row['patient_name'],
                 'email' => $row['patient_email'],
                 'phone' => $row['patient_phone'],
+                'gender' => $row['patient_gender'] ?? null,
+                'dateOfBirth' => $row['patient_dob'] ?? null,
+                'age' => $patientAge,
             ],
             'doctor' => [
                 'id' => (int)$row['doctor_id'],
@@ -260,7 +297,9 @@ class AppointmentRepository {
                 'phone' => $row['doctor_phone'],
                 'specialization' => $row['doctor_specialization'] ?? 'Specialist',
                 'department' => $row['department_name'] ?? 'General',
-                'consultationFee' => (float)($row['consultationFee'] ?? 0)
+                'consultationFee' => (float)($row['consultationFee'] ?? 0),
+                'imagePath' => $row['doctor_image_path'] ?? null,
+                'thumbnailPath' => $row['doctor_thumbnail_path'] ?? null,
             ],
             'payment' => !empty($row['payment_id']) ? [
                 'id' => (int)$row['payment_id'],
@@ -274,8 +313,15 @@ class AppointmentRepository {
                 'id' => (int)$row['feedback_id'],
                 'rating' => (int)$row['feedback_rating'],
                 'comment' => $row['feedback_comment'],
-                'createdAt' => $row['feedback_created_at']
+                'tags' => $feedbackTags,
+                'createdAt' => $row['feedback_created_at'],
+                'updatedAt' => $row['feedback_updated_at'] ?? null,
+                'editableUntil' => date('c', strtotime($row['feedback_created_at']) + (7 * 86400)),
+                'isEditable' => time() <= (strtotime($row['feedback_created_at']) + (7 * 86400)),
             ] : null,
+            'can_review' => $canReview,
+            'canReview' => $canReview,
+            'review' => $review,
             'reschedules' => $this->getReschedules((int)$row['id']),
             'consultation' => !empty($row['diagnosis']) || !empty($row['prescription']) || !empty($row['consultation_notes']) ? [
                 'diagnosis' => $row['diagnosis'],

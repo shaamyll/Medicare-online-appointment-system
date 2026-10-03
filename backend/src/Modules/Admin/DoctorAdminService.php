@@ -151,4 +151,169 @@ class DoctorAdminService {
             'message' => "Dr. {$user['name']} has been permanently deleted."
         ];
     }
+
+    /**
+     * Retrieve aggregated doctor details for Admin Doctor Details Modal.
+     */
+    public function getDoctorDetails(int $doctorId): array {
+        $stmt = $this->db->prepare("
+            SELECT u.id, u.name, u.email, u.phone, u.status, u.created_at, u.updated_at,
+                   dp.id AS profile_id, dp.department_id, dp.specialization, dp.qualification,
+                   dp.license_number, dp.image_path, dp.thumbnail_path, dp.experience_years,
+                   dp.consultation_fee, dp.bio, dp.room_number,
+                   d.name AS department_name
+            FROM users u
+            LEFT JOIN doctor_profiles dp ON dp.user_id = u.id
+            LEFT JOIN departments d ON d.id = dp.department_id
+            WHERE u.id = ? AND u.role = 'doctor'
+            LIMIT 1
+        ");
+        $stmt->execute([$doctorId]);
+        $row = $stmt->fetch();
+
+        if (!$row) {
+            throw new Exception("Doctor not found.", 404);
+        }
+
+        // Fetch weekly schedules
+        $schedStmt = $this->db->prepare("
+            SELECT day_of_week, start_time, end_time, slot_duration_minutes, is_available
+            FROM doctor_schedules
+            WHERE doctor_id = ?
+            ORDER BY FIELD(day_of_week, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')
+        ");
+        $schedStmt->execute([$doctorId]);
+        $scheduleRows = $schedStmt->fetchAll();
+        $schedule = array_map(function($s) {
+            return [
+                'dayOfWeek' => $s['day_of_week'],
+                'startTime' => substr($s['start_time'], 0, 5),
+                'endTime' => substr($s['end_time'], 0, 5),
+                'slotDurationMinutes' => (int)($s['slot_duration_minutes'] ?? 30),
+                'isAvailable' => (bool)$s['is_available']
+            ];
+        }, $scheduleRows);
+
+        // Stats aggregated in single query
+        $statsStmt = $this->db->prepare("
+            SELECT 
+                COUNT(*) AS total_appointments,
+                SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed_appointments,
+                SUM(CASE WHEN status IN ('pending', 'approved') AND appointment_date >= CURDATE() THEN 1 ELSE 0 END) AS upcoming_appointments,
+                SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) AS cancelled_appointments,
+                COUNT(DISTINCT patient_id) AS unique_patients
+            FROM appointments
+            WHERE doctor_id = ?
+        ");
+        $statsStmt->execute([$doctorId]);
+        $statsRow = $statsStmt->fetch() ?: [];
+
+        // Ratings aggregated
+        $ratingStmt = $this->db->prepare("
+            SELECT 
+                COALESCE(ROUND(AVG(rating), 1), 0.0) AS rating_avg,
+                COUNT(*) AS rating_count
+            FROM feedback
+            WHERE doctor_id = ?
+        ");
+        $ratingStmt->execute([$doctorId]);
+        $ratingRow = $ratingStmt->fetch() ?: [];
+
+        // Revenue (sum of paid amounts for this doctor's appointments)
+        $revenueStmt = $this->db->prepare("
+            SELECT COALESCE(SUM(p.amount), 0.00) AS total_revenue
+            FROM payments p
+            JOIN appointments a ON a.id = p.appointment_id
+            WHERE a.doctor_id = ? AND p.status = 'paid'
+        ");
+        $revenueStmt->execute([$doctorId]);
+        $revenueRow = $revenueStmt->fetch() ?: [];
+
+        // Recent reviews (3)
+        $revStmt = $this->db->prepare("
+            SELECT f.id, f.rating, f.comment, f.tags, f.created_at, f.updated_at,
+                   u.name AS patient_name
+            FROM feedback f
+            JOIN users u ON u.id = f.patient_id
+            WHERE f.doctor_id = ?
+            ORDER BY f.created_at DESC
+            LIMIT 3
+        ");
+        $revStmt->execute([$doctorId]);
+        $recentReviews = array_map(function($r) {
+            $tags = !empty($r['tags']) ? (is_string($r['tags']) ? json_decode($r['tags'], true) : $r['tags']) : [];
+            return [
+                'id' => (int)$r['id'],
+                'patientName' => $r['patient_name'],
+                'rating' => (int)$r['rating'],
+                'comment' => $r['comment'],
+                'tags' => $tags,
+                'createdAt' => $r['created_at'],
+                'updatedAt' => $r['updated_at'] ?? null,
+            ];
+        }, $revStmt->fetchAll());
+
+        // Recent appointments (5)
+        $aptStmt = $this->db->prepare("
+            SELECT a.id, a.appointment_number, a.appointment_date, a.start_time, a.status,
+                   u.name AS patient_name,
+                   p.status AS payment_status
+            FROM appointments a
+            JOIN users u ON u.id = a.patient_id
+            LEFT JOIN payments p ON p.appointment_id = a.id
+            WHERE a.doctor_id = ?
+            ORDER BY a.appointment_date DESC, a.start_time DESC
+            LIMIT 5
+        ");
+        $aptStmt->execute([$doctorId]);
+        $recentAppointments = array_map(function($a) {
+            return [
+                'id' => (int)$a['id'],
+                'appointmentNumber' => $a['appointment_number'],
+                'patientName' => $a['patient_name'],
+                'appointmentDate' => $a['appointment_date'],
+                'startTime' => substr($a['start_time'], 0, 5),
+                'status' => strtoupper($a['status']),
+                'paymentStatus' => $a['payment_status'] ?? 'unpaid'
+            ];
+        }, $aptStmt->fetchAll());
+
+        return [
+            'profile' => [
+                'id' => (int)$row['id'],
+                'name' => $row['name'],
+                'email' => $row['email'],
+                'phone' => $row['phone'],
+                'status' => $row['status'],
+                'createdAt' => $row['created_at'],
+                'approvedAt' => $row['status'] === 'active' ? $row['updated_at'] : null,
+                'imagePath' => $row['image_path'],
+                'thumbnailPath' => $row['thumbnail_path'],
+            ],
+            'professional' => [
+                'specialization' => $row['specialization'] ?? '',
+                'departmentId' => $row['department_id'] ? (int)$row['department_id'] : null,
+                'departmentName' => $row['department_name'] ?? 'General Medicine',
+                'qualification' => $row['qualification'] ?? '',
+                'experienceYears' => (int)($row['experience_years'] ?? 0),
+                'licenseNumber' => $row['license_number'] ?? '',
+                'roomNumber' => $row['room_number'] ?? '',
+                'consultationFee' => (float)($row['consultation_fee'] ?? 0),
+                'bio' => $row['bio'] ?? '',
+            ],
+            'schedule' => $schedule,
+            'stats' => [
+                'totalAppointments' => (int)($statsRow['total_appointments'] ?? 0),
+                'completedAppointments' => (int)($statsRow['completed_appointments'] ?? 0),
+                'upcomingAppointments' => (int)($statsRow['upcoming_appointments'] ?? 0),
+                'cancelledAppointments' => (int)($statsRow['cancelled_appointments'] ?? 0),
+                'uniquePatients' => (int)($statsRow['unique_patients'] ?? 0),
+                'ratingAvg' => (float)($ratingRow['rating_avg'] ?? 0),
+                'ratingCount' => (int)($ratingRow['rating_count'] ?? 0),
+                'totalRevenue' => (float)($revenueRow['total_revenue'] ?? 0),
+            ],
+            'recentReviews' => $recentReviews,
+            'recentAppointments' => $recentAppointments,
+        ];
+    }
 }

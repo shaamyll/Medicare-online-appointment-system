@@ -9,6 +9,7 @@ import {
   Stethoscope,
   X,
   Bell,
+  User,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUnreadCount } from '@/features/notifications/hooks/useNotifications';
@@ -41,6 +42,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
       label: 'Find Doctors',
       href: '/dashboard/doctors',
       icon: UserRound,
+    },
+    {
+      label: 'My Profile',
+      href: '/dashboard/profile',
+      icon: User,
     },
     {
       label: 'Notifications',

@@ -49,6 +49,38 @@ export const useAdminFeedback = (params?: {
   });
 };
 
+export const useUpdateFeedback = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      appointmentId,
+      data,
+    }: {
+      appointmentId: number;
+      data: CreateFeedbackData;
+    }) => feedbackApi.update(appointmentId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.doctors.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.feedback.all });
+    },
+  });
+};
+
+export const useDeleteAppointmentFeedback = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (appointmentId: number) => feedbackApi.deleteForAppointment(appointmentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.doctors.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.feedback.all });
+    },
+  });
+};
+
 export const useDeleteFeedback = () => {
   const queryClient = useQueryClient();
 

@@ -34,6 +34,17 @@ class AdminController {
         }
     }
 
+    public function showDoctor(Request $request): void {
+        $id = (int)$request->getRouteParam('id');
+        try {
+            $details = $this->doctorAdminService->getDoctorDetails($id);
+            Response::success($details);
+        } catch (Exception $e) {
+            $code = $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 404;
+            Response::error($e->getMessage(), $code);
+        }
+    }
+
     public function doctorRequests(Request $request): void {
         try {
             $pending = $this->service->getAllDoctors('pending');

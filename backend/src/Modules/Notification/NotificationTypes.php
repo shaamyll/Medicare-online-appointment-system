@@ -77,10 +77,12 @@ class NotificationTypes
             case self::APPOINTMENT_COMPLETED:
                 $ref = $ctx['appointmentNumber'] ?? 'N/A';
                 $doctor = $ctx['doctorName'] ?? 'Doctor';
+                $aptId = $ctx['appointmentId'] ?? '';
+                $rateLink = $aptId ? "/dashboard/appointments?tab=history&rate={$aptId}" : "/dashboard/appointments?tab=history";
                 return [
-                    'title' => 'Consultation Completed & Prescription Ready',
-                    'message' => "Dr. {$doctor} has concluded consultation #{$ref}. Your diagnosis and clinical prescription are now available.",
-                    'link' => '/dashboard/appointments',
+                    'title' => 'Consultation Completed',
+                    'message' => "How was your visit with Dr. {$doctor}? Share your feedback for appointment #{$ref}.",
+                    'link' => $rateLink,
                 ];
 
             case self::NEW_APPOINTMENT_REQUEST:

@@ -32,10 +32,15 @@ export const queryKeys = {
     doctors: (filters?: { status?: string }) =>
       ['admin', 'doctors', filters ?? {}] as const,
     doctorRequests: ['admin', 'doctorRequests'] as const,
+    doctorDetail: (id: number | string) =>
+      ['admin', 'doctorDetail', id] as const,
     doctorDeleteImpact: (id: number | string) =>
       ['admin', 'doctorDeleteImpact', id] as const,
     patients: ['admin', 'patients'] as const,
     reports: ['admin', 'reports'] as const,
+  },
+  patient: {
+    profile: ['patient', 'profile'] as const,
   },
   notifications: {
     all: ['notifications'] as const,

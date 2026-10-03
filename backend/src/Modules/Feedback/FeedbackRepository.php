@@ -13,18 +13,35 @@ class FeedbackRepository {
     }
 
     public function create(array $data): int {
+        $tagsJson = isset($data['tags']) && !empty($data['tags']) ? json_encode(array_values($data['tags'])) : null;
         $stmt = $this->db->prepare("
-            INSERT INTO feedback (appointment_id, patient_id, doctor_id, rating, comment)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO feedback (appointment_id, patient_id, doctor_id, rating, comment, tags)
+            VALUES (?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
             $data['appointment_id'],
             $data['patient_id'],
             $data['doctor_id'],
             $data['rating'],
-            $data['comment'] ?? null
+            $data['comment'] ?? null,
+            $tagsJson
         ]);
         return (int)$this->db->lastInsertId();
+    }
+
+    public function update(int $id, array $data): bool {
+        $tagsJson = isset($data['tags']) && !empty($data['tags']) ? json_encode(array_values($data['tags'])) : null;
+        $stmt = $this->db->prepare("
+            UPDATE feedback 
+            SET rating = ?, comment = ?, tags = ?, updated_at = NOW() 
+            WHERE id = ?
+        ");
+        return $stmt->execute([
+            $data['rating'],
+            $data['comment'] ?? null,
+            $tagsJson,
+            $id
+        ]);
     }
 
     public function findByAppointmentId(int $appointmentId): ?array {
@@ -44,6 +61,11 @@ class FeedbackRepository {
     public function delete(int $id): bool {
         $stmt = $this->db->prepare("DELETE FROM feedback WHERE id = ?");
         return $stmt->execute([$id]);
+    }
+
+    public function deleteByAppointmentId(int $appointmentId): bool {
+        $stmt = $this->db->prepare("DELETE FROM feedback WHERE appointment_id = ?");
+        return $stmt->execute([$appointmentId]);
     }
 
     public function getDoctorFeedbackSummary(int $doctorId): array {
@@ -101,6 +123,7 @@ class FeedbackRepository {
             if ($maskPatient) {
                 $patientName = $this->maskName($patientName);
             }
+            $tags = !empty($row['tags']) ? (is_string($row['tags']) ? json_decode($row['tags'], true) : $row['tags']) : [];
             return [
                 'id' => (int)$row['id'],
                 'appointmentId' => (int)$row['appointment_id'],
@@ -108,7 +131,9 @@ class FeedbackRepository {
                 'patientName' => $patientName,
                 'rating' => (int)$row['rating'],
                 'comment' => $row['comment'],
+                'tags' => $tags,
                 'createdAt' => $row['created_at'],
+                'updatedAt' => $row['updated_at'] ?? null,
             ];
         }, $rows);
 
@@ -186,7 +211,9 @@ class FeedbackRepository {
                 ],
                 'rating' => (int)$row['rating'],
                 'comment' => $row['comment'],
+                'tags' => !empty($row['tags']) ? (is_string($row['tags']) ? json_decode($row['tags'], true) : $row['tags']) : [],
                 'createdAt' => $row['created_at'],
+                'updatedAt' => $row['updated_at'] ?? null,
             ];
         }, $rows);
 

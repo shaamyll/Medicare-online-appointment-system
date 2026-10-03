@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card } from '@/components/ui/Card';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { FilterBar } from '@/components/ui/FilterBar';
@@ -15,10 +16,22 @@ import { DoctorDetailsModal } from '@/features/doctors/components/DoctorDetailsM
 import { Doctor } from '@/features/doctors/types/doctor.types';
 
 export const DoctorsBrowsePage: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedDeptId, setSelectedDeptId] = useState<number | undefined>(undefined);
   const [search, setSearch] = useState('');
   const [bookingDoctorId, setBookingDoctorId] = useState<number | null>(null);
   const [selectedDoctorForDetails, setSelectedDoctorForDetails] = useState<Doctor | null>(null);
+
+  // Auto-open booking modal if bookDoctor param is present (e.g. from login redirect)
+  useEffect(() => {
+    const bookDoctorParam = searchParams.get('bookDoctor');
+    if (bookDoctorParam) {
+      const docId = Number(bookDoctorParam);
+      if (!isNaN(docId) && docId > 0) {
+        setBookingDoctorId(docId);
+      }
+    }
+  }, [searchParams]);
 
   const { data: departments } = useDepartments();
   const { data: doctors, isLoading } = useDoctors({
@@ -117,8 +130,14 @@ export const DoctorsBrowsePage: React.FC = () => {
       {bookingDoctorId !== null && (
         <AppointmentBookingModal
           isOpen={bookingDoctorId !== null}
-          onClose={() => setBookingDoctorId(null)}
-          preselectedDoctorId={bookingDoctorId}
+          onClose={() => {
+            setBookingDoctorId(null);
+            if (searchParams.has('bookDoctor')) {
+              searchParams.delete('bookDoctor');
+              setSearchParams(searchParams, { replace: true });
+            }
+          }}
+          doctorId={bookingDoctorId}
         />
       )}
     </div>

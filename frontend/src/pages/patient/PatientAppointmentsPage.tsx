@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { useSearchParams, Link } from 'react-router-dom';
 import {
-  PlusCircle,
   Clock,
   CreditCard,
   CalendarClock,
@@ -8,6 +8,10 @@ import {
   FileText,
   Receipt,
   AlertCircle,
+  Pencil,
+  Trash2,
+  Lock,
+  Compass,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -23,34 +27,70 @@ import { SegmentedTabs } from '@/components/ui/SegmentedTabs';
 import { TablePagination } from '@/components/ui/Table';
 import { useToast } from '@/components/ui/Toast';
 import { useAppointments, useCancelAppointment } from '@/features/appointments/hooks/useAppointments';
-import { AppointmentBookingModal } from '@/features/appointments/components/AppointmentBookingModal';
 import { RescheduleModal } from '@/features/appointments/components/RescheduleModal';
 import { PaymentModal } from '@/features/payments/components/PaymentModal';
 import { ReceiptModal } from '@/features/payments/components/ReceiptModal';
 import { FeedbackModal } from '@/features/feedback/components/FeedbackModal';
 import { StarRating } from '@/features/feedback/components/StarRating';
+import { useDeleteAppointmentFeedback } from '@/features/feedback/hooks/useFeedback';
 import { Appointment } from '@/features/appointments/types/appointment.types';
 
 export const PatientAppointmentsPage: React.FC = () => {
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<'upcoming' | 'history' | 'all'>('upcoming');
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const tabParam = searchParams.get('tab');
+  const rateParam = searchParams.get('rate');
+
+  const [activeTab, setActiveTab] = useState<'upcoming' | 'history' | 'all'>(
+    tabParam === 'history' ? 'history' : tabParam === 'all' ? 'all' : 'upcoming'
+  );
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [page, setPage] = useState(1);
   const pageSize = 6;
-
-  const [isBookingOpen, setIsBookingOpen] = useState(false);
 
   // Modal target states
   const [rescheduleAppointment, setRescheduleAppointment] = useState<Appointment | null>(null);
   const [paymentAppointment, setPaymentAppointment] = useState<Appointment | null>(null);
   const [receiptAppointmentId, setReceiptAppointmentId] = useState<number | null>(null);
   const [feedbackAppointment, setFeedbackAppointment] = useState<Appointment | null>(null);
+  const [deletingFeedbackAptId, setDeletingFeedbackAptId] = useState<number | null>(null);
   const [notesAppointment, setNotesAppointment] = useState<Appointment | null>(null);
   const [cancellingAppointment, setCancellingAppointment] = useState<Appointment | null>(null);
 
   const { data: appointments, isLoading, isError, refetch } = useAppointments();
   const cancelMutation = useCancelAppointment();
+  const deleteFeedbackMutation = useDeleteAppointmentFeedback();
+
+  // Keep activeTab in sync if URL tab changes
+  useEffect(() => {
+    if (tabParam === 'history' && activeTab !== 'history') {
+      setActiveTab('history');
+    }
+  }, [tabParam, activeTab]);
+
+  // Handle ?rate={id} deep link from notifications
+  const autoRateOpenedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!rateParam || !appointments || appointments.length === 0) return;
+    if (autoRateOpenedRef.current === rateParam) return;
+
+    const targetApt = appointments.find((a) => String(a.id) === String(rateParam));
+    if (targetApt) {
+      autoRateOpenedRef.current = rateParam;
+      setActiveTab('history');
+      setFeedbackAppointment(targetApt);
+
+      // Scroll to element if present
+      setTimeout(() => {
+        const el = document.getElementById(`appointment-card-${targetApt.id}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 200);
+    }
+  }, [rateParam, appointments]);
 
   const handleConfirmCancel = async () => {
     if (!cancellingAppointment) return;
@@ -60,6 +100,17 @@ export const PatientAppointmentsPage: React.FC = () => {
       setCancellingAppointment(null);
     } catch (err: any) {
       toast(err?.response?.data?.message || err?.message || 'Failed to cancel appointment', 'error');
+    }
+  };
+
+  const handleConfirmDeleteFeedback = async () => {
+    if (!deletingFeedbackAptId) return;
+    try {
+      await deleteFeedbackMutation.mutateAsync(deletingFeedbackAptId);
+      toast('Review removed successfully', 'info');
+      setDeletingFeedbackAptId(null);
+    } catch (err: any) {
+      toast(err?.response?.data?.message || err?.message || 'Failed to delete review', 'error');
     }
   };
 
@@ -133,19 +184,10 @@ export const PatientAppointmentsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
+      {/* Page Header - No "Book New Appointment" button per specification */}
       <PageHeader
         title="My Appointments"
         subtitle="Manage your scheduled clinic visits, complete payments, reschedule, and submit feedback"
-        actions={
-          <Button
-            variant="primary"
-            onClick={() => setIsBookingOpen(true)}
-            leftIcon={<PlusCircle className="h-4 w-4" />}
-          >
-            Book New Appointment
-          </Button>
-        }
       />
 
       {/* Tabs & Toolbar */}
@@ -214,7 +256,7 @@ export const PatientAppointmentsPage: React.FC = () => {
           </Button>
         </div>
       ) : filteredApts.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-6 text-center shadow-xs">
+        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center shadow-xs">
           <EmptyState
             title={
               search || statusFilter !== 'all'
@@ -227,15 +269,11 @@ export const PatientAppointmentsPage: React.FC = () => {
               search || statusFilter !== 'all'
                 ? 'Try clearing your search query or switching filters to see more results.'
                 : activeTab === 'upcoming'
-                ? "You don't have any pending or confirmed consultations on schedule. Book your first appointment today."
+                ? "You don't have any pending or confirmed consultations on schedule."
                 : 'Your completed and past appointment records will be safely archived here for your reference.'
             }
             actionLabel={
-              search || statusFilter !== 'all'
-                ? 'Clear Filters'
-                : activeTab === 'upcoming'
-                ? 'Book Visit Now'
-                : undefined
+              search || statusFilter !== 'all' ? 'Clear Filters' : undefined
             }
             onAction={
               search || statusFilter !== 'all'
@@ -243,11 +281,20 @@ export const PatientAppointmentsPage: React.FC = () => {
                     setSearch('');
                     setStatusFilter('all');
                   }
-                : activeTab === 'upcoming'
-                ? () => setIsBookingOpen(true)
                 : undefined
             }
           />
+          {activeTab === 'upcoming' && !search && statusFilter === 'all' && (
+            <div className="mt-4">
+              <Link
+                to="/dashboard/doctors"
+                className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-700 hover:text-emerald-800 hover:underline"
+              >
+                <Compass className="h-4 w-4" />
+                Find a doctor to schedule a visit &rarr;
+              </Link>
+            </div>
+          )}
         </div>
       ) : (
         <div className="space-y-4">
@@ -271,12 +318,28 @@ export const PatientAppointmentsPage: React.FC = () => {
             const canPay = !isPaid && !isRejected && !isCancelled;
             const canReschedule = (isPending || isApproved) && (apt.rescheduleCount || 0) < 2;
             const canCancel = isPending || isApproved;
-            const canRate = isCompleted && !apt.feedback;
-            const hasFeedback = isCompleted && !!apt.feedback;
+
+            // Review / Feedback logic
+            const reviewData = apt.review || apt.feedback;
+            const hasReview = isCompleted && Boolean(reviewData && reviewData.rating);
+            const canRate = isCompleted && !hasReview;
+
+            // 7-day edit/delete window
+            let isReviewEditable = false;
+            if (hasReview && reviewData) {
+              if (reviewData.isEditable !== undefined) {
+                isReviewEditable = reviewData.isEditable;
+              } else if (reviewData.createdAt) {
+                const createdTs = new Date(reviewData.createdAt).getTime();
+                const nowTs = Date.now();
+                isReviewEditable = nowTs - createdTs <= 7 * 24 * 60 * 60 * 1000;
+              }
+            }
 
             return (
               <div
                 key={apt.id}
+                id={`appointment-card-${apt.id}`}
                 className="bg-white rounded-xl border border-gray-200 shadow-xs hover:shadow-md transition-shadow overflow-hidden"
               >
                 {/* Main Card Content */}
@@ -342,6 +405,71 @@ export const PatientAppointmentsPage: React.FC = () => {
                     <PaymentBadge status={paymentStatus} />
                   </div>
                 </div>
+
+                {/* Feedback Display Strip for Completed Appointments with Review */}
+                {isCompleted && hasReview && reviewData && (
+                  <div className="bg-amber-50/60 border-t border-amber-100 px-5 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                    <div className="space-y-1 flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <StarRating value={reviewData.rating} readOnly size="sm" />
+                        <span className="font-bold text-amber-900">Your Rating</span>
+                        {reviewData.updatedAt && (
+                          <span className="text-[10px] font-medium bg-amber-200/70 text-amber-900 px-1.5 py-0.5 rounded">
+                            Edited
+                          </span>
+                        )}
+                        {!isReviewEditable && (
+                          <span className="inline-flex items-center gap-1 text-[11px] text-gray-500">
+                            <Lock className="h-3 w-3 text-gray-400" />
+                            Review locked
+                          </span>
+                        )}
+                      </div>
+
+                      {reviewData.comment && (
+                        <p className="text-gray-700 italic line-clamp-2">
+                          "{reviewData.comment}"
+                        </p>
+                      )}
+
+                      {reviewData.tags && reviewData.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {reviewData.tags.map((t, idx) => (
+                            <span
+                              key={idx}
+                              className="text-[10px] font-medium bg-amber-100/90 text-amber-800 border border-amber-200/60 px-2 py-0.5 rounded-full"
+                            >
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 7-day Edit & Delete actions */}
+                    {isReviewEditable && (
+                      <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                        <button
+                          type="button"
+                          onClick={() => setFeedbackAppointment(apt)}
+                          title="Edit your review"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-amber-900 bg-white border border-amber-200 rounded-lg hover:bg-amber-50 transition-colors shadow-2xs"
+                        >
+                          <Pencil className="h-3 w-3" />
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeletingFeedbackAptId(apt.id)}
+                          title="Delete your review"
+                          className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-rose-700 bg-white border border-rose-200 rounded-lg hover:bg-rose-50 transition-colors shadow-2xs"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Footer Strip of Card with bg-gray-50 and top border */}
                 <div className="bg-gray-50 border-t border-gray-100 px-5 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -409,15 +537,8 @@ export const PatientAppointmentsPage: React.FC = () => {
                         className="bg-amber-500 hover:bg-amber-600"
                         leftIcon={<Star className="h-3.5 w-3.5 fill-current" />}
                       >
-                        Rate Visit
+                        Rate your visit
                       </Button>
-                    )}
-
-                    {hasFeedback && (
-                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-xs">
-                        <StarRating value={apt.feedback!.rating} readOnly size="sm" />
-                        <span className="text-[11px] font-bold text-amber-800">Your Rating</span>
-                      </div>
                     )}
 
                     {apt.consultation && (
@@ -450,12 +571,6 @@ export const PatientAppointmentsPage: React.FC = () => {
           )}
         </div>
       )}
-
-      {/* Booking Modal */}
-      <AppointmentBookingModal
-        isOpen={isBookingOpen}
-        onClose={() => setIsBookingOpen(false)}
-      />
 
       {/* Reschedule Modal */}
       {rescheduleAppointment && (
@@ -493,16 +608,41 @@ export const PatientAppointmentsPage: React.FC = () => {
         />
       )}
 
-      {/* Feedback Modal */}
+      {/* Feedback Modal (Create & Edit) */}
       {feedbackAppointment && (
         <FeedbackModal
           isOpen={!!feedbackAppointment}
-          onClose={() => setFeedbackAppointment(null)}
+          onClose={() => {
+            setFeedbackAppointment(null);
+            // Clear rate param if it was set
+            if (searchParams.get('rate')) {
+              searchParams.delete('rate');
+              setSearchParams(searchParams, { replace: true });
+            }
+          }}
           appointmentId={feedbackAppointment.id}
           doctorName={feedbackAppointment.doctor.name}
           specialization={feedbackAppointment.doctor.specialization}
+          doctorPhoto={feedbackAppointment.doctor.thumbnailPath || feedbackAppointment.doctor.imagePath}
+          visitDate={feedbackAppointment.appointmentDate}
+          initialReview={feedbackAppointment.review || feedbackAppointment.feedback}
+          onSuccess={() => {
+            refetch();
+          }}
         />
       )}
+
+      {/* Delete Feedback Confirmation Modal */}
+      <ConfirmModal
+        isOpen={deletingFeedbackAptId !== null}
+        onClose={() => setDeletingFeedbackAptId(null)}
+        onConfirm={handleConfirmDeleteFeedback}
+        title="Delete Review"
+        description="Are you sure you want to remove your feedback and rating for this appointment? This action cannot be undone."
+        confirmLabel="Yes, Delete Review"
+        variant="danger"
+        isLoading={deleteFeedbackMutation.isPending}
+      />
 
       {/* Consultation Notes Modal */}
       {notesAppointment && (

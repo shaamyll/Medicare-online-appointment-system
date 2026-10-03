@@ -18,6 +18,31 @@ export const feedbackApi = {
     return response.data.data;
   },
 
+  update: async (appointmentId: number, data: CreateFeedbackData): Promise<FeedbackItem> => {
+    const response = await apiClient.put<ApiResponse<FeedbackItem>>(
+      `/appointments/${appointmentId}/feedback`,
+      data
+    );
+    if (!response.data.data) {
+      throw new Error(response.data.message || 'Failed to update feedback');
+    }
+    return response.data.data;
+  },
+
+  getByAppointment: async (appointmentId: number): Promise<FeedbackItem> => {
+    const response = await apiClient.get<ApiResponse<FeedbackItem>>(
+      `/appointments/${appointmentId}/feedback`
+    );
+    if (!response.data.data) {
+      throw new Error(response.data.message || 'Failed to load feedback');
+    }
+    return response.data.data;
+  },
+
+  deleteForAppointment: async (appointmentId: number): Promise<void> => {
+    await apiClient.delete(`/appointments/${appointmentId}/feedback`);
+  },
+
   getDoctorFeedback: async (
     doctorId: number,
     page: number = 1,

@@ -74,6 +74,46 @@ class FeedbackController {
         }
     }
 
+    public function getAppointmentFeedback(Request $request): void {
+        $user = $request->getUser();
+        $appointmentId = (int)$request->getRouteParam('id');
+
+        try {
+            $data = $this->service->getAppointmentFeedback($appointmentId, $user);
+            Response::success($data);
+        } catch (Exception $e) {
+            $code = $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 400;
+            Response::error($e->getMessage(), $code);
+        }
+    }
+
+    public function update(Request $request): void {
+        $user = $request->getUser();
+        $appointmentId = (int)$request->getRouteParam('id');
+        $data = $request->getBody();
+
+        try {
+            $result = $this->service->updateAppointmentFeedback($appointmentId, $data, $user);
+            Response::success($result, 'Feedback updated successfully');
+        } catch (Exception $e) {
+            $code = $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 400;
+            Response::error($e->getMessage(), $code);
+        }
+    }
+
+    public function deletePatientFeedback(Request $request): void {
+        $user = $request->getUser();
+        $appointmentId = (int)$request->getRouteParam('id');
+
+        try {
+            $this->service->deleteAppointmentFeedback($appointmentId, $user);
+            Response::success(null, 'Feedback deleted successfully');
+        } catch (Exception $e) {
+            $code = $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 400;
+            Response::error($e->getMessage(), $code);
+        }
+    }
+
     public function delete(Request $request): void {
         $id = (int)$request->getRouteParam('id');
 

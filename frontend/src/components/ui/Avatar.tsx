@@ -23,13 +23,34 @@ const sizeClasses = {
   '2xl': 'w-24 h-24 text-2xl',
 };
 
+const COLOR_GRADIENTS = [
+  'from-teal-600 to-emerald-500',
+  'from-blue-600 to-indigo-500',
+  'from-violet-600 to-purple-500',
+  'from-sky-600 to-cyan-500',
+  'from-amber-600 to-orange-500',
+  'from-rose-600 to-pink-500',
+  'from-emerald-600 to-teal-500',
+  'from-indigo-600 to-violet-500',
+];
+
+const getDeterministicGradient = (str: string): string => {
+  if (!str) return COLOR_GRADIENTS[0];
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % COLOR_GRADIENTS.length;
+  return COLOR_GRADIENTS[index];
+};
+
 export const Avatar: React.FC<AvatarProps> = ({
   src,
   alt = 'Avatar',
   name = '',
   initials,
   size = 'md',
-  shape = 'rounded',
+  shape = 'circle',
   className,
   onClick,
   version,
@@ -57,6 +78,7 @@ export const Avatar: React.FC<AvatarProps> = ({
 
   const resolvedUrl = src ? getImageUrl(src, version) : '';
   const roundedClass = shape === 'circle' ? 'rounded-full' : 'rounded-xl';
+  const gradientClass = getDeterministicGradient(name || alt || 'user');
 
   if (resolvedUrl && !hasError) {
     return (
@@ -79,7 +101,8 @@ export const Avatar: React.FC<AvatarProps> = ({
     <div
       onClick={onClick}
       className={cn(
-        'flex items-center justify-center font-bold shrink-0 bg-gradient-to-tr from-teal-600 to-emerald-500 text-white shadow-sm select-none',
+        'flex items-center justify-center font-bold shrink-0 bg-gradient-to-tr text-white shadow-xs select-none',
+        gradientClass,
         sizeClasses[size],
         roundedClass,
         className

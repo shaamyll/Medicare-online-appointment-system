@@ -28,6 +28,7 @@ import { DoctorProfilePage } from '@/pages/doctor/DoctorProfilePage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { PatientAppointmentsPage } from '@/pages/patient/PatientAppointmentsPage';
 import { DoctorsBrowsePage } from '@/pages/patient/DoctorsBrowsePage';
+import { PatientProfilePage } from '@/pages/patient/PatientProfilePage';
 
 // Notifications Page (Shared across all roles)
 import { NotificationsPage } from '@/features/notifications/pages/NotificationsPage';
@@ -62,6 +63,7 @@ export const AppRouter: React.FC = () => {
         <Route index element={<DashboardPage />} />
         <Route path="appointments" element={<PatientAppointmentsPage />} />
         <Route path="doctors" element={<DoctorsBrowsePage />} />
+        <Route path="profile" element={<PatientProfilePage />} />
         <Route path="notifications" element={<NotificationsPage />} />
       </Route>
 

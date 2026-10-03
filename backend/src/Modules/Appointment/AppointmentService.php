@@ -362,6 +362,7 @@ class AppointmentService {
             $meta = NotificationTypes::build(NotificationTypes::APPOINTMENT_COMPLETED, [
                 'appointmentNumber' => $apt['appointmentNumber'],
                 'doctorName' => $apt['doctor']['name'] ?? 'Doctor',
+                'appointmentId' => $appointmentId,
             ]);
             $this->notificationService->notify(
                 $patientId,

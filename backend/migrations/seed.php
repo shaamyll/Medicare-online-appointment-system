@@ -20,8 +20,16 @@ foreach ($queries as $query) {
 }
 echo "Schema migrated successfully.\n";
 
-// Ensure new columns exist on doctor_profiles and appointments idempotently
+// Ensure new columns exist on doctor_profiles, appointments, users, and feedback idempotently
 $requiredColumns = [
+    'users' => [
+        'gender' => "ALTER TABLE `users` ADD COLUMN `gender` ENUM('male', 'female', 'other') NULL AFTER `phone`",
+        'date_of_birth' => "ALTER TABLE `users` ADD COLUMN `date_of_birth` DATE NULL AFTER `gender`"
+    ],
+    'feedback' => [
+        'tags' => "ALTER TABLE `feedback` ADD COLUMN `tags` JSON NULL AFTER `comment`",
+        'updated_at' => "ALTER TABLE `feedback` ADD COLUMN `updated_at` DATETIME NULL ON UPDATE CURRENT_TIMESTAMP AFTER `created_at`"
+    ],
     'doctor_profiles' => [
         'license_number' => "ALTER TABLE `doctor_profiles` ADD COLUMN `license_number` VARCHAR(50) NULL UNIQUE AFTER `qualification`",
         'image_path' => "ALTER TABLE `doctor_profiles` ADD COLUMN `image_path` VARCHAR(255) NULL AFTER `bio`",
@@ -32,6 +40,17 @@ $requiredColumns = [
         'reschedule_count' => "ALTER TABLE `appointments` ADD COLUMN `reschedule_count` INT DEFAULT 0 AFTER `rejection_reason`"
     ]
 ];
+
+// Clean up any deprecated patient photo/avatar/medical columns from users table if present
+$deprecatedPatientCols = ['image_path', 'thumbnail_path', 'avatar', 'blood_group', 'address', 'emergency_contact'];
+foreach ($deprecatedPatientCols as $depCol) {
+    $colCheck = $pdo->prepare("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = ?");
+    $colCheck->execute([$depCol]);
+    if ((int)$colCheck->fetchColumn() > 0) {
+        $pdo->exec("ALTER TABLE `users` DROP COLUMN `{$depCol}`");
+        echo "Dropped deprecated column '{$depCol}' from users table.\n";
+    }
+}
 
 foreach ($requiredColumns as $tableName => $cols) {
     foreach ($cols as $colName => $alterSql) {
@@ -210,19 +229,50 @@ if (!$existingPending) {
     echo "Updated existing Pending Doctor credentials: {$pendingDocEmail}\n";
 }
 
-// Seed a Demo Patient
+// Seed an Inactive Doctor for Testing
+$inactiveDocEmail = 'dr.emily@medicare.com';
+$stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+$stmt->execute([$inactiveDocEmail]);
+$existingInactive = $stmt->fetch();
+
+if (!$existingInactive) {
+    $inactivePass = password_hash('Doctor123!', PASSWORD_BCRYPT);
+    $stmt = $pdo->prepare("INSERT INTO users (name, email, password, role, phone, status) VALUES (?, ?, ?, 'doctor', ?, 'inactive')");
+    $stmt->execute(['Dr. Emily Watson, MD', $inactiveDocEmail, $inactivePass, '+1 555-019-3829']);
+    $inactiveId = (int)$pdo->lastInsertId();
+
+    $dermaId = $deptMap['Dermatology'] ?? null;
+    $stmt = $pdo->prepare("INSERT INTO doctor_profiles (user_id, department_id, specialization, qualification, license_number, image_path, thumbnail_path, experience_years, consultation_fee, bio, room_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([
+        $inactiveId,
+        $dermaId,
+        'Clinical Dermatology',
+        'MD, Stanford University School of Medicine',
+        'MED-CA-2016-5912',
+        $defaultAvatar,
+        $defaultAvatar,
+        9,
+        140.00,
+        'Dr. Emily Watson is a clinical dermatologist specializing in inflammatory skin diseases and advanced laser therapeutics.',
+        'Room 204'
+    ]);
+    echo "Seeded Inactive Doctor: {$inactiveDocEmail}\n";
+}
+
+// Seed a Demo Patient with gender and date_of_birth
 $patientEmail = 'patient@medicare.com';
 $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
 $stmt->execute([$patientEmail]);
 $patient = $stmt->fetch();
 if (!$patient) {
     $patientPass = password_hash('Patient123!', PASSWORD_BCRYPT);
-    $stmt = $pdo->prepare("INSERT INTO users (name, email, password, role, phone, status) VALUES (?, ?, ?, 'patient', ?, 'active')");
+    $stmt = $pdo->prepare("INSERT INTO users (name, email, password, role, phone, gender, date_of_birth, status) VALUES (?, ?, ?, 'patient', ?, 'male', '1990-05-15', 'active')");
     $stmt->execute(['Johnathan Doe', $patientEmail, $patientPass, '+1 555-012-3456']);
     $patientId = (int)$pdo->lastInsertId();
     echo "Seeded Demo Patient: {$patientEmail} / Patient123!\n";
 } else {
     $patientId = (int)$patient['id'];
+    $pdo->prepare("UPDATE users SET phone = COALESCE(phone, '+1 555-012-3456'), gender = COALESCE(gender, 'male'), date_of_birth = COALESCE(date_of_birth, '1990-05-15') WHERE id = ?")->execute([$patientId]);
 }
 
 // Fetch approved doctor ID
@@ -249,10 +299,8 @@ if (!empty($unpaidAppts)) {
     echo "Backfilled payments for " . count($unpaidAppts) . " existing appointments.\n";
 }
 
-// Ensure sample appointments exist for demonstration if database has fewer than 4 appointments
-$apptCount = (int)$pdo->query("SELECT COUNT(*) FROM appointments")->fetchColumn();
-if ($apptCount < 4 && $approvedDocId && $patientId) {
-    echo "Seeding diverse sample appointments (Pending, Approved, Completed, Rejected)...\n";
+// Ensure sample appointments exist for demonstration (each checked individually by appointment_number)
+if ($approvedDocId && $patientId) {
     $sampleData = [
         [
             'num' => 'APT-202610-0001',
@@ -291,6 +339,21 @@ if ($apptCount < 4 && $approvedDocId && $patientId) {
             'pay_method' => 'card',
             'pay_ref' => 'MC-20260928-XY89ZK',
             'is_completed' => true,
+            'has_review' => true,
+            'is_rescheduled' => false,
+        ],
+        [
+            'num' => 'APT-202609-0005',
+            'date' => date('Y-m-d', strtotime('-2 days')),
+            'start' => '15:00:00',
+            'end' => '15:30:00',
+            'status' => 'completed',
+            'reason' => 'Routine cardiology checkup and medication review.',
+            'pay_status' => 'paid',
+            'pay_method' => 'upi',
+            'pay_ref' => 'MC-20261001-COMP02',
+            'is_completed' => true,
+            'has_review' => false,
             'is_rescheduled' => false,
         ],
         [
@@ -305,6 +368,7 @@ if ($apptCount < 4 && $approvedDocId && $patientId) {
             'pay_method' => 'upi',
             'pay_ref' => 'MC-20261002-REF001',
             'is_completed' => false,
+            'has_review' => false,
             'is_rescheduled' => false,
         ],
     ];
@@ -367,12 +431,15 @@ if ($apptCount < 4 && $approvedDocId && $patientId) {
                 'Patient advised to monitor resting pulse rate and reduce caffeine intake. Follow-up in 6 weeks if symptoms persist.'
             ]);
 
-            // Feedback
-            $fbIns = $pdo->prepare("
-                INSERT INTO feedback (appointment_id, patient_id, doctor_id, rating, comment)
-                VALUES (?, ?, ?, 5, 'Dr. Sarah was exceptionally thorough and explained my ECG results with great clarity. Highly recommended!')
-            ");
-            $fbIns->execute([$apptId, $patientId, $approvedDocId]);
+            // Feedback only if has_review is true
+            if (!empty($item['has_review'])) {
+                $tagsJson = json_encode(['Good listener', 'Clear explanation']);
+                $fbIns = $pdo->prepare("
+                    INSERT INTO feedback (appointment_id, patient_id, doctor_id, rating, comment, tags)
+                    VALUES (?, ?, ?, 5, 'Dr. Sarah was exceptionally thorough and explained my ECG results with great clarity. Highly recommended!', ?)
+                ");
+                $fbIns->execute([$apptId, $patientId, $approvedDocId, $tagsJson]);
+            }
         }
     }
     echo "Sample appointments and feedback seeded successfully.\n";

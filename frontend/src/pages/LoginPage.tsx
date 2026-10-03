@@ -53,7 +53,6 @@ export const LoginPage: React.FC = () => {
   const [regPassword, setRegPassword] = useState('');
   const [regPhone, setRegPhone] = useState('');
   const [regGender, setRegGender] = useState('Male');
-  const [regBloodGroup, setRegBloodGroup] = useState('O+');
   const [regDateOfBirth, setRegDateOfBirth] = useState('');
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -79,12 +78,13 @@ export const LoginPage: React.FC = () => {
       toast('Signed in successfully!', 'success');
 
       // Seamless role redirect:
-      // Patients -> /dashboard (or redirect origin if valid)
+      // Patients -> redirect origin (e.g. booked doctor) or /dashboard
       // Admins   -> /admin/dashboard
       if (user.role === 'admin') {
         navigate('/admin/dashboard', { replace: true });
       } else {
-        const from = (location.state as any)?.from?.pathname;
+        const redirectParam = searchParams.get('redirect');
+        const from = redirectParam || (location.state as any)?.from?.pathname;
         const targetPath = from && !from.startsWith('/admin') && !from.startsWith('/doctor') ? from : '/dashboard';
         navigate(targetPath, { replace: true });
       }
@@ -116,13 +116,15 @@ export const LoginPage: React.FC = () => {
         email: regEmail.trim(),
         password: regPassword,
         phone: regPhone.trim() || undefined,
-        gender: regGender,
-        bloodGroup: regBloodGroup,
+        gender: regGender.toLowerCase(),
         dateOfBirth: regDateOfBirth || undefined,
       });
 
       toast('Welcome to Medi-Care! Account created.', 'success');
-      navigate('/dashboard', { replace: true });
+      const redirectParam = searchParams.get('redirect');
+      const from = redirectParam || (location.state as any)?.from?.pathname;
+      const targetPath = from && !from.startsWith('/admin') && !from.startsWith('/doctor') ? from : '/dashboard';
+      navigate(targetPath, { replace: true });
     } catch (err: any) {
       const msg = err.response?.data?.message || err.message || 'Registration failed. Please try again.';
       setErrorMessage(msg);
@@ -277,7 +279,7 @@ export const LoginPage: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Gender</label>
                   <Select
@@ -287,24 +289,6 @@ export const LoginPage: React.FC = () => {
                       { value: 'Male', label: 'Male' },
                       { value: 'Female', label: 'Female' },
                       { value: 'Other', label: 'Other' },
-                    ]}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Blood Group</label>
-                  <Select
-                    value={regBloodGroup}
-                    onChange={(val) => setRegBloodGroup(val)}
-                    options={[
-                      { value: 'A+', label: 'A+' },
-                      { value: 'A-', label: 'A-' },
-                      { value: 'B+', label: 'B+' },
-                      { value: 'B-', label: 'B-' },
-                      { value: 'AB+', label: 'AB+' },
-                      { value: 'AB-', label: 'AB-' },
-                      { value: 'O+', label: 'O+' },
-                      { value: 'O-', label: 'O-' },
                     ]}
                   />
                 </div>

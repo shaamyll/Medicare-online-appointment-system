@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ShieldCheck, Check, X, AlertCircle } from 'lucide-react';
+import { ShieldCheck, Check, X, AlertCircle, Eye } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Avatar } from '@/components/ui/Avatar';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/Table';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { DoctorDetailsModal } from './DoctorDetailsModal';
 import { useToast } from '@/components/ui/Toast';
 import {
   useAdminDoctorRequests,
@@ -33,6 +34,7 @@ export const AdminDoctorRequestsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
   const pageSize = 10;
+  const [detailsDoctorId, setDetailsDoctorId] = useState<number | null>(null);
   const [rejectingDoctor, setRejectingDoctor] = useState<{ id: number; name: string } | null>(null);
 
   const { data: requests, isLoading, isError, error, refetch } = useAdminDoctorRequests();
@@ -159,7 +161,11 @@ export const AdminDoctorRequestsPage: React.FC = () => {
                   <TableRow key={doc.id}>
                     <TableCellSerial index={(page - 1) * pageSize + idx} />
                     <TableCell>
-                      <div className="flex items-center gap-3">
+                      <div
+                        className="flex items-center gap-3 cursor-pointer group"
+                        onClick={() => setDetailsDoctorId(doc.id)}
+                        title="Click to review doctor dossier"
+                      >
                         <Avatar
                           src={doc.thumbnailPath || doc.imagePath}
                           name={doc.name}
@@ -168,7 +174,9 @@ export const AdminDoctorRequestsPage: React.FC = () => {
                           version={doc.updatedAt}
                         />
                         <div>
-                          <p className="font-bold text-gray-900 text-sm">Dr. {doc.name}</p>
+                          <p className="font-bold text-gray-900 text-sm group-hover:text-emerald-700 transition-colors">
+                            Dr. {doc.name}
+                          </p>
                           <p className="text-xs text-gray-400">{doc.email}</p>
                           {doc.phone && <p className="text-[11px] text-gray-500">{doc.phone}</p>}
                         </div>
@@ -202,6 +210,17 @@ export const AdminDoctorRequestsPage: React.FC = () => {
 
                     <TableCell className="text-right pr-6">
                       <div className="flex items-center justify-end gap-2">
+                        {/* Review Application Action Button */}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDetailsDoctorId(doc.id)}
+                          className="border-sky-200 text-sky-700 hover:bg-sky-50 text-xs shadow-2xs h-8"
+                          leftIcon={<Eye className="h-3.5 w-3.5" />}
+                        >
+                          Review application
+                        </Button>
+
                         {/* Approve Button */}
                         <IconButton
                           variant="success"
@@ -255,6 +274,13 @@ export const AdminDoctorRequestsPage: React.FC = () => {
         confirmLabel="Reject Application"
         variant="danger"
         isLoading={rejectMutation.isPending}
+      />
+
+      {/* Doctor Application Dossier Modal */}
+      <DoctorDetailsModal
+        doctorId={detailsDoctorId}
+        isOpen={!!detailsDoctorId}
+        onClose={() => setDetailsDoctorId(null)}
       />
     </div>
   );

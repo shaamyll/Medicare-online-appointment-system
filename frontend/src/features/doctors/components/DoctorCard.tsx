@@ -61,7 +61,7 @@ export const DoctorCard: React.FC<DoctorCardProps> = ({
       className={`group relative bg-white rounded-3xl p-3 sm:p-3.5 border border-slate-200/80 shadow-xs hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between cursor-pointer select-none focus:outline-hidden focus:ring-2 focus:ring-emerald-500/40 ${className}`}
     >
       {/* Doctor Photo */}
-      <div className="relative w-full aspect-square sm:aspect-[4/4.2] overflow-hidden rounded-2xl bg-slate-100 shrink-0">
+      <div className="relative w-full aspect-square sm:aspect-[5/4.2] overflow-hidden rounded-2xl bg-slate-100 shrink-0">
         {photoUrl ? (
           <img
             src={photoUrl}
