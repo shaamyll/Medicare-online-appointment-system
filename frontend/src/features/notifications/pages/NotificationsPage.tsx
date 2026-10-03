@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import {
-  Bell,
   CheckCheck,
   Trash2,
   AlertCircle,
-  ChevronLeft,
-  ChevronRight,
+  Bell,
+  RotateCcw,
 } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { SegmentedTabs } from '@/components/ui/SegmentedTabs';
+import { TablePagination } from '@/components/ui/Table';
 import {
   useNotifications,
   useUnreadCount,
@@ -35,8 +36,8 @@ export const NotificationsPage: React.FC = () => {
   const total = data?.total || 0;
   const totalPages = Math.max(1, data?.totalPages || 1);
 
-  const handleTabChange = (newFilter: 'all' | 'unread') => {
-    setFilter(newFilter);
+  const handleTabChange = (newFilter: string) => {
+    setFilter(newFilter as 'all' | 'unread');
     setPage(1);
   };
 
@@ -50,236 +51,124 @@ export const NotificationsPage: React.FC = () => {
     }
   };
 
-  return (
-    <div className="max-w-5xl mx-auto space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 flex items-center justify-center shadow-sm">
-              <Bell className="w-5 h-5" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Notifications</h1>
-              <p className="text-sm text-slate-500">
-                View and manage your real-time alerts and activity updates
-              </p>
-            </div>
-          </div>
-        </div>
+  const tabs = [
+    { id: 'all', label: 'All Notifications', count: total },
+    { id: 'unread', label: 'Unread', count: unreadCount },
+  ];
 
-        {/* Global Actions */}
-        <div className="flex items-center gap-2">
-          {unreadCount > 0 && (
+  return (
+    <div className="w-full mx-auto space-y-6">
+      {/* Page Header */}
+      <PageHeader
+        title="Notifications"
+        subtitle="View and manage your real-time alerts and activity updates"
+        actions={
+          <div className="flex items-center gap-2">
+            {unreadCount > 0 && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleMarkAllRead}
+                disabled={markAllReadMutation.isPending}
+                leftIcon={<CheckCheck className="h-4 w-4 text-emerald-600" />}
+              >
+                Mark all as read
+              </Button>
+            )}
+
             <Button
               variant="outline"
               size="sm"
-              onClick={handleMarkAllRead}
-              disabled={markAllReadMutation.isPending}
-              className="gap-1.5 text-xs text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50"
+              onClick={handleClearRead}
+              disabled={clearReadMutation.isPending}
+              className="text-gray-600 hover:text-rose-600 hover:bg-rose-50 border-gray-200"
+              leftIcon={<Trash2 className="h-4 w-4" />}
             >
-              <CheckCheck className="w-4 h-4" />
-              <span>Mark all as read</span>
+              Clear read
             </Button>
-          )}
+          </div>
+        }
+      />
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleClearRead}
-            disabled={clearReadMutation.isPending}
-            className="gap-1.5 text-xs text-slate-600 hover:text-rose-600 hover:bg-rose-50"
-          >
-            <Trash2 className="w-4 h-4" />
-            <span>Clear read</span>
-          </Button>
-        </div>
+      {/* Tabs */}
+      <div>
+        <SegmentedTabs
+          tabs={tabs}
+          activeTab={filter}
+          onChange={handleTabChange}
+        />
       </div>
 
-      {/* Filter Tabs & Stats Bar */}
-      <Card className="border border-slate-200/80 shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 bg-slate-50/50">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => handleTabChange('all')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
-                filter === 'all'
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-              }`}
-            >
-              All
-              <span className="ml-1.5 opacity-80">({filter === 'all' ? total : ''})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleTabChange('unread')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
-                filter === 'unread'
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-              }`}
-            >
-              <span>Unread</span>
-              {unreadCount > 0 && (
-                <span
-                  className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                    filter === 'unread' ? 'bg-white text-emerald-700' : 'bg-rose-600 text-white'
-                  }`}
-                >
-                  {unreadCount}
-                </span>
-              )}
-            </button>
-          </div>
-
-          <div className="text-xs text-slate-400 font-medium">
-            {total > 0 && (
-              <span>
-                Page {page} of {totalPages} ({total} total)
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Content Body */}
-        <CardContent className="p-0">
-          {isLoading && !isPlaceholderData ? (
-            <div className="p-6 space-y-4">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="flex gap-4 p-4 rounded-xl bg-slate-50/60 animate-pulse">
-                  <div className="w-10 h-10 rounded-xl bg-slate-200 flex-shrink-0" />
-                  <div className="flex-1 space-y-2.5">
-                    <div className="h-4 bg-slate-200 rounded w-1/3" />
-                    <div className="h-3.5 bg-slate-200 rounded w-4/5" />
-                    <div className="h-3 bg-slate-200 rounded w-1/4" />
-                  </div>
+      {/* Notification Card Container */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        {isLoading && !isPlaceholderData ? (
+          <div className="p-6 space-y-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex gap-4 p-4 rounded-xl bg-gray-50/60 animate-pulse">
+                <div className="w-10 h-10 rounded-full bg-gray-200 shrink-0" />
+                <div className="flex-1 space-y-2.5">
+                  <div className="h-4 bg-gray-200 rounded w-1/3" />
+                  <div className="h-3.5 bg-gray-200 rounded w-4/5" />
+                  <div className="h-3 bg-gray-200 rounded w-1/4" />
                 </div>
-              ))}
-            </div>
-          ) : isError ? (
-            <div className="p-12 text-center">
-              <div className="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto mb-3">
-                <AlertCircle className="w-6 h-6" />
               </div>
-              <h3 className="text-base font-semibold text-slate-900">Failed to load notifications</h3>
-              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                {(error as any)?.message || 'An error occurred while communicating with the notification server.'}
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => refetch()}
-                className="mt-4 gap-1.5"
-              >
-                Try Again
-              </Button>
+            ))}
+          </div>
+        ) : isError ? (
+          <div className="p-12 text-center bg-white">
+            <div className="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto mb-3">
+              <AlertCircle className="h-6 w-6" />
             </div>
-          ) : items.length === 0 ? (
-            <div className="p-16 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center mx-auto mb-3 shadow-sm">
-                <Bell className="w-7 h-7" />
-              </div>
-              <h3 className="text-base font-bold text-slate-800">You're all caught up!</h3>
-              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                {filter === 'unread'
-                  ? 'There are no unread notifications waiting for your attention.'
-                  : 'You have no notifications in your history yet.'}
-              </p>
+            <h3 className="text-base font-bold text-gray-900">Failed to load notifications</h3>
+            <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto leading-relaxed">
+              {(error as any)?.message || 'An error occurred while communicating with the notification server.'}
+            </p>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => refetch()}
+              className="mt-4"
+              leftIcon={<RotateCcw className="h-4 w-4" />}
+            >
+              Try Again
+            </Button>
+          </div>
+        ) : items.length === 0 ? (
+          <div className="p-16 text-center bg-white">
+            <div className="w-12 h-12 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center mx-auto mb-3">
+              <Bell className="h-6 w-6" />
             </div>
-          ) : (
-            <div className={`divide-y divide-slate-100 ${isPlaceholderData ? 'opacity-60 transition-opacity' : ''}`}>
-              {items.map((item) => (
-                <NotificationItem
-                  key={item.id}
-                  notification={item}
-                  onMarkRead={(id) => markReadMutation.mutate(id)}
-                  onDelete={(id) => deleteMutation.mutate(id)}
-                />
-              ))}
-            </div>
-          )}
+            <h3 className="text-base font-bold text-gray-900">You're all caught up!</h3>
+            <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto leading-relaxed">
+              {filter === 'unread'
+                ? 'There are no unread notifications waiting for your attention.'
+                : 'You have no notifications in your history yet.'}
+            </p>
+          </div>
+        ) : (
+          <div className={`divide-y divide-gray-100 ${isPlaceholderData ? 'opacity-60 transition-opacity' : ''}`}>
+            {items.map((item) => (
+              <NotificationItem
+                key={item.id}
+                notification={item}
+                onMarkRead={(id) => markReadMutation.mutate(id)}
+                onDelete={(id) => deleteMutation.mutate(id)}
+              />
+            ))}
+          </div>
+        )}
 
-          {/* Server-Side Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-5 py-4 border-t border-slate-100 bg-slate-50/50">
-              <div className="text-xs text-slate-500">
-                Showing{' '}
-                <span className="font-semibold text-slate-700">
-                  {Math.min(total, (page - 1) * 10 + 1)}
-                </span>{' '}
-                to{' '}
-                <span className="font-semibold text-slate-700">
-                  {Math.min(total, page * 10)}
-                </span>{' '}
-                of <span className="font-semibold text-slate-700">{total}</span> notifications
-              </div>
-
-              <div className="flex items-center gap-1.5">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-                  disabled={page === 1 || isPlaceholderData}
-                  className="gap-1 text-xs px-2.5 h-8"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  <span>Prev</span>
-                </Button>
-
-                {/* Page numbers */}
-                <div className="flex items-center gap-1 mx-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
-                    // Show current page, first, last, and immediate neighbors
-                    if (
-                      p === 1 ||
-                      p === totalPages ||
-                      (p >= page - 1 && p <= page + 1)
-                    ) {
-                      return (
-                        <button
-                          key={p}
-                          type="button"
-                          onClick={() => setPage(p)}
-                          disabled={isPlaceholderData}
-                          className={`w-8 h-8 rounded-lg text-xs font-semibold transition ${
-                            p === page
-                              ? 'bg-emerald-600 text-white shadow-sm'
-                              : 'text-slate-600 hover:bg-slate-200/70'
-                          }`}
-                        >
-                          {p}
-                        </button>
-                      );
-                    }
-                    if (p === page - 2 || p === page + 2) {
-                      return (
-                        <span key={p} className="text-xs text-slate-400 px-0.5">
-                          ...
-                        </span>
-                      );
-                    }
-                    return null;
-                  })}
-                </div>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-                  disabled={page >= totalPages || isPlaceholderData}
-                  className="gap-1 text-xs px-2.5 h-8"
-                >
-                  <span>Next</span>
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        {/* Server-Side Pagination Bar on bg-gray-50 */}
+        {totalPages > 1 && (
+          <TablePagination
+            page={page}
+            totalPages={totalPages}
+            totalItems={total}
+            pageSize={10}
+            onPageChange={(newPage) => setPage(newPage)}
+          />
+        )}
+      </div>
     </div>
   );
 };

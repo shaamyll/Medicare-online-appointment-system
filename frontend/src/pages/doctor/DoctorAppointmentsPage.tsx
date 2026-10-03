@@ -1,20 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   FileEdit,
-  Search,
   Calendar,
   Clock,
   Phone,
   CalendarClock,
   AlertCircle,
   RotateCcw,
+  Check,
+  X,
 } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { PaymentBadge } from '@/components/ui/PaymentBadge';
 import { Modal } from '@/components/ui/Modal';
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableHeadSerial, TableCellSerial } from '@/components/ui/Table';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { FilterBar } from '@/components/ui/FilterBar';
+import { SearchInput } from '@/components/ui/SearchInput';
+import { SegmentedTabs } from '@/components/ui/SegmentedTabs';
+import { EmptyState } from '@/components/ui/EmptyState';
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+  TableHeadSerial,
+  TableCellSerial,
+  TablePagination,
+} from '@/components/ui/Table';
 import { useToast } from '@/components/ui/Toast';
 import {
   useAppointments,
@@ -29,6 +44,8 @@ export const DoctorAppointmentsPage: React.FC = () => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<'requests' | 'upcoming' | 'history'>('requests');
   const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
   // Modals state
   const [rejectingApt, setRejectingApt] = useState<Appointment | null>(null);
@@ -43,6 +60,7 @@ export const DoctorAppointmentsPage: React.FC = () => {
   const addConsultationMutation = useAddConsultation();
 
   const allApts = appointments || [];
+  const todayStr = new Date().toISOString().split('T')[0];
 
   const handleApprove = async (apt: Appointment) => {
     try {
@@ -97,137 +115,107 @@ export const DoctorAppointmentsPage: React.FC = () => {
     }
   };
 
-  const todayStr = new Date().toISOString().split('T')[0];
-
-  const filteredByTab = allApts.filter((apt) => {
-    const st = apt.status.toUpperCase();
-    if (activeTab === 'requests') {
-      return st === 'PENDING';
-    } else if (activeTab === 'upcoming') {
-      return (st === 'APPROVED' || st === 'CONFIRMED') && apt.appointmentDate >= todayStr;
-    } else {
-      // history: completed, cancelled, rejected, or past approved
-      return st === 'COMPLETED' || st === 'CANCELLED' || st === 'REJECTED' || apt.appointmentDate < todayStr;
-    }
-  });
-
-  const displayedApts = filteredByTab.filter((apt) => {
-    if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
-    return (
-      apt.appointmentNumber.toLowerCase().includes(term) ||
-      apt.patient.name.toLowerCase().includes(term) ||
-      (apt.patient.phone && apt.patient.phone.includes(term)) ||
-      (apt.patient.email && apt.patient.email.toLowerCase().includes(term))
-    );
-  });
-
   const pendingCount = allApts.filter((a) => a.status.toUpperCase() === 'PENDING').length;
   const upcomingCount = allApts.filter(
     (a) => (a.status.toUpperCase() === 'APPROVED' || a.status.toUpperCase() === 'CONFIRMED') && a.appointmentDate >= todayStr
   ).length;
 
+  const filteredByTab = useMemo(() => {
+    return allApts.filter((apt) => {
+      const st = apt.status.toUpperCase();
+      if (activeTab === 'requests') {
+        return st === 'PENDING';
+      } else if (activeTab === 'upcoming') {
+        return (st === 'APPROVED' || st === 'CONFIRMED') && apt.appointmentDate >= todayStr;
+      } else {
+        return st === 'COMPLETED' || st === 'CANCELLED' || st === 'REJECTED' || apt.appointmentDate < todayStr;
+      }
+    });
+  }, [allApts, activeTab, todayStr]);
+
+  const displayedApts = useMemo(() => {
+    if (!searchTerm.trim()) return filteredByTab;
+    const term = searchTerm.toLowerCase();
+    return filteredByTab.filter(
+      (apt) =>
+        apt.appointmentNumber.toLowerCase().includes(term) ||
+        apt.patient.name.toLowerCase().includes(term) ||
+        (apt.patient.phone && apt.patient.phone.includes(term)) ||
+        (apt.patient.email && apt.patient.email.toLowerCase().includes(term))
+    );
+  }, [filteredByTab, searchTerm]);
+
+  const totalPages = Math.ceil(displayedApts.length / pageSize) || 1;
+  const paginatedApts = displayedApts.slice((page - 1) * pageSize, page * pageSize);
+
+  const tabs = [
+    { id: 'requests', label: 'Pending Requests', count: pendingCount },
+    { id: 'upcoming', label: 'Upcoming Visits', count: upcomingCount },
+    { id: 'history', label: 'Consultation History' },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Appointments Management</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            Review incoming consultation requests, reschedule shifts, and manage patient prescriptions
-          </p>
-        </div>
+      <PageHeader
+        title="Appointments Management"
+        subtitle="Review incoming consultation requests, reschedule shifts, and manage patient prescriptions"
+      />
 
-        <div className="relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-          <input
-            type="text"
-            placeholder="Search patient, phone, ref..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 w-64 transition-all"
-          />
-        </div>
+      {/* Tabs & Toolbar */}
+      <div className="space-y-4">
+        <SegmentedTabs
+          tabs={tabs}
+          activeTab={activeTab}
+          onChange={(tab) => {
+            setActiveTab(tab as any);
+            setPage(1);
+          }}
+        />
+
+        <FilterBar>
+          <div className="w-full sm:max-w-md">
+            <SearchInput
+              value={searchTerm}
+              onChange={(val) => {
+                setSearchTerm(val);
+                setPage(1);
+              }}
+              placeholder="Search by patient name, phone, or appointment #..."
+            />
+          </div>
+        </FilterBar>
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-slate-200 gap-2">
-        <button
-          onClick={() => setActiveTab('requests')}
-          className={`pb-3 px-4 text-xs font-bold transition-all border-b-2 flex items-center gap-2 cursor-pointer ${
-            activeTab === 'requests'
-              ? 'border-emerald-600 text-emerald-700'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <span>Pending Requests</span>
-          {pendingCount > 0 && (
-            <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-amber-100 text-amber-800 font-extrabold">
-              {pendingCount}
-            </span>
-          )}
-        </button>
-
-        <button
-          onClick={() => setActiveTab('upcoming')}
-          className={`pb-3 px-4 text-xs font-bold transition-all border-b-2 flex items-center gap-2 cursor-pointer ${
-            activeTab === 'upcoming'
-              ? 'border-emerald-600 text-emerald-700'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <span>Upcoming Visits</span>
-          {upcomingCount > 0 && (
-            <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-emerald-100 text-emerald-800 font-extrabold">
-              {upcomingCount}
-            </span>
-          )}
-        </button>
-
-        <button
-          onClick={() => setActiveTab('history')}
-          className={`pb-3 px-4 text-xs font-bold transition-all border-b-2 flex items-center gap-2 cursor-pointer ${
-            activeTab === 'history'
-              ? 'border-emerald-600 text-emerald-700'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <span>Consultation History & Notes</span>
-        </button>
-      </div>
-
-      {/* Loading Skeleton */}
+      {/* Loading State */}
       {isLoading && (
-        <Card className="rounded-2xl border-slate-200">
-          <CardContent className="p-6 space-y-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="animate-pulse flex items-center justify-between py-3 border-b border-slate-100 last:border-0">
-                <div className="flex items-center gap-4">
-                  <div className="w-8 h-8 rounded-full bg-slate-200" />
-                  <div className="space-y-1.5">
-                    <div className="w-36 h-4 bg-slate-200 rounded" />
-                    <div className="w-24 h-3 bg-slate-100 rounded" />
-                  </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-xs animate-pulse space-y-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
+              <div className="flex items-center gap-4">
+                <div className="w-8 h-8 rounded-full bg-gray-200" />
+                <div className="space-y-1.5">
+                  <div className="w-36 h-4 bg-gray-200 rounded" />
+                  <div className="w-24 h-3 bg-gray-100 rounded" />
                 </div>
-                <div className="w-28 h-5 bg-slate-200 rounded-full" />
-                <div className="w-20 h-5 bg-slate-100 rounded-full" />
-                <div className="w-32 h-8 bg-slate-200 rounded-lg" />
               </div>
-            ))}
-          </CardContent>
-        </Card>
+              <div className="w-28 h-5 bg-gray-200 rounded-full" />
+              <div className="w-20 h-5 bg-gray-100 rounded-full" />
+              <div className="w-32 h-8 bg-gray-200 rounded-lg" />
+            </div>
+          ))}
+        </div>
       )}
 
       {/* Error state */}
       {isError && (
-        <div className="p-8 text-center bg-white rounded-2xl border border-rose-200 shadow-sm space-y-3">
-          <AlertCircle className="w-10 h-10 text-rose-500 mx-auto" />
-          <h3 className="text-base font-bold text-slate-900">Failed to load appointments</h3>
-          <p className="text-xs text-slate-500 max-w-md mx-auto">
+        <div className="p-8 text-center bg-white rounded-xl border border-rose-200 shadow-xs space-y-3">
+          <AlertCircle className="h-10 w-10 text-rose-500 mx-auto" />
+          <h3 className="text-base font-bold text-gray-900">Failed to load appointments</h3>
+          <p className="text-xs text-gray-500 max-w-md mx-auto">
             An error occurred while fetching your appointments. Please check your connection and try again.
           </p>
-          <Button variant="outline" size="sm" onClick={() => refetch()} className="text-xs">
-            <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+          <Button variant="secondary" size="sm" onClick={() => refetch()} leftIcon={<RotateCcw className="h-4 w-4" />}>
             Retry
           </Button>
         </div>
@@ -235,31 +223,54 @@ export const DoctorAppointmentsPage: React.FC = () => {
 
       {/* Content Table */}
       {!isLoading && !isError && (
-        <Card className="rounded-2xl border-slate-200 shadow-sm overflow-hidden">
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHeadSerial />
-                  <TableHead>Reference #</TableHead>
-                  <TableHead>Patient Details</TableHead>
-                  <TableHead>Schedule</TableHead>
-                  <TableHead>Payment</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {displayedApts.length > 0 ? (
-                  displayedApts.map((apt, idx) => {
+        <div className="space-y-4">
+          {displayedApts.length === 0 ? (
+            <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-xs">
+              <EmptyState
+                title={
+                  searchTerm
+                    ? 'No Matching Appointments'
+                    : activeTab === 'requests'
+                    ? 'No Pending Requests'
+                    : activeTab === 'upcoming'
+                    ? 'No Upcoming Consultations'
+                    : 'No Consultation History'
+                }
+                description={
+                  searchTerm
+                    ? 'Try adjusting your search criteria to find what you are looking for.'
+                    : activeTab === 'requests'
+                    ? 'You have zero pending patient requests awaiting confirmation at this time.'
+                    : activeTab === 'upcoming'
+                    ? 'No confirmed upcoming appointments are scheduled on your calendar.'
+                    : 'Your completed or archived consultations will appear here.'
+                }
+              />
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHeadSerial />
+                    <TableHead>Reference #</TableHead>
+                    <TableHead>Patient Details</TableHead>
+                    <TableHead>Schedule</TableHead>
+                    <TableHead>Payment</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedApts.map((apt, idx) => {
                     const st = apt.status.toUpperCase();
                     const canReschedule = st === 'PENDING' || st === 'APPROVED' || st === 'CONFIRMED';
                     const isUpcoming = (st === 'APPROVED' || st === 'CONFIRMED') && apt.appointmentDate >= todayStr;
 
                     return (
-                      <TableRow key={apt.id} className="hover:bg-slate-50/70 transition-colors">
-                        <TableCellSerial index={idx} />
-                        <TableCell className="font-mono text-xs font-bold text-slate-800">
+                      <TableRow key={apt.id}>
+                        <TableCellSerial index={(page - 1) * pageSize + idx} />
+                        <TableCell className="font-mono text-xs font-bold text-gray-800">
                           <div>{apt.appointmentNumber}</div>
                           {apt.rescheduleCount && apt.rescheduleCount > 0 ? (
                             <span className="inline-block mt-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
@@ -274,21 +285,21 @@ export const DoctorAppointmentsPage: React.FC = () => {
                               {apt.patient.name.charAt(0)}
                             </div>
                             <div>
-                              <p className="font-semibold text-slate-900 text-xs sm:text-sm">{apt.patient.name}</p>
-                              <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-500">
+                              <p className="font-semibold text-gray-900 text-xs sm:text-sm">{apt.patient.name}</p>
+                              <div className="flex items-center gap-2 mt-0.5 text-[11px] text-gray-500">
                                 <span>{apt.patient.email}</span>
                                 {apt.patient.phone && (
                                   <>
-                                    <span>•</span>
-                                    <span className="flex items-center gap-1 text-teal-700 font-medium">
-                                      <Phone className="w-3 h-3" />
+                                    <span>&bull;</span>
+                                    <span className="flex items-center gap-1 text-emerald-700 font-medium">
+                                      <Phone className="h-3 w-3" />
                                       {apt.patient.phone}
                                     </span>
                                   </>
                                 )}
                               </div>
                               {apt.reasonForVisit && (
-                                <p className="text-[11px] text-slate-500 mt-1 italic max-w-xs truncate">
+                                <p className="text-[11px] text-gray-500 mt-1 italic max-w-xs truncate">
                                   "{apt.reasonForVisit}"
                                 </p>
                               )}
@@ -298,12 +309,12 @@ export const DoctorAppointmentsPage: React.FC = () => {
 
                         <TableCell>
                           <div className="space-y-0.5">
-                            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
-                              <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                            <div className="flex items-center gap-1.5 text-xs font-bold text-gray-900">
+                              <Calendar className="h-3.5 w-3.5 text-gray-400" />
                               <span>{apt.appointmentDate}</span>
                             </div>
                             <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 font-semibold">
-                              <Clock className="w-3 h-3 text-emerald-600" />
+                              <Clock className="h-3 w-3 text-emerald-600" />
                               <span>{apt.startTime} - {apt.endTime}</span>
                             </div>
                           </div>
@@ -312,7 +323,7 @@ export const DoctorAppointmentsPage: React.FC = () => {
                         <TableCell>
                           <PaymentBadge status={apt.payment?.status} />
                           {apt.payment?.method && (
-                            <span className="block text-[10px] text-slate-400 capitalize mt-0.5">
+                            <span className="block text-[10px] text-gray-400 capitalize mt-0.5">
                               via {apt.payment.method}
                             </span>
                           )}
@@ -336,92 +347,68 @@ export const DoctorAppointmentsPage: React.FC = () => {
                                   variant="outline"
                                   size="sm"
                                   onClick={() => setRejectingApt(apt)}
-                                  className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200 text-xs px-2.5 h-7"
+                                  className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200"
+                                  leftIcon={<X className="h-3.5 w-3.5" />}
                                 >
                                   Reject
                                 </Button>
                                 <Button
                                   size="sm"
+                                  variant="primary"
                                   onClick={() => handleApprove(apt)}
                                   isLoading={updateStatusMutation.isPending}
-                                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2.5 h-7"
+                                  leftIcon={<Check className="h-3.5 w-3.5" />}
                                 >
                                   Approve
                                 </Button>
                               </>
                             )}
 
-                            {/* Reschedule button for pending/approved */}
+                            {/* Reschedule option */}
                             {canReschedule && (
                               <Button
-                                variant="outline"
+                                variant="secondary"
                                 size="sm"
                                 onClick={() => setReschedulingApt(apt)}
-                                className="text-xs text-slate-700 border-slate-200 hover:bg-slate-50 h-7"
-                                title="Reschedule slot"
+                                leftIcon={<CalendarClock className="h-3.5 w-3.5 text-indigo-600" />}
                               >
-                                <CalendarClock className="w-3.5 h-3.5 mr-1 text-slate-500" />
                                 Reschedule
                               </Button>
                             )}
 
-                            {/* Complete & Prescribe for upcoming confirmed visits */}
-                            {isUpcoming && (
+                            {/* Consultation notes / prescription */}
+                            {(isUpcoming || st === 'COMPLETED') && (
                               <Button
                                 size="sm"
+                                variant={apt.consultation ? 'secondary' : 'primary'}
                                 onClick={() => openConsultationModal(apt)}
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-7"
+                                leftIcon={<FileEdit className="h-3.5 w-3.5" />}
                               >
-                                <FileEdit className="w-3.5 h-3.5 mr-1" />
-                                Complete & Prescribe
-                              </Button>
-                            )}
-
-                            {/* View / Edit notes for completed visits */}
-                            {st === 'COMPLETED' && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => openConsultationModal(apt)}
-                                className="text-xs text-teal-700 hover:bg-teal-50 h-7"
-                              >
-                                <FileEdit className="w-3.5 h-3.5 mr-1" />
-                                Notes & Rx
+                                {apt.consultation ? 'Edit Prescription' : 'Prescription'}
                               </Button>
                             )}
                           </div>
                         </TableCell>
                       </TableRow>
                     );
-                  })
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-16">
-                      <div className="flex flex-col items-center justify-center space-y-3">
-                        <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400">
-                          <Calendar className="w-6 h-6" />
-                        </div>
-                        <h4 className="text-sm font-bold text-slate-800">No appointments found</h4>
-                        <p className="text-xs text-slate-400 max-w-sm">
-                          {searchTerm
-                            ? `No records matching "${searchTerm}" in this category.`
-                            : activeTab === 'requests'
-                            ? 'You currently have no pending appointment requests.'
-                            : activeTab === 'upcoming'
-                            ? 'No upcoming visits scheduled at the moment.'
-                            : 'No completed or historical consultation records found.'}
-                        </p>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                  })}
+                </TableBody>
+              </Table>
+
+              {/* Table pagination on bg-gray-50 */}
+              <TablePagination
+                page={page}
+                totalPages={totalPages}
+                totalItems={displayedApts.length}
+                pageSize={pageSize}
+                onPageChange={(p) => setPage(p)}
+              />
+            </div>
+          )}
+        </div>
       )}
 
-      {/* Reject Reason Modal */}
+      {/* Reject Modal */}
       {rejectingApt && (
         <RejectReasonModal
           isOpen={!!rejectingApt}
@@ -442,72 +429,70 @@ export const DoctorAppointmentsPage: React.FC = () => {
         />
       )}
 
-      {/* Consultation Record / Prescription Modal */}
+      {/* Consultation Modal */}
       {consultationModalApt && (
         <Modal
           isOpen={!!consultationModalApt}
           onClose={() => setConsultationModalApt(null)}
-          title={`Clinical Consultation - ${consultationModalApt.patient.name}`}
-          description={`Appointment #${consultationModalApt.appointmentNumber} on ${consultationModalApt.appointmentDate}`}
+          title={`Clinical Consultation: #${consultationModalApt.appointmentNumber}`}
+          description={`Patient: ${consultationModalApt.patient.name} | Date: ${consultationModalApt.appointmentDate}`}
+          maxWidth="lg"
         >
-          <form onSubmit={handleSaveConsultation} className="space-y-4 text-xs">
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-              <span className="text-slate-400 block mb-1 font-semibold uppercase text-[10px]">
-                Patient Reported Symptoms:
-              </span>
-              <p className="text-slate-700">{consultationModalApt.reasonForVisit || 'Not specified'}</p>
-            </div>
-
+          <form onSubmit={handleSaveConsultation} className="space-y-4 pt-2">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wider">
-                Clinical Diagnosis *
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Clinical Diagnosis <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
-                placeholder="e.g. Stage 1 Hypertension, Acute Bronchitis"
+                placeholder="e.g. Acute Bronchitis, Hypertension Stage 1"
                 value={diagnosis}
                 onChange={(e) => setDiagnosis(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 p-2.5 text-xs text-slate-900 focus:border-teal-500 focus:outline-hidden"
+                className="w-full h-10 px-3.5 rounded-lg border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-gray-900"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wider">
-                Prescription & Dosage Details
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Prescription & Medication Instructions
               </label>
               <textarea
-                rows={3}
-                placeholder="e.g. 1. Lisinopril 10mg - 1 tablet once daily in the morning with water.&#10;2. Multivitamin tablet once daily after lunch."
+                rows={4}
+                placeholder="1. Amoxicillin 500mg - 1 capsule tid x 7 days&#10;2. Paracetamol 500mg - prn for fever"
                 value={prescription}
                 onChange={(e) => setPrescription(e.target.value)}
-                className="w-full font-mono rounded-lg border border-slate-300 p-2.5 text-xs text-slate-900 focus:border-teal-500 focus:outline-hidden"
+                className="w-full p-3 rounded-lg border border-gray-200 text-sm font-mono bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-gray-900"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wider">
-                Consultation Advice / Follow-up Notes
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Doctor's Clinical Notes
               </label>
               <textarea
-                rows={2}
-                placeholder="Dietary instructions, exercise recommendations, return in 2 weeks..."
+                rows={3}
+                placeholder="Patient presented with dry cough and mild fever. Advised bed rest and hydration."
                 value={consultationNotes}
                 onChange={(e) => setConsultationNotes(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 p-2.5 text-xs text-slate-900 focus:border-teal-500 focus:outline-hidden"
+                className="w-full p-3 rounded-lg border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-gray-900"
               />
             </div>
 
-            <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
-              <Button variant="outline" type="button" onClick={() => setConsultationModalApt(null)}>
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-gray-100">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setConsultationModalApt(null)}
+              >
                 Cancel
               </Button>
               <Button
                 type="submit"
+                variant="primary"
                 isLoading={addConsultationMutation.isPending}
-                className="bg-teal-600 hover:bg-teal-700 text-white"
               >
-                Save & Mark Completed
+                Save Consultation Record
               </Button>
             </div>
           </form>

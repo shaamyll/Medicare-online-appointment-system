@@ -1,9 +1,24 @@
-import React, { useState } from 'react';
-import { Check, X, Search, ShieldCheck, AlertCircle } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/Card';
-import { StatusBadge } from '@/components/ui/Badge';
+import React, { useState, useMemo } from 'react';
+import { ShieldCheck, Check, X, AlertCircle } from 'lucide-react';
+import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Avatar } from '@/components/ui/Avatar';
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableHeadSerial, TableCellSerial } from '@/components/ui/Table';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { FilterBar } from '@/components/ui/FilterBar';
+import { SearchInput } from '@/components/ui/SearchInput';
+import { IconButton } from '@/components/ui/IconButton';
+import { Button } from '@/components/ui/Button';
+import { EmptyState } from '@/components/ui/EmptyState';
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+  TableHeadSerial,
+  TableCellSerial,
+  TablePagination,
+} from '@/components/ui/Table';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { useToast } from '@/components/ui/Toast';
@@ -16,6 +31,8 @@ import {
 export const AdminDoctorRequestsPage: React.FC = () => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
   const [rejectingDoctor, setRejectingDoctor] = useState<{ id: number; name: string } | null>(null);
 
   const { data: requests, isLoading, isError, error, refetch } = useAdminDoctorRequests();
@@ -25,7 +42,7 @@ export const AdminDoctorRequestsPage: React.FC = () => {
   const handleApprove = async (id: number, name: string) => {
     try {
       await approveMutation.mutateAsync(id);
-      toast(`Dr. ${name} approved successfully! They can now log in to the Doctor Portal.`, 'success');
+      toast(`Dr. ${name} has been approved and activated.`, 'success');
     } catch (err: any) {
       toast(err.response?.data?.message || err.message || 'Failed to approve doctor', 'error');
     }
@@ -35,47 +52,45 @@ export const AdminDoctorRequestsPage: React.FC = () => {
     if (!rejectingDoctor) return;
     try {
       await rejectMutation.mutateAsync(rejectingDoctor.id);
-      toast(`Dr. ${rejectingDoctor.name}'s registration request was rejected.`, 'info');
+      toast(`Application for Dr. ${rejectingDoctor.name} has been rejected.`, 'info');
       setRejectingDoctor(null);
     } catch (err: any) {
       toast(err.response?.data?.message || err.message || 'Failed to reject doctor', 'error');
     }
   };
 
-  const filteredRequests = (requests || []).filter((doc) => {
-    if (!searchTerm) return true;
+  const filteredRequests = useMemo(() => {
+    if (!requests) return [];
+    if (!searchTerm.trim()) return requests;
     const term = searchTerm.toLowerCase();
-    return (
-      doc.name.toLowerCase().includes(term) ||
-      doc.email.toLowerCase().includes(term) ||
-      (doc.specialization && doc.specialization.toLowerCase().includes(term)) ||
-      (doc.departmentName && doc.departmentName.toLowerCase().includes(term)) ||
-      (doc.licenseNumber && doc.licenseNumber.toLowerCase().includes(term))
+    return requests.filter(
+      (r) =>
+        r.name.toLowerCase().includes(term) ||
+        (r.specialization && r.specialization.toLowerCase().includes(term)) ||
+        r.email.toLowerCase().includes(term) ||
+        (r.departmentName && r.departmentName.toLowerCase().includes(term)) ||
+        (r.licenseNumber && r.licenseNumber.toLowerCase().includes(term))
     );
-  });
+  }, [requests, searchTerm]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredRequests.length / pageSize));
+  const paginatedRequests = filteredRequests.slice((page - 1) * pageSize, page * pageSize);
 
   if (isLoading) {
-    return <LoadingState message="Fetching pending doctor applications..." />;
+    return <LoadingState message="Fetching pending doctor registrations..." />;
   }
 
   if (isError) {
     return (
-      <div className="p-8 text-center bg-white rounded-2xl border border-rose-200 shadow-sm space-y-4">
-        <div className="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
-          <AlertCircle className="w-6 h-6" />
-        </div>
-        <div>
-          <h3 className="text-lg font-bold text-slate-900">Failed to load doctor requests</h3>
-          <p className="text-sm text-slate-500 mt-1">
-            {(error as any)?.message || 'An error occurred while fetching pending requests.'}
-          </p>
-        </div>
-        <button
-          onClick={() => refetch()}
-          className="px-4 py-2 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition"
-        >
-          Try Again
-        </button>
+      <div className="p-8 text-center bg-white rounded-xl border border-rose-200 shadow-xs space-y-3">
+        <AlertCircle className="h-10 w-10 text-rose-500 mx-auto" />
+        <h3 className="text-base font-bold text-gray-900">Failed to load registration requests</h3>
+        <p className="text-xs text-gray-500 max-w-md mx-auto">
+          {(error as any)?.message || 'An error occurred while fetching pending requests.'}
+        </p>
+        <Button variant="secondary" size="sm" onClick={() => refetch()}>
+          Retry
+        </Button>
       </div>
     );
   }
@@ -83,36 +98,44 @@ export const AdminDoctorRequestsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-              Doctor Approval Requests
-            </h1>
-            <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
-              {requests?.length || 0} Pending
-            </span>
-          </div>
-          <p className="text-sm text-slate-500">
-            Verify credentials, check medical license against official registers, and grant portal access
-          </p>
-        </div>
+      <PageHeader
+        title="Doctor Approval Requests"
+        subtitle="Verify credentials, check medical license against official registers, and grant portal access"
+        badge={
+          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+            {requests?.length || 0} Pending
+          </span>
+        }
+      />
 
-        <div className="relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-          <input
-            type="text"
-            placeholder="Search by name, license..."
+      {/* Filter Bar */}
+      <FilterBar>
+        <div className="w-full sm:max-w-md">
+          <SearchInput
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-emerald-500 w-56 transition"
+            onChange={(val) => {
+              setSearchTerm(val);
+              setPage(1);
+            }}
+            placeholder="Search by name, license, specialization..."
           />
         </div>
-      </div>
+      </FilterBar>
 
       {/* Table */}
-      <Card>
-        <CardContent className="p-0">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden">
+        {filteredRequests.length === 0 ? (
+          <div className="p-8">
+            <EmptyState
+              title={searchTerm ? 'No Matching Requests' : 'No Pending Requests'}
+              description={
+                searchTerm
+                  ? 'No doctor applications match your search query.'
+                  : 'All physician registration applications have been reviewed. Good job!'
+              }
+            />
+          </div>
+        ) : (
           <Table>
             <TableHeader>
               <TableRow>
@@ -126,121 +149,113 @@ export const AdminDoctorRequestsPage: React.FC = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredRequests.length > 0 ? (
-                filteredRequests.map((doc, idx) => {
-                  const isApproving =
-                    approveMutation.isPending && (approveMutation.variables as any) === doc.id;
-                  const isRejecting =
-                    rejectMutation.isPending && (rejectMutation.variables as any) === doc.id;
+              {paginatedRequests.map((doc, idx) => {
+                const isApproving =
+                  approveMutation.isPending && (approveMutation.variables as any) === doc.id;
+                const isRejecting =
+                  rejectMutation.isPending && (rejectMutation.variables as any) === doc.id;
 
-                  return (
-                    <TableRow key={doc.id}>
-                      <TableCellSerial index={idx} />
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar
-                            src={doc.thumbnailPath || doc.imagePath}
-                            name={doc.name}
-                            size="md"
-                            version={doc.updatedAt}
-                          />
-                          <div>
-                            <p className="font-semibold text-slate-900 text-sm">{doc.name}</p>
-                            <p className="text-xs text-slate-400">{doc.email}</p>
-                            {doc.phone && (
-                              <p className="text-[11px] text-slate-500">{doc.phone}</p>
-                            )}
-                          </div>
+                return (
+                  <TableRow key={doc.id}>
+                    <TableCellSerial index={(page - 1) * pageSize + idx} />
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar
+                          src={doc.thumbnailPath || doc.imagePath}
+                          name={doc.name}
+                          size="md"
+                          shape="rounded"
+                          version={doc.updatedAt}
+                        />
+                        <div>
+                          <p className="font-bold text-gray-900 text-sm">Dr. {doc.name}</p>
+                          <p className="text-xs text-gray-400">{doc.email}</p>
+                          {doc.phone && <p className="text-[11px] text-gray-500">{doc.phone}</p>}
                         </div>
-                      </TableCell>
+                      </div>
+                    </TableCell>
 
-                      <TableCell>
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-900">
-                          <ShieldCheck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                          <span className="font-mono font-bold text-xs">
-                            {doc.licenseNumber || 'Not provided'}
-                          </span>
-                        </div>
-                      </TableCell>
+                    <TableCell>
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-50 border border-blue-200 text-blue-900">
+                        <ShieldCheck className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                        <span className="font-mono font-bold text-xs">
+                          {doc.licenseNumber || 'Not provided'}
+                        </span>
+                      </div>
+                    </TableCell>
 
-                      <TableCell>
-                        <p className="font-medium text-slate-800 text-xs">{doc.specialization || 'General'}</p>
-                        <p className="text-xs text-slate-500">{doc.departmentName || 'Unassigned'}</p>
-                      </TableCell>
+                    <TableCell>
+                      <p className="font-semibold text-gray-800 text-xs">{doc.specialization || 'General'}</p>
+                      <p className="text-xs text-gray-500">{doc.departmentName || 'Unassigned'}</p>
+                    </TableCell>
 
-                      <TableCell>
-                        <p className="text-xs text-slate-800 font-medium">
-                          ${Number(doc.consultationFee || 0).toFixed(2)}
-                        </p>
-                        <p className="text-[11px] text-slate-500">{doc.experienceYears || 0} Yrs Practice</p>
-                      </TableCell>
+                    <TableCell>
+                      <p className="text-xs text-gray-800 font-semibold">
+                        Rs. {Number(doc.consultationFee || 0).toFixed(0)}
+                      </p>
+                      <p className="text-[11px] text-gray-500">{doc.experienceYears || 0} Yrs Practice</p>
+                    </TableCell>
 
-                      <TableCell>
-                        <StatusBadge status="pending" />
-                      </TableCell>
+                    <TableCell>
+                      <StatusBadge status="pending" />
+                    </TableCell>
 
-                      <TableCell className="text-right pr-6">
-                        <div className="flex items-center justify-end gap-2">
-                          {/* Approve Button */}
-                          <button
-                            type="button"
-                            onClick={() => handleApprove(doc.id, doc.name)}
-                            disabled={isApproving || isRejecting}
-                            title="Approve Doctor"
-                            aria-label="Approve Doctor"
-                            className="w-9 h-9 rounded-lg border-2 border-emerald-300 bg-emerald-50/80 text-emerald-700 shadow-sm hover:shadow-md hover:bg-emerald-100 hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-all flex items-center justify-center disabled:opacity-50 cursor-pointer"
-                          >
-                            {isApproving ? (
-                              <div className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
-                            ) : (
-                              <Check className="w-4 h-4" />
-                            )}
-                          </button>
+                    <TableCell className="text-right pr-6">
+                      <div className="flex items-center justify-end gap-2">
+                        {/* Approve Button */}
+                        <IconButton
+                          variant="success"
+                          size="sm"
+                          icon={<Check className="h-4 w-4" />}
+                          title="Approve Doctor"
+                          aria-label="Approve Doctor"
+                          onClick={() => handleApprove(doc.id, doc.name)}
+                          disabled={isApproving || isRejecting}
+                          isLoading={isApproving}
+                        />
 
-                          {/* Reject Button */}
-                          <button
-                            type="button"
-                            onClick={() => setRejectingDoctor({ id: doc.id, name: doc.name })}
-                            disabled={isApproving || isRejecting}
-                            title="Reject Application"
-                            aria-label="Reject Application"
-                            className="w-9 h-9 rounded-lg border-2 border-rose-300 bg-rose-50/80 text-rose-600 shadow-sm hover:shadow-md hover:bg-rose-100 hover:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-400 transition-all flex items-center justify-center disabled:opacity-50 cursor-pointer"
-                          >
-                            {isRejecting ? (
-                              <div className="w-4 h-4 border-2 border-rose-600 border-t-transparent rounded-full animate-spin" />
-                            ) : (
-                              <X className="w-4 h-4" />
-                            )}
-                          </button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12 text-slate-400 text-xs">
-                    No pending doctor applications requiring verification.
-                  </TableCell>
-                </TableRow>
-              )}
+                        {/* Reject Button */}
+                        <IconButton
+                          variant="danger"
+                          size="sm"
+                          icon={<X className="h-4 w-4" />}
+                          title="Reject Application"
+                          aria-label="Reject Application"
+                          onClick={() => setRejectingDoctor({ id: doc.id, name: doc.name })}
+                          disabled={isApproving || isRejecting}
+                          isLoading={isRejecting}
+                        />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
+        )}
+
+        {totalPages > 1 && (
+          <TablePagination
+            page={page}
+            totalPages={totalPages}
+            totalItems={filteredRequests.length}
+            pageSize={pageSize}
+            onPageChange={(p) => setPage(p)}
+          />
+        )}
+      </div>
 
       {/* Reject Confirmation Modal */}
       <ConfirmModal
         isOpen={!!rejectingDoctor}
         onClose={() => setRejectingDoctor(null)}
-        title={`Reject Dr. ${rejectingDoctor?.name}?`}
-        description={`Are you sure you want to reject the application for Dr. ${rejectingDoctor?.name}? Their pending status will be set to rejected.`}
+        onConfirm={handleRejectConfirm}
+        title="Reject Doctor Application"
+        description={`Are you sure you want to reject the application for Dr. ${rejectingDoctor?.name}? They will be notified by email.`}
         confirmLabel="Reject Application"
         variant="danger"
         isLoading={rejectMutation.isPending}
-        onConfirm={handleRejectConfirm}
       />
     </div>
   );
 };
-

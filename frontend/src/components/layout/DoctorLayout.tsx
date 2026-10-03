@@ -20,6 +20,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { LogoutConfirmModal } from '@/components/ui/LogoutConfirmModal';
 import { NotificationBell } from '@/features/notifications/components/NotificationBell';
 import { useUnreadCount } from '@/features/notifications/hooks/useNotifications';
+import { cn } from '@/lib/utils';
 
 export const DoctorLayout: React.FC = () => {
   const { user, profile } = useAuth();
@@ -60,32 +61,34 @@ export const DoctorLayout: React.FC = () => {
     (profile as any)?.updated_at;
 
   return (
-    <div className="h-screen w-full overflow-hidden flex bg-slate-50">
+    <div className="h-screen w-full overflow-hidden flex bg-gray-100">
       {/* Mobile Backdrop Overlay */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-sm lg:hidden transition-opacity"
+          className="fixed inset-0 z-40 bg-gray-900/60 backdrop-blur-xs lg:hidden transition-opacity"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
       {/* Fixed Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 flex flex-col transition-transform duration-200 ease-in-out lg:static lg:translate-x-0 ${
-          mobileOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={cn(
+          'w-64 bg-white border-r border-gray-200 flex flex-col transition-transform duration-200 ease-in-out shrink-0 z-50 shadow-sm',
+          'fixed inset-y-0 left-0 lg:static lg:translate-x-0 h-full',
+          mobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
+        )}
       >
         {/* Brand / Portal Header */}
-        <div className="h-16 px-5 border-b border-slate-200 flex items-center justify-between shrink-0 bg-white">
+        <div className="h-16 px-5 border-b border-gray-200 flex items-center justify-between shrink-0 bg-white">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-600 text-white shadow-sm">
-              <Stethoscope className="w-5 h-5" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-xs">
+              <Stethoscope className="h-5 w-5" />
             </div>
             <div>
-              <span className="text-base font-extrabold tracking-tight text-slate-900">
-                Medi<span className="text-teal-600">Care</span>
+              <span className="text-base font-extrabold tracking-tight text-gray-900">
+                Medi<span className="text-emerald-600">Care</span>
               </span>
-              <span className="block text-[10px] font-bold uppercase tracking-wider text-teal-700">
+              <span className="block text-[10px] font-bold uppercase tracking-wider text-emerald-700">
                 Doctor Portal
               </span>
             </div>
@@ -93,15 +96,15 @@ export const DoctorLayout: React.FC = () => {
           <button
             type="button"
             onClick={() => setMobileOpen(false)}
-            className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+            className="lg:hidden p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100"
           >
-            <X className="w-5 h-5" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Doctor Identity in Sidebar */}
         <div className="p-4 pb-2 shrink-0">
-          <div className="flex items-center gap-3 p-2.5 rounded-xl bg-teal-50/70 border border-teal-100/80">
+          <div className="flex items-center gap-3 p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-100/80">
             <Avatar
               src={photoPath}
               name={user?.name}
@@ -110,16 +113,16 @@ export const DoctorLayout: React.FC = () => {
               version={photoVersion}
             />
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold text-slate-900 truncate">{user?.name}</p>
-              <p className="text-[11px] text-teal-700 font-medium truncate">
+              <p className="text-xs font-bold text-gray-900 truncate">{user?.name}</p>
+              <p className="text-[11px] text-emerald-700 font-medium truncate">
                 {profile?.specialization || 'Clinical Specialist'}
               </p>
             </div>
           </div>
         </div>
 
-        {/* Navigation - Scrolls Internally if taller than screen */}
-        <div className="flex-1 overflow-y-auto px-4 py-2 space-y-1 min-h-0">
+        {/* Navigation */}
+        <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1 min-h-0">
           <nav className="space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -129,24 +132,31 @@ export const DoctorLayout: React.FC = () => {
                   to={item.href}
                   end={item.href === '/doctor/dashboard'}
                   className={({ isActive }) =>
-                    `flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                    cn(
+                      'flex items-center gap-3 h-10 px-3 rounded-lg text-sm font-medium transition-colors select-none',
                       isActive
-                        ? 'bg-teal-600 text-white shadow-sm'
-                        : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900'
-                    }`
+                        ? 'bg-emerald-50 text-emerald-800 font-semibold'
+                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                    )
                   }
                 >
                   {({ isActive }) => (
                     <>
-                      <div className="flex items-center gap-3">
-                        <Icon className="w-4 h-4 shrink-0" />
-                        <span>{item.label}</span>
-                      </div>
+                      <Icon
+                        className={cn(
+                          'h-5 w-5 shrink-0 transition-colors',
+                          isActive ? 'text-emerald-700' : 'text-gray-500'
+                        )}
+                      />
+                      <span className="truncate">{item.label}</span>
                       {typeof (item as any).badge === 'number' && (item as any).badge > 0 && (
                         <span
-                          className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-                            isActive ? 'bg-white text-teal-800' : 'bg-rose-600 text-white'
-                          }`}
+                          className={cn(
+                            'ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold',
+                            isActive
+                              ? 'bg-emerald-200/80 text-emerald-900'
+                              : 'bg-rose-600 text-white'
+                          )}
                         >
                           {(item as any).badge > 99 ? '99+' : (item as any).badge}
                         </span>
@@ -160,33 +170,33 @@ export const DoctorLayout: React.FC = () => {
         </div>
 
         {/* Pinned Logout Button at Bottom */}
-        <div className="p-4 border-t border-slate-200 shrink-0 mt-auto bg-white">
+        <div className="p-4 border-t border-gray-200 shrink-0 mt-auto bg-white">
           <button
             type="button"
             onClick={() => setShowLogoutModal(true)}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold bg-red-50 text-red-600 border border-red-200 hover:bg-red-600 hover:text-white hover:border-red-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1 shadow-sm"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-colors focus:outline-none focus:ring-2 focus:ring-rose-500 shadow-2xs cursor-pointer"
           >
-            <LogOut className="w-4 h-4" />
+            <LogOut className="h-4 w-4" />
             <span>Logout</span>
           </button>
         </div>
       </aside>
 
       {/* Main Column */}
-      <div className="flex-1 flex flex-col min-w-0 min-h-0 h-screen overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 h-screen overflow-hidden bg-gray-100">
         {/* Sticky Top Header */}
-        <header className="h-16 shrink-0 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30 shadow-sm">
+        <header className="h-16 shrink-0 bg-white border-b border-gray-200 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30 shadow-xs">
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => setMobileOpen(true)}
-              className="lg:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100 focus:outline-none"
+              className="lg:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100 focus:outline-none"
               aria-label="Open navigation menu"
             >
-              <Menu className="w-5 h-5" />
+              <Menu className="h-5 w-5" />
             </button>
-            <div className="flex items-center gap-2 text-xs text-teal-800 font-semibold bg-teal-50 px-2.5 py-1 rounded-md border border-teal-100 hidden sm:flex">
-              <Activity className="w-3.5 h-3.5 text-teal-600" />
+            <div className="flex items-center gap-2 text-xs text-emerald-800 font-semibold bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-100 hidden sm:flex">
+              <Activity className="h-3.5 w-3.5 text-emerald-600" />
               <span>Verified Clinical Station</span>
             </div>
           </div>
@@ -194,8 +204,8 @@ export const DoctorLayout: React.FC = () => {
           <div className="flex items-center gap-3">
             <NotificationBell />
             <div className="hidden sm:flex flex-col text-right">
-              <span className="text-xs font-semibold text-slate-900">{user?.name}</span>
-              <span className="text-[11px] text-teal-600 font-medium">{user?.email}</span>
+              <span className="text-xs font-semibold text-gray-900">{user?.name}</span>
+              <span className="text-[11px] text-emerald-700 font-medium">{user?.email}</span>
             </div>
             <Avatar
               src={photoPath}
@@ -207,16 +217,16 @@ export const DoctorLayout: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowLogoutModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-50 text-red-600 border border-red-200 hover:bg-red-600 hover:text-white hover:border-red-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 ml-1"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-colors focus:outline-none focus:ring-2 focus:ring-rose-500 ml-1 cursor-pointer"
             >
-              <LogOut className="w-3.5 h-3.5" />
+              <LogOut className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Logout</span>
             </button>
           </div>
         </header>
 
         {/* The ONLY scrolling region */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 p-4 sm:p-6 lg:p-8 bg-gray-100">
           <div className="max-w-7xl mx-auto w-full">
             <Outlet />
           </div>

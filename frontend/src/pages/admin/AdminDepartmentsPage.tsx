@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Building2, Plus, Edit2, Trash2, LayoutGrid, List } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
+import { Card, CardContent, CardFooter } from '@/components/ui/Card';
+import { Button, IconButton } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { StatusBadge } from '@/components/ui/Badge';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableHeadSerial, TableCellSerial } from '@/components/ui/Table';
 import { LoadingState } from '@/components/ui/LoadingState';
@@ -24,6 +26,7 @@ export const AdminDepartmentsPage: React.FC = () => {
 
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [deletingDept, setDeletingDept] = useState<{ id: number; name: string } | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -66,13 +69,12 @@ export const AdminDepartmentsPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: number, deptName: string) => {
-    if (!window.confirm(`Are you sure you want to delete the department "${deptName}"?`)) {
-      return;
-    }
+  const confirmDelete = async () => {
+    if (!deletingDept) return;
     try {
-      await deleteMutation.mutateAsync(id);
-      toast(`Department "${deptName}" removed`, 'info');
+      await deleteMutation.mutateAsync(deletingDept.id);
+      toast(`Department "${deletingDept.name}" removed`, 'info');
+      setDeletingDept(null);
     } catch (err: any) {
       toast(err.message || 'Failed to delete department', 'error');
     }
@@ -84,45 +86,41 @@ export const AdminDepartmentsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Hospital Departments</h1>
-          <p className="text-sm text-slate-500">
-            Define medical specialties, clinic wings, and clinical descriptions for patient scheduling
-          </p>
-        </div>
+      <PageHeader
+        title="Hospital Departments"
+        subtitle="Define medical specialties, clinic wings, and clinical descriptions for patient scheduling"
+        actions={
+          <div className="flex items-center gap-3">
+            <div className="flex bg-gray-100 p-0.5 rounded-lg border border-gray-200">
+              <IconButton
+                icon={<List className="w-4 h-4" />}
+                variant={viewMode === 'table' ? 'secondary' : 'ghost'}
+                size="sm"
+                title="Table View"
+                aria-label="Table View"
+                onClick={() => setViewMode('table')}
+                className={viewMode === 'table' ? 'bg-white shadow-xs' : 'text-gray-500'}
+              />
+              <IconButton
+                icon={<LayoutGrid className="w-4 h-4" />}
+                variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+                size="sm"
+                title="Grid View"
+                aria-label="Grid View"
+                onClick={() => setViewMode('grid')}
+                className={viewMode === 'grid' ? 'bg-white shadow-xs' : 'text-gray-500'}
+              />
+            </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
-            <button
-              onClick={() => setViewMode('table')}
-              title="Table View"
-              className={`p-1.5 rounded-md text-xs font-medium flex items-center gap-1 transition ${
-                viewMode === 'table' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-500 hover:text-slate-800'
-              }`}
+            <Button
+              onClick={openCreateModal}
+              leftIcon={<Plus className="w-4 h-4" />}
             >
-              <List className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setViewMode('grid')}
-              title="Grid View"
-              className={`p-1.5 rounded-md text-xs font-medium flex items-center gap-1 transition ${
-                viewMode === 'grid' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <LayoutGrid className="w-4 h-4" />
-            </button>
+              Add Department
+            </Button>
           </div>
-
-          <Button
-            onClick={openCreateModal}
-            leftIcon={<Plus className="w-4 h-4" />}
-            className="bg-emerald-600 hover:bg-emerald-700"
-          >
-            Add Department
-          </Button>
-        </div>
-      </div>
+        }
+      />
 
       {viewMode === 'table' ? (
         <Card>
@@ -172,32 +170,31 @@ export const AdminDepartmentsPage: React.FC = () => {
                       </TableCell>
 
                       <TableCell className="text-right pr-6">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() => openEditModal(dept)}
+                        <div className="flex items-center justify-end gap-1">
+                          <IconButton
+                            icon={<Edit2 className="w-4 h-4" />}
+                            variant="ghost"
+                            size="sm"
                             title="Edit Department"
                             aria-label="Edit Department"
-                            className="w-8 h-8 rounded-lg border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition flex items-center justify-center cursor-pointer"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(dept.id, dept.name)}
+                            onClick={() => openEditModal(dept)}
+                          />
+                          <IconButton
+                            icon={<Trash2 className="w-4 h-4" />}
+                            variant="ghost"
+                            size="sm"
                             title="Delete Department"
                             aria-label="Delete Department"
-                            className="w-8 h-8 rounded-lg border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:border-rose-300 transition flex items-center justify-center cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                            onClick={() => setDeletingDept({ id: dept.id, name: dept.name })}
+                            className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                          />
                         </div>
                       </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-12 text-slate-400 text-xs">
+                    <TableCell colSpan={6} className="text-center py-12 text-gray-400 text-xs">
                       No departments found. Create your first clinical department.
                     </TableCell>
                   </TableRow>
@@ -209,7 +206,7 @@ export const AdminDepartmentsPage: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {departments?.map((dept: any) => (
-            <Card key={dept.id} hover className="border-slate-200/90 flex flex-col justify-between">
+            <Card key={dept.id} hover className="border-gray-200 flex flex-col justify-between">
               <div className="p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="h-12 w-12 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700">
@@ -218,38 +215,38 @@ export const AdminDepartmentsPage: React.FC = () => {
                   <StatusBadge status={dept.isActive ? 'active' : 'inactive'} />
                 </div>
 
-                <h3 className="text-base font-bold text-slate-900">{dept.name}</h3>
-                <p className="text-xs text-slate-500 mt-2 leading-relaxed min-h-[3rem]">
+                <h3 className="text-base font-bold text-gray-900">{dept.name}</h3>
+                <p className="text-xs text-gray-500 mt-2 leading-relaxed min-h-[3rem]">
                   {dept.description || 'Specialized clinical outpatient and inpatient medical care.'}
                 </p>
 
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
+                <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-600">
                   <span className="font-semibold text-emerald-700">
                     {dept.doctorCount || 0} Doctors practicing
                   </span>
                 </div>
               </div>
 
-              <div className="p-3 px-6 border-t border-slate-100 bg-slate-50/50 flex items-center justify-end gap-2 rounded-b-xl">
+              <CardFooter className="flex items-center justify-end gap-2">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => openEditModal(dept)}
                   leftIcon={<Edit2 className="w-3.5 h-3.5" />}
-                  className="text-slate-600 hover:text-slate-900 text-xs"
+                  className="text-gray-600 hover:text-gray-900 text-xs"
                 >
                   Edit
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => handleDelete(dept.id, dept.name)}
+                  onClick={() => setDeletingDept({ id: dept.id, name: dept.name })}
                   leftIcon={<Trash2 className="w-3.5 h-3.5" />}
                   className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 text-xs"
                 >
                   Delete
                 </Button>
-              </div>
+              </CardFooter>
             </Card>
           ))}
         </div>
@@ -271,13 +268,13 @@ export const AdminDepartmentsPage: React.FC = () => {
           />
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Description</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
             <textarea
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Overview of medical services offered in this clinic..."
-              className="w-full rounded-lg border border-slate-300 bg-white p-3 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none"
+              className="w-full rounded-lg border border-gray-200 bg-white p-3 text-sm text-gray-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none"
             />
           </div>
 
@@ -288,13 +285,26 @@ export const AdminDepartmentsPage: React.FC = () => {
             <Button
               type="submit"
               isLoading={createMutation.isPending || updateMutation.isPending}
-              className="bg-emerald-600 hover:bg-emerald-700"
             >
               {editingId ? 'Save Changes' : 'Create Department'}
             </Button>
           </div>
         </form>
       </Modal>
+
+      {/* Delete Confirmation Modal */}
+      {deletingDept && (
+        <ConfirmModal
+          isOpen={!!deletingDept}
+          onClose={() => setDeletingDept(null)}
+          title="Delete Department"
+          description={`Are you sure you want to permanently remove the department "${deletingDept.name}"? Doctors assigned to this department may need to be reassigned.`}
+          confirmLabel="Delete Department"
+          variant="danger"
+          isLoading={deleteMutation.isPending}
+          onConfirm={confirmDelete}
+        />
+      )}
     </div>
   );
 };

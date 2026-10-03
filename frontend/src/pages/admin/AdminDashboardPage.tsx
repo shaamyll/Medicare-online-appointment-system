@@ -14,6 +14,7 @@ import {
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge, StatusBadge } from '@/components/ui/Badge';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableHeadSerial, TableCellSerial } from '@/components/ui/Table';
 import { useAdminStats } from '@/features/admin/hooks/useAdmin';
 import { LoadingState } from '@/components/ui/LoadingState';
@@ -29,50 +30,42 @@ export const AdminDashboardPage: React.FC = () => {
   return (
     <div className="space-y-8">
       {/* Top Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-              Hospital Operations Overview
-            </h1>
-            <Badge variant="success">Live Data</Badge>
+      <PageHeader
+        title="Hospital Operations Overview"
+        subtitle="Real-time appointment schedule oversight and medical staff administration"
+        badge={<Badge variant="success">Live Data</Badge>}
+        actions={
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/admin/doctor-requests')}
+              className="relative"
+            >
+              Review Doctor Requests
+              {stats && stats.pendingApprovals > 0 && (
+                <span className="ml-2 px-1.5 py-0.5 text-[10px] font-extrabold rounded-full bg-amber-500 text-white">
+                  {stats.pendingApprovals}
+                </span>
+              )}
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => navigate('/admin/appointments')}
+            >
+              All Appointments
+            </Button>
           </div>
-          <p className="text-sm text-slate-500">
-            Real-time appointment schedule oversight and medical staff administration
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate('/admin/doctor-requests')}
-            className="border-slate-300 relative"
-          >
-            Review Doctor Requests
-            {stats && stats.pendingApprovals > 0 && (
-              <span className="ml-2 px-1.5 py-0.5 text-[10px] font-extrabold rounded-full bg-amber-500 text-white">
-                {stats.pendingApprovals}
-              </span>
-            )}
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => navigate('/admin/appointments')}
-            className="bg-emerald-600 hover:bg-emerald-700"
-          >
-            All Appointments
-          </Button>
-        </div>
-      </div>
+        }
+      />
 
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
-        <Card hover className="border-slate-200">
+        <Card hover className="border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Active Doctors</p>
-              <p className="text-2xl font-black text-slate-900 mt-1">{stats?.totalDoctors ?? 0}</p>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Active Doctors</p>
+              <p className="text-2xl font-black text-gray-900 mt-1">{stats?.totalDoctors ?? 0}</p>
             </div>
             <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
               <Stethoscope className="w-5 h-5" />
@@ -83,15 +76,15 @@ export const AdminDashboardPage: React.FC = () => {
           </p>
         </Card>
 
-        <Card hover className="border-slate-200">
+        <Card hover className="border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Pending Approvals</p>
-              <p className={`text-2xl font-black mt-1 ${stats && stats.pendingApprovals > 0 ? 'text-amber-600' : 'text-slate-900'}`}>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Pending Approvals</p>
+              <p className={`text-2xl font-black mt-1 ${stats && stats.pendingApprovals > 0 ? 'text-amber-600' : 'text-gray-900'}`}>
                 {stats?.pendingApprovals ?? 0}
               </p>
             </div>
-            <div className={`p-3 rounded-xl ${stats && stats.pendingApprovals > 0 ? 'bg-amber-50 text-amber-600' : 'bg-slate-100 text-slate-500'}`}>
+            <div className={`p-3 rounded-xl ${stats && stats.pendingApprovals > 0 ? 'bg-amber-50 text-amber-600' : 'bg-gray-100 text-gray-500'}`}>
               <AlertTriangle className="w-5 h-5" />
             </div>
           </div>
@@ -103,24 +96,24 @@ export const AdminDashboardPage: React.FC = () => {
           </button>
         </Card>
 
-        <Card hover className="border-slate-200">
+        <Card hover className="border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Patients</p>
-              <p className="text-2xl font-black text-slate-900 mt-1">{stats?.totalPatients ?? 0}</p>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Total Patients</p>
+              <p className="text-2xl font-black text-gray-900 mt-1">{stats?.totalPatients ?? 0}</p>
             </div>
             <div className="p-3 bg-sky-50 text-sky-600 rounded-xl">
               <Users className="w-5 h-5" />
             </div>
           </div>
-          <p className="text-xs text-slate-500 mt-3 font-medium">Registered user base</p>
+          <p className="text-xs text-gray-500 mt-3 font-medium">Registered user base</p>
         </Card>
 
-        <Card hover className="border-slate-200">
+        <Card hover className="border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Today's Visits</p>
-              <p className="text-2xl font-black text-slate-900 mt-1">{stats?.todayAppointments ?? 0}</p>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Today's Visits</p>
+              <p className="text-2xl font-black text-gray-900 mt-1">{stats?.todayAppointments ?? 0}</p>
             </div>
             <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
               <Clock className="w-5 h-5" />
@@ -129,33 +122,33 @@ export const AdminDashboardPage: React.FC = () => {
           <p className="text-xs text-indigo-600 mt-3 font-medium">Scheduled today</p>
         </Card>
 
-        <Card hover className="border-slate-200">
+        <Card hover className="border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Upcoming Visits</p>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Upcoming Visits</p>
               <p className="text-2xl font-black text-emerald-600 mt-1">{stats?.upcomingAppointments ?? 0}</p>
             </div>
             <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
               <Calendar className="w-5 h-5" />
             </div>
           </div>
-          <p className="text-xs text-slate-500 mt-3 font-medium">Future confirmed shifts</p>
+          <p className="text-xs text-gray-500 mt-3 font-medium">Future confirmed shifts</p>
         </Card>
       </div>
 
       {/* Revenue & Payment Intelligence (Demo Gateway) */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+      <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
               <CreditCard className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">Hospital Consultation Revenue & Payments</h2>
-              <p className="text-xs text-slate-500">Real-time settlement status of consultation fees and patient transactions</p>
+              <h2 className="text-base font-bold text-gray-900">Hospital Consultation Revenue & Payments</h2>
+              <p className="text-xs text-gray-500">Real-time settlement status of consultation fees and patient transactions</p>
             </div>
           </div>
-          <span className="text-[11px] font-semibold text-slate-400 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200">
+          <span className="text-[11px] font-semibold text-gray-400 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-200">
             Demo Payment Tracking
           </span>
         </div>
@@ -171,34 +164,34 @@ export const AdminDashboardPage: React.FC = () => {
             <p className="text-[11px] text-emerald-700 mt-1 font-medium">Across all paid visits</p>
           </div>
 
-          <div className="p-4 rounded-xl bg-white border border-slate-200">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+          <div className="p-4 rounded-xl bg-white border border-gray-200">
+            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">
               Paid Appointments
             </span>
             <div className="text-2xl font-black text-emerald-600 mt-1">
               {stats?.payment?.paidCount ?? 0}
             </div>
-            <p className="text-[11px] text-slate-500 mt-1 font-medium">Fully settled fees</p>
+            <p className="text-[11px] text-gray-500 mt-1 font-medium">Fully settled fees</p>
           </div>
 
-          <div className="p-4 rounded-xl bg-white border border-slate-200">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+          <div className="p-4 rounded-xl bg-white border border-gray-200">
+            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">
               Unpaid Invoices
             </span>
             <div className="text-2xl font-black text-amber-600 mt-1">
               {stats?.payment?.unpaidCount ?? 0}
             </div>
-            <p className="text-[11px] text-slate-500 mt-1 font-medium">Pending clinic settlement</p>
+            <p className="text-[11px] text-gray-500 mt-1 font-medium">Pending clinic settlement</p>
           </div>
 
-          <div className="p-4 rounded-xl bg-white border border-slate-200">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+          <div className="p-4 rounded-xl bg-white border border-gray-200">
+            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">
               Refunded Amounts
             </span>
-            <div className="text-2xl font-black text-slate-700 mt-1">
+            <div className="text-2xl font-black text-gray-700 mt-1">
               {stats?.payment?.refundedCount ?? 0}
             </div>
-            <p className="text-[11px] text-slate-500 mt-1 font-medium">Cancelled/rejected visits</p>
+            <p className="text-[11px] text-gray-500 mt-1 font-medium">Cancelled/rejected visits</p>
           </div>
         </div>
       </div>
@@ -210,8 +203,8 @@ export const AdminDashboardPage: React.FC = () => {
             <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-4">
               <Stethoscope className="w-5 h-5" />
             </div>
-            <h3 className="text-base font-bold text-slate-900">Manage Doctors & Shifts</h3>
-            <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+            <h3 className="text-base font-bold text-gray-900">Manage Doctors & Shifts</h3>
+            <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">
               View active physicians, assign clinical departments, examine consultation fees, and toggle access states.
             </p>
           </div>
@@ -231,8 +224,8 @@ export const AdminDashboardPage: React.FC = () => {
             <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center mb-4">
               <AlertTriangle className="w-5 h-5" />
             </div>
-            <h3 className="text-base font-bold text-slate-900">Doctor Approval Queue</h3>
-            <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+            <h3 className="text-base font-bold text-gray-900">Doctor Approval Queue</h3>
+            <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">
               Verify credentials, qualifications, and department affiliations for newly registered medical practitioners.
             </p>
           </div>
@@ -252,8 +245,8 @@ export const AdminDashboardPage: React.FC = () => {
             <div className="w-10 h-10 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center mb-4">
               <Building2 className="w-5 h-5" />
             </div>
-            <h3 className="text-base font-bold text-slate-900">Clinical Departments</h3>
-            <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+            <h3 className="text-base font-bold text-gray-900">Clinical Departments</h3>
+            <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">
               Configure medical divisions (Cardiology, Neurology, Pediatrics, etc.) and assign clinical icons.
             </p>
           </div>
@@ -271,10 +264,10 @@ export const AdminDashboardPage: React.FC = () => {
 
       {/* Recent Appointments Preview */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-slate-100">
+        <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-gray-100">
           <div>
             <CardTitle>Recent Appointments</CardTitle>
-            <p className="text-xs text-slate-500 mt-0.5">Most recent appointments booked across all hospital departments</p>
+            <p className="text-xs text-gray-500 mt-0.5">Most recent appointments booked across all hospital departments</p>
           </div>
           <Button
             variant="ghost"
@@ -304,13 +297,13 @@ export const AdminDashboardPage: React.FC = () => {
                 stats.recentAppointments.map((apt: any, idx: number) => (
                   <TableRow key={apt.id}>
                     <TableCellSerial index={idx} />
-                    <TableCell className="font-mono text-xs font-semibold text-slate-800">
+                    <TableCell className="font-mono text-xs font-semibold text-gray-800">
                       {apt.appointmentNumber}
                     </TableCell>
-                    <TableCell className="font-medium text-slate-900">{apt.patientName}</TableCell>
-                    <TableCell className="text-slate-800">{apt.doctorName}</TableCell>
-                    <TableCell className="text-slate-600">{apt.departmentName || 'General'}</TableCell>
-                    <TableCell className="text-xs text-slate-600">
+                    <TableCell className="font-medium text-gray-900">{apt.patientName}</TableCell>
+                    <TableCell className="text-gray-800">{apt.doctorName}</TableCell>
+                    <TableCell className="text-gray-600">{apt.departmentName || 'General'}</TableCell>
+                    <TableCell className="text-xs text-gray-600">
                       {apt.appointmentDate} at {apt.startTime}
                     </TableCell>
                     <TableCell>
@@ -320,7 +313,7 @@ export const AdminDashboardPage: React.FC = () => {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12 text-slate-400 text-xs">
+                  <TableCell colSpan={7} className="text-center py-12 text-gray-400 text-xs">
                     No appointments booked yet.
                   </TableCell>
                 </TableRow>

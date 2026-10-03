@@ -1,9 +1,24 @@
-import React, { useState } from 'react';
-import { Search, PowerOff, Power, Trash2, AlertCircle } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/Card';
-import { StatusBadge } from '@/components/ui/Badge';
+import React, { useState, useMemo } from 'react';
+import { PowerOff, Power, Trash2, AlertCircle } from 'lucide-react';
+import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Avatar } from '@/components/ui/Avatar';
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableHeadSerial, TableCellSerial } from '@/components/ui/Table';
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+  TableHeadSerial,
+  TableCellSerial,
+  TablePagination,
+} from '@/components/ui/Table';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { FilterBar } from '@/components/ui/FilterBar';
+import { SearchInput } from '@/components/ui/SearchInput';
+import { Select } from '@/components/ui/Select';
+import { IconButton } from '@/components/ui/IconButton';
+import { Button } from '@/components/ui/Button';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { useToast } from '@/components/ui/Toast';
@@ -18,6 +33,8 @@ export const AdminDoctorsPage: React.FC = () => {
   const { toast } = useToast();
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
   // Modals state
   const [deactivatingDoctor, setDeactivatingDoctor] = useState<{ id: number; name: string } | null>(null);
@@ -64,281 +81,260 @@ export const AdminDoctorsPage: React.FC = () => {
     if (!deletingDoctor) return;
     try {
       await deleteMutation.mutateAsync(deletingDoctor.id);
-      toast(`Dr. ${deletingDoctor.name} has been permanently deleted.`, 'success');
+      toast(`Dr. ${deletingDoctor.name} and their clinical record have been removed.`, 'success');
       setDeletingDoctor(null);
     } catch (err: any) {
-      toast(err.response?.data?.message || err.message || 'Failed to delete doctor', 'error');
-      // Keep modal open on error as requested
+      toast(err.response?.data?.message || err.message || 'Failed to delete doctor account', 'error');
     }
   };
 
-  const filteredDoctors = (doctors || []).filter((doc) => {
-    if (!searchTerm) return true;
+  const isMutatingStatus = toggleStatusMutation.isPending || deleteMutation.isPending;
+
+  const filteredDoctors = useMemo(() => {
+    if (!doctors) return [];
+    if (!searchTerm.trim()) return doctors;
     const term = searchTerm.toLowerCase();
-    return (
-      doc.name.toLowerCase().includes(term) ||
-      doc.email.toLowerCase().includes(term) ||
-      (doc.specialization && doc.specialization.toLowerCase().includes(term)) ||
-      (doc.departmentName && doc.departmentName.toLowerCase().includes(term)) ||
-      (doc.licenseNumber && doc.licenseNumber.toLowerCase().includes(term))
+    return doctors.filter(
+      (doc) =>
+        doc.name.toLowerCase().includes(term) ||
+        (doc.specialization && doc.specialization.toLowerCase().includes(term)) ||
+        doc.email.toLowerCase().includes(term) ||
+        (doc.departmentName && doc.departmentName.toLowerCase().includes(term)) ||
+        (doc.licenseNumber && doc.licenseNumber.toLowerCase().includes(term))
     );
-  });
+  }, [doctors, searchTerm]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredDoctors.length / pageSize));
+  const paginatedDoctors = filteredDoctors.slice((page - 1) * pageSize, page * pageSize);
+
+  const statusOptions = [
+    { value: 'all', label: 'All Statuses' },
+    { value: 'active', label: 'Active Only', dot: 'bg-emerald-500' },
+    { value: 'pending', label: 'Pending', dot: 'bg-amber-500' },
+    { value: 'inactive', label: 'Inactive', dot: 'bg-gray-400' },
+    { value: 'rejected', label: 'Rejected', dot: 'bg-rose-500' },
+  ];
 
   if (isLoading) {
-    return <LoadingState message="Loading doctors directory..." />;
+    return <LoadingState message="Loading hospital medical staff..." />;
   }
 
   if (isError) {
     return (
-      <div className="p-8 text-center bg-white rounded-2xl border border-rose-200 shadow-sm space-y-4">
-        <div className="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
-          <AlertCircle className="w-6 h-6" />
-        </div>
-        <div>
-          <h3 className="text-lg font-bold text-slate-900">Failed to load doctors</h3>
-          <p className="text-sm text-slate-500 mt-1">
-            {(error as any)?.message || 'An unexpected error occurred while fetching medical staff.'}
-          </p>
-        </div>
-        <button
-          onClick={() => refetch()}
-          className="px-4 py-2 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition"
-        >
-          Try Again
-        </button>
+      <div className="p-8 text-center bg-white rounded-xl border border-rose-200 shadow-xs space-y-3">
+        <AlertCircle className="h-10 w-10 text-rose-500 mx-auto" />
+        <h3 className="text-base font-bold text-gray-900">Failed to load medical staff</h3>
+        <p className="text-xs text-gray-500 max-w-md mx-auto">
+          {(error as any)?.message || 'An error occurred while fetching the doctors directory.'}
+        </p>
+        <Button variant="secondary" size="sm" onClick={() => refetch()}>
+          Retry
+        </Button>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Header & Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Hospital Medical Staff</h1>
-          <p className="text-sm text-slate-500">
-            Overview of all registered doctors, specialties, departments, and practice statuses
-          </p>
+      {/* Header */}
+      <PageHeader
+        title="Hospital Medical Staff"
+        subtitle="Overview of all registered doctors, specialties, departments, and practice statuses"
+      />
+
+      {/* Filter Bar */}
+      <FilterBar>
+        <div className="flex-1 min-w-[240px]">
+          <SearchInput
+            value={searchTerm}
+            onChange={(val) => {
+              setSearchTerm(val);
+              setPage(1);
+            }}
+            placeholder="Search by name, spec, license..."
+          />
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-            <input
-              type="text"
-              placeholder="Search by name, spec, license..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-emerald-500 w-56 transition"
-            />
-          </div>
-
-          <select
+        <div className="w-full sm:w-48">
+          <Select
             value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="text-xs py-1.5 px-3 rounded-lg border border-slate-200 bg-white font-medium text-slate-700 focus:outline-none focus:border-emerald-500"
-          >
-            <option value="all">All Statuses</option>
-            <option value="active">Active Only</option>
-            <option value="pending">Pending</option>
-            <option value="inactive">Inactive</option>
-            <option value="rejected">Rejected</option>
-          </select>
+            onChange={(val) => {
+              setFilterStatus(val);
+              setPage(1);
+            }}
+            options={statusOptions}
+            placeholder="All Statuses"
+          />
         </div>
-      </div>
+      </FilterBar>
 
       {/* Main Table */}
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHeadSerial />
-                <TableHead>Doctor</TableHead>
-                <TableHead>Specialization & Dept</TableHead>
-                <TableHead>Experience & Fee</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right pr-6">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredDoctors.length > 0 ? (
-                filteredDoctors.map((doc, idx) => {
-                  const isMutatingStatus =
-                    toggleStatusMutation.isPending &&
-                    (toggleStatusMutation.variables as any)?.id === doc.id;
-                  const isDeleting =
-                    deleteMutation.isPending &&
-                    (deleteMutation.variables as any) === doc.id;
+      <div className="bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHeadSerial />
+              <TableHead>Doctor</TableHead>
+              <TableHead>Specialization & Dept</TableHead>
+              <TableHead>Experience & Fee</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right pr-6">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {paginatedDoctors.length > 0 ? (
+              paginatedDoctors.map((doc, idx) => (
+                <TableRow key={doc.id}>
+                  <TableCellSerial index={(page - 1) * pageSize + idx} />
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Avatar
+                        src={doc.thumbnailPath || doc.imagePath}
+                        name={doc.name}
+                        size="md"
+                        shape="rounded"
+                        version={doc.updatedAt}
+                      />
+                      <div>
+                        <p className="font-bold text-gray-900 text-sm">Dr. {doc.name}</p>
+                        <p className="text-xs text-gray-500">{doc.email}</p>
+                        {doc.phone && <p className="text-[11px] text-gray-400">{doc.phone}</p>}
+                        {doc.licenseNumber && (
+                          <span className="inline-block mt-0.5 text-[10px] font-mono font-semibold bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded border border-gray-200">
+                            Lic: {doc.licenseNumber}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </TableCell>
 
-                  return (
-                    <TableRow key={doc.id}>
-                      <TableCellSerial index={idx} />
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar
-                            src={doc.thumbnailPath || doc.imagePath}
-                            name={doc.name}
-                            size="md"
-                            version={doc.updatedAt}
-                          />
-                          <div>
-                            <p className="font-semibold text-slate-900 text-sm">{doc.name}</p>
-                            <p className="text-xs text-slate-400">{doc.email}</p>
-                            {doc.licenseNumber && (
-                              <p className="text-[11px] font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded inline-block mt-0.5 border border-blue-100">
-                                Lic: {doc.licenseNumber}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </TableCell>
+                  <TableCell>
+                    <p className="font-semibold text-emerald-700 text-xs">{doc.specialization}</p>
+                    <p className="text-xs text-gray-500">{doc.departmentName || 'Unassigned'}</p>
+                    {doc.qualification && (
+                      <p className="text-[11px] text-gray-400 mt-0.5">{doc.qualification}</p>
+                    )}
+                  </TableCell>
 
-                      <TableCell>
-                        <p className="font-medium text-slate-800 text-xs">{doc.specialization || 'General'}</p>
-                        <p className="text-xs text-slate-500">{doc.departmentName || 'No department'}</p>
-                      </TableCell>
+                  <TableCell>
+                    <p className="text-xs text-gray-800 font-semibold">
+                      Rs. {Number(doc.consultationFee || 0).toFixed(0)}
+                    </p>
+                    <p className="text-[11px] text-gray-500">{doc.experienceYears || 0} Years Practice</p>
+                  </TableCell>
 
-                      <TableCell>
-                        <p className="text-xs text-slate-800 font-medium">
-                          ${Number(doc.consultationFee || 0).toFixed(2)}
-                        </p>
-                        <p className="text-[11px] text-slate-500">{doc.experienceYears || 0} Years Practice</p>
-                      </TableCell>
+                  <TableCell>
+                    <StatusBadge status={doc.status} />
+                  </TableCell>
 
-                      <TableCell>
-                        <StatusBadge status={doc.status} />
-                      </TableCell>
+                  <TableCell className="text-right pr-6">
+                    <div className="flex items-center justify-end gap-2">
+                      {doc.status === 'active' ? (
+                        <IconButton
+                          variant="danger"
+                          size="sm"
+                          icon={<PowerOff className="h-4 w-4" />}
+                          title="Deactivate doctor"
+                          aria-label="Deactivate doctor"
+                          onClick={() => setDeactivatingDoctor({ id: doc.id, name: doc.name })}
+                          disabled={isMutatingStatus}
+                        />
+                      ) : (
+                        <IconButton
+                          variant="success"
+                          size="sm"
+                          icon={<Power className="h-4 w-4" />}
+                          title="Activate doctor"
+                          aria-label="Activate doctor"
+                          onClick={() => handleActivate(doc.id, doc.name)}
+                          disabled={isMutatingStatus}
+                        />
+                      )}
 
-                      <TableCell className="text-right pr-6">
-                        <div className="flex items-center justify-end gap-2">
-                          {doc.status === 'active' ? (
-                            <button
-                              type="button"
-                              onClick={() => setDeactivatingDoctor({ id: doc.id, name: doc.name })}
-                              disabled={isMutatingStatus}
-                              title="Deactivate"
-                              aria-label="Deactivate doctor"
-                              className="w-9 h-9 rounded-lg border-2 border-amber-300 bg-amber-50/80 text-amber-700 shadow-sm hover:shadow-md hover:bg-amber-100 hover:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400 transition-all flex items-center justify-center disabled:opacity-50 cursor-pointer"
-                            >
-                              {isMutatingStatus ? (
-                                <div className="w-4 h-4 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" />
-                              ) : (
-                                <PowerOff className="w-4 h-4" />
-                              )}
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleActivate(doc.id, doc.name)}
-                              disabled={isMutatingStatus}
-                              title="Activate"
-                              aria-label="Activate doctor"
-                              className="w-9 h-9 rounded-lg border-2 border-emerald-300 bg-emerald-50/80 text-emerald-700 shadow-sm hover:shadow-md hover:bg-emerald-100 hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-all flex items-center justify-center disabled:opacity-50 cursor-pointer"
-                            >
-                              {isMutatingStatus ? (
-                                <div className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
-                              ) : (
-                                <Power className="w-4 h-4" />
-                              )}
-                            </button>
-                          )}
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setDeletingDoctor({
-                                id: doc.id,
-                                name: doc.name,
-                                email: doc.email,
-                                photo: doc.thumbnailPath || doc.imagePath || undefined,
-                              })
-                            }
-                            disabled={isDeleting}
-                            title="Delete permanently"
-                            aria-label="Delete doctor permanently"
-                            className="w-9 h-9 rounded-lg border-2 border-rose-300 bg-rose-50/80 text-rose-600 shadow-sm hover:shadow-md hover:bg-rose-100 hover:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-400 transition-all flex items-center justify-center disabled:opacity-50 cursor-pointer"
-                          >
-                            {isDeleting ? (
-                              <div className="w-4 h-4 border-2 border-rose-600 border-t-transparent rounded-full animate-spin" />
-                            ) : (
-                              <Trash2 className="w-4 h-4" />
-                            )}
-                          </button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-12 text-slate-400 text-xs">
-                    No doctor records match the filter criteria.
+                      <IconButton
+                        variant="ghost"
+                        size="sm"
+                        icon={<Trash2 className="h-4 w-4 text-gray-400 hover:text-rose-600" />}
+                        title="Delete doctor"
+                        aria-label="Delete doctor"
+                        onClick={() =>
+                          setDeletingDoctor({
+                            id: doc.id,
+                            name: doc.name,
+                            email: doc.email,
+                            photo: (doc.thumbnailPath || doc.imagePath) || undefined,
+                          })
+                        }
+                        disabled={isMutatingStatus}
+                      />
+                    </div>
                   </TableCell>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={6} className="py-12 text-center">
+                  <div className="flex flex-col items-center justify-center text-gray-400">
+                    <p className="text-sm font-medium">No doctors found matching filters</p>
+                  </div>
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+
+        {totalPages > 1 && (
+          <TablePagination
+            page={page}
+            totalPages={totalPages}
+            totalItems={filteredDoctors.length}
+            pageSize={pageSize}
+            onPageChange={(p) => setPage(p)}
+          />
+        )}
+      </div>
 
       {/* Deactivate Confirmation Modal */}
       <ConfirmModal
         isOpen={!!deactivatingDoctor}
         onClose={() => setDeactivatingDoctor(null)}
-        title={`Deactivate Dr. ${deactivatingDoctor?.name}?`}
-        description={`Deactivate Dr. ${deactivatingDoctor?.name}? They will not be able to log in or receive bookings.`}
-        confirmLabel="Deactivate"
+        onConfirm={handleDeactivateConfirm}
+        title="Deactivate Doctor"
+        description={`Are you sure you want to deactivate Dr. ${deactivatingDoctor?.name}? They will no longer be bookable by patients until reactivated.`}
+        confirmLabel="Deactivate Doctor"
         variant="warning"
         isLoading={toggleStatusMutation.isPending}
-        onConfirm={handleDeactivateConfirm}
       />
 
       {/* Delete Confirmation Modal */}
       <ConfirmModal
         isOpen={!!deletingDoctor}
         onClose={() => setDeletingDoctor(null)}
-        title="Delete doctor permanently?"
-        variant="danger"
-        confirmLabel="Delete permanently"
-        requireText="DELETE"
-        isLoading={deleteMutation.isPending}
         onConfirm={handleDeleteConfirm}
-      >
-        <div className="space-y-4">
-          {deletingDoctor && (
-            <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
-              <Avatar
-                src={deletingDoctor.photo}
-                name={deletingDoctor.name}
-                size="md"
-              />
-              <div>
-                <p className="font-semibold text-slate-900 text-sm">{deletingDoctor.name}</p>
-                <p className="text-xs text-slate-500">{deletingDoctor.email}</p>
-              </div>
-            </div>
-          )}
-
-          <div className="text-sm text-slate-600">
+        title="Permanently Delete Doctor"
+        description={
+          <div className="space-y-3">
+            <p>
+              Are you sure you want to permanently delete <strong>Dr. {deletingDoctor?.name}</strong>?
+            </p>
             {isLoadingImpact ? (
-              <div className="flex items-center gap-2 py-2 text-slate-500 text-xs">
-                <div className="w-3.5 h-3.5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
-                Calculating appointment impact...
+              <p className="text-xs text-gray-400 italic">Calculating dependent records...</p>
+            ) : deleteImpact ? (
+              <div className="rounded-lg bg-rose-50 border border-rose-200 p-3 text-xs text-rose-800 space-y-1">
+                <p className="font-bold">This will permanently delete:</p>
+                <ul className="list-disc list-inside space-y-0.5">
+                  <li>{(deleteImpact as any).totalAppointments ?? (deleteImpact as any).appointmentsCount ?? 0} appointments</li>
+                  <li>{(deleteImpact as any).upcomingAppointments ?? (deleteImpact as any).schedulesCount ?? 0} upcoming / schedules</li>
+                  <li>Doctor profile and medical license records</li>
+                </ul>
               </div>
-            ) : (
-              <p>
-                This action cannot be undone. This will permanently remove the doctor's account, schedule, consultation notes and{' '}
-                <span className="font-semibold text-rose-700">
-                  {deleteImpact?.totalAppointments ?? 0} appointments ({deleteImpact?.upcomingAppointments ?? 0} upcoming)
-                </span>
-                .
-              </p>
-            )}
+            ) : null}
           </div>
-        </div>
-      </ConfirmModal>
+        }
+        confirmLabel="Yes, Delete Doctor"
+        variant="danger"
+        isLoading={deleteMutation.isPending}
+      />
     </div>
   );
 };
-

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
+import { Select } from '@/components/ui/Select';
 import { useToast } from '@/components/ui/Toast';
 import { useDoctors } from '@/features/doctors/hooks/useDoctors';
 import { useDoctorSlots, useBookAppointment } from '@/features/appointments/hooks/useAppointments';
@@ -47,6 +48,11 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
   const { data: slotsData, isLoading: isLoadingSlots } = useDoctorSlots(doctorId, date);
 
   const selectedDoctor = doctors?.find((d) => d.id === doctorId);
+
+  const doctorOptions = (doctors || []).map((doc) => ({
+    value: String(doc.id),
+    label: `${doc.user.name} - ${doc.specialization} (${doc.department?.name || 'General'}) • $${doc.consultationFee}`,
+  }));
 
   const handleBook = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,24 +109,19 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
 
         {/* Doctor Selection */}
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wider">
+          <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
             Select Medical Specialist *
           </label>
-          <select
-            value={doctorId}
-            onChange={(e) => {
-              setDoctorId(Number(e.target.value));
+          <Select
+            value={doctorId ? String(doctorId) : ''}
+            onChange={(val) => {
+              setDoctorId(Number(val));
               setSelectedSlot(null);
             }}
-            className="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-xs text-slate-900 focus:border-emerald-500 focus:outline-none"
-            required
-          >
-            {doctors?.map((doc) => (
-              <option key={doc.id} value={doc.id}>
-                {doc.user.name} - {doc.specialization} ({doc.department?.name || 'General'}) &bull; ${doc.consultationFee}
-              </option>
-            ))}
-          </select>
+            options={doctorOptions}
+            placeholder="Select Doctor"
+            searchable
+          />
 
           {selectedDoctor && (
             <div className="mt-2 p-2.5 rounded-lg bg-emerald-50/70 border border-emerald-100 flex items-center justify-between text-xs">
@@ -134,7 +135,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
 
         {/* Date Selection */}
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wider">
+          <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
             Appointment Date *
           </label>
           <input
@@ -145,30 +146,30 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
               setDate(e.target.value);
               setSelectedSlot(null);
             }}
-            className="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-xs text-slate-900 focus:border-emerald-500 focus:outline-none"
+            className="w-full h-10 rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none"
             required
           />
         </div>
 
         {/* Available Slots Grid */}
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wider flex items-center justify-between">
+          <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider flex items-center justify-between">
             <span>Available Time Slots *</span>
             {slotsData?.dayOfWeek && (
-              <span className="text-[11px] font-normal text-slate-500 capitalize">
+              <span className="text-[11px] font-normal text-gray-500 capitalize">
                 Shift day: {slotsData.dayOfWeek}
               </span>
             )}
           </label>
 
           {isLoadingSlots ? (
-            <div className="py-6 text-center text-slate-400">Loading available shifts...</div>
+            <div className="py-6 text-center text-gray-400">Loading available shifts...</div>
           ) : !slotsData?.hasSchedule ? (
             <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-[11px]">
               The doctor does not have an active clinic shift scheduled on {slotsData?.dayOfWeek || 'this day'}. Please choose another date (e.g. Mon, Wed, Fri).
             </div>
           ) : slotsData.slots.length === 0 ? (
-            <div className="p-3 rounded-lg bg-slate-100 text-slate-600 text-[11px]">
+            <div className="p-3 rounded-lg bg-gray-100 text-gray-600 text-[11px]">
               No available appointment slots found for this date.
             </div>
           ) : (
@@ -181,12 +182,12 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
                     type="button"
                     disabled={!slot.isAvailable}
                     onClick={() => setSelectedSlot(slot)}
-                    className={`py-2 px-1 text-center rounded-lg border text-xs font-semibold transition-all ${
+                    className={`py-2 px-1 text-center rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
                       isSelected
                         ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-600/30'
                         : slot.isAvailable
                         ? 'border-emerald-200 bg-emerald-50/50 text-emerald-800 hover:bg-emerald-100 hover:border-emerald-300'
-                        : 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed line-through'
+                        : 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed line-through'
                     }`}
                   >
                     <span>{slot.startTime}</span>
@@ -202,7 +203,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
 
         {/* Reason for Visit */}
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wider">
+          <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
             Reason for Visit / Symptoms
           </label>
           <input
@@ -210,11 +211,11 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
             placeholder="e.g. Persistent headache, routine blood pressure checkup"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 p-2.5 text-xs text-slate-900 focus:border-emerald-500 focus:outline-none"
+            className="w-full h-10 rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none"
           />
         </div>
 
-        <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+        <div className="flex justify-end gap-3 pt-3 border-t border-gray-100">
           <Button variant="outline" type="button" onClick={onClose}>
             Cancel
           </Button>
@@ -222,7 +223,6 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
             type="submit"
             isLoading={bookMutation.isPending}
             disabled={!selectedSlot}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white"
           >
             Confirm Appointment
           </Button>

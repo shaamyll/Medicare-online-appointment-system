@@ -1,20 +1,41 @@
-import React, { useState } from 'react';
-import { Search, Calendar, AlertCircle } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/Card';
-import { StatusBadge } from '@/components/ui/Badge';
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableHeadSerial, TableCellSerial } from '@/components/ui/Table';
+import React, { useState, useMemo } from 'react';
+import { Calendar, AlertCircle } from 'lucide-react';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { FilterBar } from '@/components/ui/FilterBar';
+import { SearchInput } from '@/components/ui/SearchInput';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Button } from '@/components/ui/Button';
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+  TableHeadSerial,
+  TableCellSerial,
+  TablePagination,
+} from '@/components/ui/Table';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { useAdminPatients } from '@/features/admin/hooks/useAdmin';
 
 export const AdminPatientsPage: React.FC = () => {
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+
   const { data: patients, isLoading, isError, error, refetch } = useAdminPatients();
 
-  const filteredPatients = (patients || []).filter((p) => {
-    if (!search) return true;
+  const filteredPatients = useMemo(() => {
+    if (!patients) return [];
+    if (!search.trim()) return patients;
     const term = search.toLowerCase();
-    return p.name.toLowerCase().includes(term) || p.email.toLowerCase().includes(term);
-  });
+    return patients.filter((p) => p.name.toLowerCase().includes(term) || p.email.toLowerCase().includes(term));
+  }, [patients, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredPatients.length / pageSize));
+  const paginatedPatients = filteredPatients.slice((page - 1) * pageSize, page * pageSize);
 
   if (isLoading) {
     return <LoadingState message="Fetching patient accounts..." />;
@@ -22,50 +43,55 @@ export const AdminPatientsPage: React.FC = () => {
 
   if (isError) {
     return (
-      <div className="p-8 text-center bg-white rounded-2xl border border-rose-200 shadow-sm space-y-4">
-        <div className="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
-          <AlertCircle className="w-6 h-6" />
-        </div>
-        <div>
-          <h3 className="text-lg font-bold text-slate-900">Failed to load patients</h3>
-          <p className="text-sm text-slate-500 mt-1">
-            {(error as any)?.message || 'An error occurred while fetching patients.'}
-          </p>
-        </div>
-        <button
-          onClick={() => refetch()}
-          className="px-4 py-2 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition"
-        >
+      <div className="p-8 text-center bg-white rounded-xl border border-rose-200 shadow-xs space-y-3">
+        <AlertCircle className="h-10 w-10 text-rose-500 mx-auto" />
+        <h3 className="text-base font-bold text-gray-900">Failed to load patients</h3>
+        <p className="text-xs text-gray-500 max-w-sm mx-auto">
+          {(error as any)?.message || 'An error occurred while fetching patients.'}
+        </p>
+        <Button variant="secondary" size="sm" onClick={() => refetch()}>
           Try Again
-        </button>
+        </Button>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Registered Patients</h1>
-          <p className="text-sm text-slate-500">
-            Patients registered in Medi-Care with their contact information and appointment history counts
-          </p>
-        </div>
+      {/* Header */}
+      <PageHeader
+        title="Registered Patients"
+        subtitle="Patients registered in Medi-Care with their contact information and appointment history counts"
+      />
 
-        <div className="relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-          <input
-            type="text"
-            placeholder="Search patients..."
+      {/* Filter Bar */}
+      <FilterBar>
+        <div className="w-full sm:max-w-md">
+          <SearchInput
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-emerald-500 w-56 transition"
+            onChange={(val) => {
+              setSearch(val);
+              setPage(1);
+            }}
+            placeholder="Search patients by name or email..."
           />
         </div>
-      </div>
+      </FilterBar>
 
-      <Card>
-        <CardContent className="p-0">
+      {/* Table */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden">
+        {filteredPatients.length === 0 ? (
+          <div className="p-8">
+            <EmptyState
+              title={search ? 'No Matching Patients' : 'No Patients Registered'}
+              description={
+                search
+                  ? 'No patient records matched your search query.'
+                  : 'There are currently no patient profiles in the system.'
+              }
+            />
+          </div>
+        ) : (
           <Table>
             <TableHeader>
               <TableRow>
@@ -78,55 +104,58 @@ export const AdminPatientsPage: React.FC = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredPatients.length > 0 ? (
-                filteredPatients.map((p, idx) => (
-                  <TableRow key={p.id}>
-                    <TableCellSerial index={idx} />
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-full bg-sky-50 border border-sky-100 flex items-center justify-center text-sky-700 font-bold text-xs">
-                          {p.name.charAt(0)}
-                        </div>
-                        <div>
-                          <p className="font-semibold text-slate-900 text-sm">{p.name}</p>
-                          <p className="text-xs text-slate-400">ID #{p.id}</p>
-                        </div>
+              {paginatedPatients.map((p, idx) => (
+                <TableRow key={p.id}>
+                  <TableCellSerial index={(page - 1) * pageSize + idx} />
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-xs shrink-0">
+                        {p.name.charAt(0)}
                       </div>
-                    </TableCell>
+                      <div>
+                        <p className="font-bold text-gray-900 text-sm">{p.name}</p>
+                        <p className="text-xs text-gray-400">ID #{p.id}</p>
+                      </div>
+                    </div>
+                  </TableCell>
 
-                    <TableCell>
-                      <p className="text-xs text-slate-800">{p.email}</p>
-                      <p className="text-[11px] text-slate-500">{p.phone || 'No phone recorded'}</p>
-                    </TableCell>
+                  <TableCell>
+                    <p className="text-xs text-gray-800 font-medium">{p.email}</p>
+                    <p className="text-[11px] text-gray-500">{p.phone || 'No phone recorded'}</p>
+                  </TableCell>
 
-                    <TableCell>
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-xs font-semibold text-slate-800">
-                        <Calendar className="w-3 h-3 text-slate-500" />
-                        {p.appointmentCount} Visits
-                      </span>
-                    </TableCell>
+                  <TableCell>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-100">
+                      {(p as any).appointmentsCount ?? (p as any).appointmentCount ?? 0} Visits
+                    </span>
+                  </TableCell>
 
-                    <TableCell className="text-xs text-slate-600">
-                      {new Date(p.createdAt).toLocaleDateString()}
-                    </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                      <Calendar className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                      <span>{p.createdAt ? p.createdAt.split('T')[0] : 'N/A'}</span>
+                    </div>
+                  </TableCell>
 
-                    <TableCell>
-                      <StatusBadge status="active" />
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-12 text-slate-400 text-xs">
-                    No patients match your search.
+                  <TableCell>
+                    <StatusBadge status="active" />
                   </TableCell>
                 </TableRow>
-              )}
+              ))}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
+        )}
+
+        {totalPages > 1 && (
+          <TablePagination
+            page={page}
+            totalPages={totalPages}
+            totalItems={filteredPatients.length}
+            pageSize={pageSize}
+            onPageChange={(p) => setPage(p)}
+          />
+        )}
+      </div>
     </div>
   );
 };
-

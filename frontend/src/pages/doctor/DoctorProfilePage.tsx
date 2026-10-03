@@ -3,6 +3,8 @@ import { User, Phone, Save, FileBadge, Lock, UploadCloud, X as CloseIcon } from 
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { Select } from '@/components/ui/Select';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { useToast } from '@/components/ui/Toast';
 import { useDoctorProfile, useUpdateDoctorProfile } from '@/features/doctors/hooks/useDoctors';
@@ -106,22 +108,26 @@ export const DoctorProfilePage: React.FC = () => {
 
   const currentPhoto = newPhotoPreview || doctor?.thumbnailPath || doctor?.imagePath;
 
+  const departmentOptions = [
+    { value: '', label: 'Select Department' },
+    ...(departments?.map((d) => ({
+      value: String(d.id),
+      label: d.name,
+    })) || []),
+  ];
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Physician Professional Profile</h1>
-          <p className="text-sm text-slate-500">
-            Public doctor credentials, consultation fees, and clinical room information shown to patients
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Physician Professional Profile"
+        subtitle="Public doctor credentials, consultation fees, and clinical room information shown to patients"
+      />
 
-      <Card className="max-w-4xl p-6 sm:p-8">
+      <Card className="max-w-4xl p-6 sm:p-8 border-gray-200">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Doctor Photo Section with Preview */}
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-3">
+          <div className="p-4 rounded-xl bg-gray-50 border border-gray-200">
+            <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-3">
               Profile Photo & Avatar
             </label>
 
@@ -149,8 +155,8 @@ export const DoctorProfilePage: React.FC = () => {
                   }}
                   className={`relative border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-colors ${
                     isDragging
-                      ? 'border-teal-500 bg-teal-50/50'
-                      : 'border-slate-300 hover:border-teal-400 bg-white'
+                      ? 'border-emerald-500 bg-emerald-50/50'
+                      : 'border-gray-300 hover:border-emerald-400 bg-white'
                   }`}
                 >
                   <input
@@ -159,13 +165,13 @@ export const DoctorProfilePage: React.FC = () => {
                     onChange={(e) => handlePhotoSelect(e.target.files?.[0])}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   />
-                  <div className="flex items-center justify-center gap-2 pointer-events-none text-xs text-slate-600">
-                    <UploadCloud className="w-4 h-4 text-teal-600 shrink-0" />
+                  <div className="flex items-center justify-center gap-2 pointer-events-none text-xs text-gray-600">
+                    <UploadCloud className="w-4 h-4 text-emerald-600 shrink-0" />
                     <span className="font-medium">
                       {newPhoto ? newPhoto.name : 'Click or drag new photo to replace'}
                     </span>
                   </div>
-                  <p className="text-[10px] text-slate-400 mt-1 pointer-events-none">
+                  <p className="text-[10px] text-gray-400 mt-1 pointer-events-none">
                     JPG, JPEG, PNG, or WebP &bull; Maximum 2 MB
                   </p>
                 </div>
@@ -195,7 +201,7 @@ export const DoctorProfilePage: React.FC = () => {
               label="Doctor Full Name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              leftIcon={<User className="w-4 h-4 text-slate-400" />}
+              leftIcon={<User className="w-4 h-4 text-gray-400" />}
               required
             />
 
@@ -203,21 +209,21 @@ export const DoctorProfilePage: React.FC = () => {
               label="Contact Phone"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              leftIcon={<Phone className="w-4 h-4 text-slate-400" />}
+              leftIcon={<Phone className="w-4 h-4 text-gray-400" />}
               placeholder="+1 (555) 019-2831"
             />
           </div>
 
-          {/* Read-Only Medical License Number */}
+          {/* Read-Only Medical License Number & Department */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                  <FileBadge className="w-3.5 h-3.5 text-teal-600" />
+                <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <FileBadge className="w-3.5 h-3.5 text-emerald-600" />
                   <span>Medical License Number (Read-Only)</span>
                 </label>
-                <span className="text-[10px] font-semibold text-slate-400 flex items-center gap-1 bg-slate-100 px-2 py-0.5 rounded">
-                  <Lock className="w-3 h-3 text-slate-400" />
+                <span className="text-[10px] font-semibold text-gray-400 flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded">
+                  <Lock className="w-3 h-3 text-gray-400" />
                   Locked
                 </span>
               </div>
@@ -225,29 +231,23 @@ export const DoctorProfilePage: React.FC = () => {
                 type="text"
                 value={licenseNumber || 'Not assigned'}
                 disabled
-                className="w-full rounded-lg border border-slate-200 bg-slate-100 p-2.5 text-xs text-slate-600 font-mono cursor-not-allowed select-all"
+                className="w-full h-10 rounded-lg border border-gray-200 bg-gray-100 px-3 text-xs text-gray-600 font-mono cursor-not-allowed select-all"
               />
-              <p className="text-[10px] text-slate-400 mt-1">
+              <p className="text-[10px] text-gray-400 mt-1">
                 Official medical council license is verified upon registration and cannot be modified.
               </p>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wider">
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
                 Clinical Department
               </label>
-              <select
-                value={departmentId || ''}
-                onChange={(e) => setDepartmentId(Number(e.target.value))}
-                className="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-xs text-slate-900 focus:border-teal-500 focus:outline-none"
-              >
-                <option value="">Select Department</option>
-                {departments?.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
-              </select>
+              <Select
+                value={departmentId ? String(departmentId) : ''}
+                onChange={(val) => setDepartmentId(val ? Number(val) : undefined)}
+                options={departmentOptions}
+                placeholder="Select Department"
+              />
             </div>
           </div>
 
@@ -299,7 +299,7 @@ export const DoctorProfilePage: React.FC = () => {
           />
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wider">
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
               Doctor Professional Biography & Clinical Focus
             </label>
             <textarea
@@ -307,16 +307,15 @@ export const DoctorProfilePage: React.FC = () => {
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               placeholder="Summary of medical expertise, research credentials, clinical experience..."
-              className="w-full rounded-lg border border-slate-300 p-3 text-xs text-slate-900 focus:border-teal-500 focus:outline-none leading-relaxed"
+              className="w-full rounded-lg border border-gray-200 p-3 text-sm text-gray-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none leading-relaxed"
             />
           </div>
 
-          <div className="flex justify-end pt-4 border-t border-slate-100">
+          <div className="flex justify-end pt-4 border-t border-gray-100">
             <Button
               type="submit"
               isLoading={updateProfileMutation.isPending}
               leftIcon={<Save className="w-4 h-4" />}
-              className="bg-teal-600 hover:bg-teal-700 text-white font-semibold"
             >
               Update Profile Information
             </Button>

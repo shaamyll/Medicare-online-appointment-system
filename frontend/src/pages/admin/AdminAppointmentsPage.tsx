@@ -1,20 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
-  Search,
   Calendar,
   Clock,
-  Filter,
-  ChevronLeft,
-  ChevronRight,
-  AlertCircle,
   RotateCcw,
+  AlertCircle,
+  Eye,
+  XCircle,
 } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { PaymentBadge } from '@/components/ui/PaymentBadge';
 import { Modal } from '@/components/ui/Modal';
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableHeadSerial, TableCellSerial } from '@/components/ui/Table';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { FilterBar } from '@/components/ui/FilterBar';
+import { SearchInput } from '@/components/ui/SearchInput';
+import { Select } from '@/components/ui/Select';
+import { EmptyState } from '@/components/ui/EmptyState';
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+  TableHeadSerial,
+  TableCellSerial,
+  TablePagination,
+} from '@/components/ui/Table';
 import { useToast } from '@/components/ui/Toast';
 import { useAppointments, useCancelAppointment } from '@/features/appointments/hooks/useAppointments';
 import { useDoctors } from '@/features/doctors/hooks/useDoctors';
@@ -56,17 +68,18 @@ export const AdminAppointmentsPage: React.FC = () => {
 
   const allAppointments = appointments || [];
 
-  const filteredAppointments = allAppointments.filter((apt) => {
-    if (!searchTerm) return true;
+  const filteredAppointments = useMemo(() => {
+    if (!searchTerm.trim()) return allAppointments;
     const term = searchTerm.toLowerCase();
-    return (
-      apt.appointmentNumber.toLowerCase().includes(term) ||
-      apt.patient.name.toLowerCase().includes(term) ||
-      apt.doctor.name.toLowerCase().includes(term) ||
-      (apt.doctor.department && apt.doctor.department.toLowerCase().includes(term)) ||
-      (apt.payment?.transactionRef && apt.payment.transactionRef.toLowerCase().includes(term))
+    return allAppointments.filter(
+      (apt) =>
+        apt.appointmentNumber.toLowerCase().includes(term) ||
+        apt.patient.name.toLowerCase().includes(term) ||
+        apt.doctor.name.toLowerCase().includes(term) ||
+        (apt.doctor.department && apt.doctor.department.toLowerCase().includes(term)) ||
+        (apt.payment?.transactionRef && apt.payment.transactionRef.toLowerCase().includes(term))
     );
-  });
+  }, [allAppointments, searchTerm]);
 
   const totalPages = Math.max(1, Math.ceil(filteredAppointments.length / itemsPerPage));
   const currentPage = Math.min(page, totalPages);
@@ -85,75 +98,87 @@ export const AdminAppointmentsPage: React.FC = () => {
 
   const hasActiveFilters = Boolean(statusFilter || dateFilter || doctorFilter || searchTerm);
 
+  const statusOptions = [
+    { value: '', label: 'All Statuses' },
+    { value: 'pending', label: 'Pending', dot: 'bg-amber-500' },
+    { value: 'approved', label: 'Approved', dot: 'bg-emerald-500' },
+    { value: 'completed', label: 'Completed', dot: 'bg-blue-500' },
+    { value: 'rejected', label: 'Rejected', dot: 'bg-rose-500' },
+    { value: 'cancelled', label: 'Cancelled', dot: 'bg-gray-400' },
+  ];
+
+  const doctorOptions = useMemo(() => {
+    const list = [{ value: '', label: 'All Doctors' }];
+    doctorsList.forEach((doc) => {
+      list.push({
+        value: String(doc.id),
+        label: `Dr. ${doc.user?.name || (doc as any).name}`,
+      });
+    });
+    return list;
+  }, [doctorsList]);
+
   return (
     <div className="space-y-6">
-      {/* Header & Filter Controls */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Hospital Appointments</h1>
-            <p className="text-sm text-slate-500 mt-0.5">
-              Comprehensive hospital appointment ledger, payment records, and doctor scheduling
-            </p>
-          </div>
+      {/* Header */}
+      <PageHeader
+        title="Hospital Appointments"
+        subtitle="Comprehensive hospital appointment ledger, payment records, and doctor scheduling"
+      />
 
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-            <input
-              type="text"
-              placeholder="Search ref, patient, doctor..."
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setPage(1);
-              }}
-              className="pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 w-64 transition-all"
-            />
-          </div>
+      {/* Filter Bar */}
+      <FilterBar
+        actions={
+          hasActiveFilters ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={resetFilters}
+              className="text-xs text-rose-600 hover:text-rose-700"
+            >
+              Reset Filters
+            </Button>
+          ) : undefined
+        }
+      >
+        <div className="flex-1 min-w-[220px]">
+          <SearchInput
+            value={searchTerm}
+            onChange={(val) => {
+              setSearchTerm(val);
+              setPage(1);
+            }}
+            placeholder="Search ref, patient, doctor..."
+          />
         </div>
 
-        {/* Filter bar */}
-        <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-100">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-wider">
-            <Filter className="w-3.5 h-3.5 text-slate-400" />
-            <span>Filters:</span>
-          </div>
-
-          {/* Status Filter */}
-          <select
+        <div className="w-full sm:w-44">
+          <Select
             value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
+            onChange={(val) => {
+              setStatusFilter(val);
               setPage(1);
             }}
-            className="text-xs py-1.5 px-3 rounded-xl border border-slate-200 bg-white font-medium text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-          >
-            <option value="">All Statuses</option>
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="completed">Completed</option>
-            <option value="cancelled">Cancelled</option>
-            <option value="rejected">Rejected</option>
-          </select>
+            options={statusOptions}
+            placeholder="All Statuses"
+          />
+        </div>
 
-          {/* Doctor Filter */}
-          <select
+        <div className="w-full sm:w-52">
+          <Select
             value={doctorFilter}
-            onChange={(e) => {
-              setDoctorFilter(e.target.value);
+            onChange={(val) => {
+              setDoctorFilter(val);
               setPage(1);
             }}
-            className="text-xs py-1.5 px-3 rounded-xl border border-slate-200 bg-white font-medium text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 max-w-[200px]"
-          >
-            <option value="">All Doctors</option>
-            {doctorsList.map((doc) => (
-              <option key={doc.id} value={doc.id}>
-                Dr. {doc.user?.name || (doc as any).name}
-              </option>
-            ))}
-          </select>
+            options={doctorOptions}
+            searchable
+            placeholder="All Doctors"
+          />
+        </div>
 
-          {/* Date Filter */}
+        <div className="w-full sm:w-44">
           <input
             type="date"
             value={dateFilter}
@@ -161,49 +186,36 @@ export const AdminAppointmentsPage: React.FC = () => {
               setDateFilter(e.target.value);
               setPage(1);
             }}
-            className="text-xs py-1.5 px-3 rounded-xl border border-slate-200 bg-white font-medium text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+            className="w-full h-10 px-3 rounded-lg border border-gray-200 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 shadow-2xs"
           />
-
-          {hasActiveFilters && (
-            <button
-              type="button"
-              onClick={resetFilters}
-              className="text-xs font-semibold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer ml-auto"
-            >
-              Reset Filters
-            </button>
-          )}
         </div>
-      </div>
+      </FilterBar>
 
       {/* Loading Skeleton */}
       {isLoading && (
-        <Card className="rounded-2xl border-slate-200">
-          <CardContent className="p-6 space-y-4">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="animate-pulse flex items-center justify-between py-3 border-b border-slate-100 last:border-0">
-                <div className="w-24 h-4 bg-slate-200 rounded" />
-                <div className="w-36 h-4 bg-slate-200 rounded" />
-                <div className="w-32 h-4 bg-slate-200 rounded" />
-                <div className="w-24 h-4 bg-slate-100 rounded" />
-                <div className="w-20 h-5 bg-slate-200 rounded-full" />
-                <div className="w-20 h-5 bg-slate-100 rounded-full" />
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-xs animate-pulse space-y-4">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
+              <div className="w-24 h-4 bg-gray-200 rounded" />
+              <div className="w-36 h-4 bg-gray-200 rounded" />
+              <div className="w-32 h-4 bg-gray-200 rounded" />
+              <div className="w-24 h-4 bg-gray-100 rounded" />
+              <div className="w-20 h-5 bg-gray-200 rounded-full" />
+              <div className="w-20 h-5 bg-gray-100 rounded-full" />
+            </div>
+          ))}
+        </div>
       )}
 
       {/* Error state */}
       {isError && (
-        <div className="p-8 text-center bg-white rounded-2xl border border-rose-200 shadow-sm space-y-3">
-          <AlertCircle className="w-10 h-10 text-rose-500 mx-auto" />
-          <h3 className="text-base font-bold text-slate-900">Failed to load appointments</h3>
-          <p className="text-xs text-slate-500 max-w-md mx-auto">
+        <div className="p-8 text-center bg-white rounded-xl border border-rose-200 shadow-xs space-y-3">
+          <AlertCircle className="h-10 w-10 text-rose-500 mx-auto" />
+          <h3 className="text-base font-bold text-gray-900">Failed to load appointments</h3>
+          <p className="text-xs text-gray-500 max-w-md mx-auto">
             An error occurred while fetching the appointment ledger.
           </p>
-          <Button variant="outline" size="sm" onClick={() => refetch()} className="text-xs">
-            <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+          <Button variant="secondary" size="sm" onClick={() => refetch()} leftIcon={<RotateCcw className="h-4 w-4" />}>
             Retry
           </Button>
         </div>
@@ -211,29 +223,42 @@ export const AdminAppointmentsPage: React.FC = () => {
 
       {/* Main Table */}
       {!isLoading && !isError && (
-        <Card className="rounded-2xl border-slate-200 shadow-sm overflow-hidden">
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHeadSerial />
-                  <TableHead>Reference #</TableHead>
-                  <TableHead>Patient</TableHead>
-                  <TableHead>Assigned Doctor</TableHead>
-                  <TableHead>Date & Slot</TableHead>
-                  <TableHead>Payment</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedAppointments.length > 0 ? (
-                  paginatedAppointments.map((apt, idx) => {
+        <div className="space-y-4">
+          {filteredAppointments.length === 0 ? (
+            <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-xs">
+              <EmptyState
+                title="No Appointments Found"
+                description={
+                  hasActiveFilters
+                    ? 'No appointments match the selected filter criteria. Try resetting or adjusting your filters.'
+                    : 'There are no appointment records registered in the system.'
+                }
+                actionLabel={hasActiveFilters ? 'Reset Filters' : undefined}
+                onAction={hasActiveFilters ? resetFilters : undefined}
+              />
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHeadSerial />
+                    <TableHead>Reference #</TableHead>
+                    <TableHead>Patient</TableHead>
+                    <TableHead>Assigned Doctor</TableHead>
+                    <TableHead>Date & Slot</TableHead>
+                    <TableHead>Payment</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedAppointments.map((apt, idx) => {
                     const serialIndex = (currentPage - 1) * itemsPerPage + idx;
                     return (
-                      <TableRow key={apt.id} className="hover:bg-slate-50/70 transition-colors">
+                      <TableRow key={apt.id}>
                         <TableCellSerial index={serialIndex} />
-                        <TableCell className="font-mono text-xs font-bold text-slate-800">
+                        <TableCell className="font-mono text-xs font-bold text-gray-800">
                           <div>{apt.appointmentNumber}</div>
                           {apt.rescheduleCount && apt.rescheduleCount > 0 ? (
                             <span className="inline-block mt-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
@@ -243,28 +268,28 @@ export const AdminAppointmentsPage: React.FC = () => {
                         </TableCell>
 
                         <TableCell>
-                          <p className="font-semibold text-slate-900 text-xs sm:text-sm">{apt.patient.name}</p>
-                          <p className="text-[11px] text-slate-400">{apt.patient.email}</p>
+                          <p className="font-semibold text-gray-900 text-xs sm:text-sm">{apt.patient.name}</p>
+                          <p className="text-[11px] text-gray-400">{apt.patient.email}</p>
                           {apt.patient.phone && (
-                            <p className="text-[11px] text-teal-600 font-medium">{apt.patient.phone}</p>
+                            <p className="text-[11px] text-emerald-700 font-medium">{apt.patient.phone}</p>
                           )}
                         </TableCell>
 
                         <TableCell>
-                          <p className="font-medium text-slate-800 text-xs">Dr. {apt.doctor.name}</p>
-                          <p className="text-[11px] text-slate-500">
+                          <p className="font-medium text-gray-800 text-xs">Dr. {apt.doctor.name}</p>
+                          <p className="text-[11px] text-gray-500">
                             {apt.doctor.specialization} &bull; {apt.doctor.department || 'General'}
                           </p>
                         </TableCell>
 
                         <TableCell>
                           <div className="space-y-0.5">
-                            <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-900">
-                              <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                            <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-900">
+                              <Calendar className="h-3.5 w-3.5 text-gray-400" />
                               <span>{apt.appointmentDate}</span>
                             </div>
                             <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 font-semibold">
-                              <Clock className="w-3 h-3 text-emerald-600" />
+                              <Clock className="h-3 w-3 text-emerald-600" />
                               <span>{apt.startTime} - {apt.endTime}</span>
                             </div>
                           </div>
@@ -273,7 +298,7 @@ export const AdminAppointmentsPage: React.FC = () => {
                         <TableCell>
                           <PaymentBadge status={apt.payment?.status} />
                           {apt.payment?.amount && (
-                            <span className="block text-[10px] text-slate-500 font-medium mt-0.5">
+                            <span className="block text-[10px] text-gray-500 font-medium mt-0.5">
                               Rs. {Number(apt.payment.amount).toFixed(0)}
                             </span>
                           )}
@@ -290,213 +315,133 @@ export const AdminAppointmentsPage: React.FC = () => {
 
                         <TableCell className="text-right">
                           <Button
-                            variant="ghost"
+                            variant="secondary"
                             size="sm"
                             onClick={() => setSelectedAppointment(apt)}
-                            className="text-xs text-slate-700 hover:text-slate-900"
+                            leftIcon={<Eye className="h-3.5 w-3.5 text-gray-500" />}
                           >
                             Details
                           </Button>
                         </TableCell>
                       </TableRow>
                     );
-                  })
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-16 text-slate-400 text-xs">
-                      <div className="flex flex-col items-center justify-center space-y-2">
-                        <Calendar className="w-8 h-8 text-slate-300" />
-                        <p className="font-bold text-slate-700 text-sm">No appointments found</p>
-                        <p className="text-slate-400">
-                          {hasActiveFilters
-                            ? 'No appointments match the selected filter criteria.'
-                            : 'No appointments recorded in the system ledger yet.'}
-                        </p>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                  })}
+                </TableBody>
+              </Table>
 
-            {/* Pagination footer */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/50">
-                <span className="text-xs text-slate-500 font-medium">
-                  Showing {(currentPage - 1) * itemsPerPage + 1} to{' '}
-                  {Math.min(currentPage * itemsPerPage, filteredAppointments.length)} of{' '}
-                  {filteredAppointments.length} entries
-                </span>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={currentPage <= 1}
-                    className="text-xs h-8"
-                  >
-                    <ChevronLeft className="w-3.5 h-3.5 mr-1" />
-                    Previous
-                  </Button>
-                  <span className="text-xs font-semibold text-slate-700 px-2">
-                    {currentPage} / {totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={currentPage >= totalPages}
-                    className="text-xs h-8"
-                  >
-                    Next
-                    <ChevronRight className="w-3.5 h-3.5 ml-1" />
-                  </Button>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              {/* Pagination */}
+              <TablePagination
+                page={currentPage}
+                totalPages={totalPages}
+                totalItems={filteredAppointments.length}
+                pageSize={itemsPerPage}
+                onPageChange={(p) => setPage(p)}
+              />
+            </div>
+          )}
+        </div>
       )}
 
-      {/* Appointment Details Modal */}
+      {/* Appointment Detail Modal */}
       {selectedAppointment && (
         <Modal
           isOpen={!!selectedAppointment}
           onClose={() => setSelectedAppointment(null)}
-          title={`Appointment Details - ${selectedAppointment.appointmentNumber}`}
-          description={`Created on ${new Date(selectedAppointment.createdAt).toLocaleDateString()}`}
+          title={`Appointment #${selectedAppointment.appointmentNumber}`}
+          maxWidth="lg"
         >
-          <div className="space-y-4 text-xs">
-            {/* Patient & Doctor Box */}
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <span className="text-slate-400 block mb-0.5 font-semibold text-[10px] uppercase">Patient:</span>
-                <span className="font-bold text-slate-900 text-sm">{selectedAppointment.patient.name}</span>
-                <span className="text-slate-500 block">{selectedAppointment.patient.email}</span>
-                <span className="text-slate-500 block">{selectedAppointment.patient.phone || 'No phone'}</span>
+          <div className="space-y-4 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-3.5 rounded-xl bg-gray-50 border border-gray-200 space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Patient</span>
+                <p className="font-bold text-gray-900 text-sm">{selectedAppointment.patient.name}</p>
+                <p className="text-xs text-gray-600">{selectedAppointment.patient.email}</p>
+                {selectedAppointment.patient.phone && (
+                  <p className="text-xs text-emerald-700 font-medium">{selectedAppointment.patient.phone}</p>
+                )}
               </div>
-              <div>
-                <span className="text-slate-400 block mb-0.5 font-semibold text-[10px] uppercase">Doctor:</span>
-                <span className="font-bold text-slate-900 text-sm">Dr. {selectedAppointment.doctor.name}</span>
-                <span className="text-slate-500 block">{selectedAppointment.doctor.specialization}</span>
-                <span className="text-slate-500 block">{selectedAppointment.doctor.department}</span>
+
+              <div className="p-3.5 rounded-xl bg-gray-50 border border-gray-200 space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Attending Physician</span>
+                <p className="font-bold text-gray-900 text-sm">Dr. {selectedAppointment.doctor.name}</p>
+                <p className="text-xs text-gray-600">{selectedAppointment.doctor.specialization}</p>
+                <p className="text-xs text-gray-500">{selectedAppointment.doctor.department || 'General'}</p>
               </div>
             </div>
 
-            {/* Schedule & Badges */}
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex flex-wrap items-center justify-between gap-3">
+            <div className="p-3.5 rounded-xl bg-gray-50 border border-gray-200 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
               <div>
-                <span className="text-slate-400 block mb-0.5 font-semibold text-[10px] uppercase">Scheduled Slot:</span>
-                <span className="font-bold text-slate-800 text-xs">
-                  {selectedAppointment.appointmentDate} at {selectedAppointment.startTime} - {selectedAppointment.endTime}
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">Date</span>
+                <span className="font-bold text-gray-800">{selectedAppointment.appointmentDate}</span>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">Time Slot</span>
+                <span className="font-bold text-emerald-700">
+                  {selectedAppointment.startTime} - {selectedAppointment.endTime}
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                <StatusBadge status={selectedAppointment.status} />
-                <PaymentBadge status={selectedAppointment.payment?.status} />
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">Status</span>
+                <div className="mt-0.5">
+                  <StatusBadge status={selectedAppointment.status} />
+                </div>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">Payment</span>
+                <div className="mt-0.5">
+                  <PaymentBadge status={selectedAppointment.payment?.status} />
+                </div>
               </div>
             </div>
 
-            {/* Payment Record */}
-            {selectedAppointment.payment && (
-              <div className="p-3.5 rounded-xl bg-emerald-50/60 border border-emerald-100 flex items-center justify-between">
-                <div>
-                  <span className="text-emerald-900 font-bold text-xs block">Payment Record</span>
-                  <span className="text-[11px] text-emerald-700">
-                    Status: <strong className="capitalize">{selectedAppointment.payment.status}</strong>
-                    {selectedAppointment.payment.transactionRef && ` • Ref: ${selectedAppointment.payment.transactionRef}`}
-                  </span>
-                </div>
-                <div className="text-right">
-                  <span className="text-sm font-black text-emerald-950">
-                    Rs. {Number(selectedAppointment.payment.amount).toFixed(2)}
-                  </span>
-                  {selectedAppointment.payment.method && (
-                    <span className="block text-[10px] text-emerald-700 uppercase font-bold">
-                      {selectedAppointment.payment.method}
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Rejection / Cancellation Reason */}
-            {selectedAppointment.rejectionReason && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200">
-                <span className="text-rose-800 block mb-1 font-semibold uppercase text-[10px]">
-                  Reason for Rejection / Cancellation:
-                </span>
-                <p className="text-rose-900">{selectedAppointment.rejectionReason}</p>
-              </div>
-            )}
-
-            {/* Reason for Visit */}
             {selectedAppointment.reasonForVisit && (
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                <span className="text-slate-400 block mb-1 font-semibold uppercase text-[10px]">
-                  Reason for Visit / Symptoms:
+              <div className="p-3.5 rounded-xl bg-gray-50 border border-gray-200">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-1">
+                  Reason for Visit
                 </span>
-                <p className="text-slate-700 leading-relaxed">{selectedAppointment.reasonForVisit}</p>
+                <p className="text-xs text-gray-700 italic">"{selectedAppointment.reasonForVisit}"</p>
               </div>
             )}
 
-            {/* Reschedule history */}
-            {selectedAppointment.reschedules && selectedAppointment.reschedules.length > 0 && (
-              <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200 space-y-1.5">
-                <span className="text-amber-900 block font-bold text-[11px] uppercase tracking-wider">
-                  Reschedule Audit Log ({selectedAppointment.reschedules.length}):
-                </span>
-                {selectedAppointment.reschedules.map((r, i) => (
-                  <div key={r.id || i} className="text-[11px] text-amber-800 flex items-center justify-between">
-                    <span>
-                      {r.oldDate} ({r.oldStartTime}) &rarr; {r.newDate} ({r.newStartTime})
-                    </span>
-                    <span className="text-[10px] text-amber-600">
-                      by {r.rescheduledByName || r.rescheduledByRole || 'User'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Consultation */}
             {selectedAppointment.consultation && (
-              <div className="p-3.5 rounded-xl bg-teal-50/60 border border-teal-100 space-y-2">
-                <span className="text-teal-900 block font-bold text-xs">Clinical Consultation Record</span>
-                {selectedAppointment.consultation.diagnosis && (
-                  <div>
-                    <span className="text-slate-500 block font-semibold text-[11px]">Diagnosis:</span>
-                    <p className="text-slate-800">{selectedAppointment.consultation.diagnosis}</p>
-                  </div>
-                )}
+              <div className="p-3.5 rounded-xl bg-emerald-50/50 border border-emerald-100 space-y-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 block">
+                  Clinical Diagnosis & Prescription
+                </span>
+                <p className="text-xs font-semibold text-gray-900">
+                  Diagnosis: {selectedAppointment.consultation.diagnosis}
+                </p>
                 {selectedAppointment.consultation.prescription && (
-                  <div>
-                    <span className="text-slate-500 block font-semibold text-[11px]">Prescription:</span>
-                    <p className="text-slate-800 font-mono text-[11px] bg-white p-2 rounded border border-teal-200">
-                      {selectedAppointment.consultation.prescription}
-                    </p>
-                  </div>
+                  <p className="text-xs font-mono text-emerald-900 bg-white p-2.5 rounded-lg border border-emerald-200 whitespace-pre-line">
+                    {selectedAppointment.consultation.prescription}
+                  </p>
                 )}
               </div>
             )}
 
-            <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-              {selectedAppointment.status !== 'CANCELLED' &&
-              selectedAppointment.status !== 'COMPLETED' &&
-              selectedAppointment.status !== 'REJECTED' ? (
+            <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+              {(selectedAppointment.status.toLowerCase() === 'pending' ||
+                selectedAppointment.status.toLowerCase() === 'approved') && (
                 <Button
+                  type="button"
                   variant="outline"
                   size="sm"
                   onClick={() => handleCancel(selectedAppointment.id)}
                   isLoading={cancelMutation.isPending}
-                  className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200 text-xs"
+                  className="text-rose-600 border-rose-200 hover:bg-rose-50"
+                  leftIcon={<XCircle className="h-4 w-4" />}
                 >
                   Cancel Appointment
                 </Button>
-              ) : (
-                <div />
               )}
-              <Button variant="outline" size="sm" onClick={() => setSelectedAppointment(null)} className="text-xs">
+
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setSelectedAppointment(null)}
+                className="ml-auto"
+              >
                 Close
               </Button>
             </div>

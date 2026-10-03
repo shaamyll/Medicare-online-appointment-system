@@ -22,6 +22,7 @@ import {
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
 import { Card } from '@/components/ui/Card';
 import { useToast } from '@/components/ui/Toast';
 import { useDepartments } from '@/features/departments/hooks/useDepartments';
@@ -560,19 +561,18 @@ export const DoctorLoginPage: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-slate-700/60">
                 <div>
                   <label className="block text-xs font-medium text-slate-300 mb-1">Department Affiliation *</label>
-                  <select
-                    value={departmentId || ''}
-                    onChange={(e) => setDepartmentId(e.target.value ? Number(e.target.value) : undefined)}
-                    className="w-full rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-2 text-xs text-white focus:border-teal-500 focus:outline-none"
-                    required
-                  >
-                    <option value="">Select Department</option>
-                    {departments?.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.name}
-                      </option>
-                    ))}
-                  </select>
+                  <Select
+                    value={departmentId ? String(departmentId) : ''}
+                    onChange={(val) => setDepartmentId(val ? Number(val) : undefined)}
+                    options={[
+                      { value: '', label: 'Select Department' },
+                      ...(departments?.map((d) => ({
+                        value: String(d.id),
+                        label: d.name,
+                      })) || []),
+                    ]}
+                    placeholder="Select Department"
+                  />
                 </div>
 
                 <div>

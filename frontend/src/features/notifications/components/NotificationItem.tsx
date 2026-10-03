@@ -4,6 +4,8 @@ import { Trash2 } from 'lucide-react';
 import { NotificationItemData } from '../types/notification.types';
 import { getNotificationMeta } from '../utils/notificationMeta';
 import { formatRelativeTime, formatFullDateTime } from '@/lib/date';
+import { IconButton } from '@/components/ui/IconButton';
+import { cn } from '@/lib/utils';
 
 interface NotificationItemProps {
   notification: NotificationItemData;
@@ -54,53 +56,59 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
   return (
     <div
       onClick={handleClick}
-      className={`group relative flex items-start gap-3.5 transition-colors cursor-pointer border-b border-slate-100 last:border-b-0 ${
-        compact ? 'p-3 hover:bg-slate-50' : 'p-4 sm:p-5 hover:bg-slate-50/80 rounded-xl'
-      } ${
+      className={cn(
+        'group relative flex items-start gap-3.5 transition-colors cursor-pointer border-b border-gray-100 last:border-b-0',
+        compact ? 'p-3' : 'p-4 sm:p-5',
         !notification.isRead
           ? 'bg-emerald-50/40 hover:bg-emerald-50/60'
-          : 'bg-white'
-      }`}
+          : 'bg-white hover:bg-gray-50'
+      )}
     >
-      {/* Category Icon */}
+      {/* Category Icon - Fixed-size circular icon */}
       <div
-        className={`flex-shrink-0 flex items-center justify-center rounded-xl border ${
-          compact ? 'w-9 h-9' : 'w-10 h-10'
-        } ${meta.iconBg} ${meta.iconColor}`}
+        className={cn(
+          'shrink-0 flex items-center justify-center rounded-full border shadow-2xs',
+          compact ? 'w-8 h-8' : 'w-10 h-10',
+          meta.iconBg,
+          meta.iconColor
+        )}
       >
-        <IconComponent className={compact ? 'w-4 h-4' : 'w-5 h-5'} />
+        <IconComponent className={compact ? 'h-4 w-4' : 'h-5 w-5'} />
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 min-w-0 pr-6">
+      <div className="flex-1 min-w-0 pr-7">
         <div className="flex items-center gap-2">
           <h4
-            className={`font-semibold truncate text-slate-900 ${
+            className={cn(
+              'font-semibold truncate text-gray-900',
               compact ? 'text-xs' : 'text-sm'
-            }`}
+            )}
           >
             {notification.title}
           </h4>
           {!notification.isRead && (
             <span
-              className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0"
+              className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"
               title="Unread"
             />
           )}
         </div>
 
         <p
-          className={`text-slate-600 mt-0.5 line-clamp-2 leading-relaxed ${
+          className={cn(
+            'text-gray-600 mt-0.5 line-clamp-2 leading-relaxed',
             compact ? 'text-[11px]' : 'text-xs sm:text-sm'
-          }`}
+          )}
         >
           {notification.message}
         </p>
 
         <span
-          className={`inline-block text-slate-400 mt-1 cursor-default ${
+          className={cn(
+            'inline-block text-gray-400 mt-1 cursor-default',
             compact ? 'text-[10px]' : 'text-xs'
-          }`}
+          )}
           title={formatFullDateTime(notification.createdAt)}
         >
           {formatRelativeTime(notification.createdAt)}
@@ -109,14 +117,17 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
 
       {/* Delete button on hover / action */}
       {onDelete && (
-        <button
-          type="button"
-          onClick={handleDelete}
-          className="notif-delete-btn absolute top-3 right-3 opacity-0 group-hover:opacity-100 p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
-          title="Delete notification"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
+        <div className="notif-delete-btn absolute top-3 right-3 opacity-90 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+          <IconButton
+            icon={<Trash2 className="h-3.5 w-3.5" />}
+            aria-label="Delete notification"
+            title="Delete notification"
+            size="sm"
+            variant="ghost"
+            onClick={handleDelete}
+            className="h-7 w-7 text-gray-400 hover:text-rose-600 hover:bg-rose-50"
+          />
+        </div>
       )}
     </div>
   );

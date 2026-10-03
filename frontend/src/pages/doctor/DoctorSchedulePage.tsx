@@ -2,12 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { Save } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { Select } from '@/components/ui/Select';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { useToast } from '@/components/ui/Toast';
 import { useDoctorSchedule, useUpdateDoctorSchedule } from '@/features/doctors/hooks/useDoctors';
 import { DoctorSchedule } from '@/features/doctors/types/doctor.types';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+const DURATION_OPTIONS = [
+  { value: '15', label: '15 minutes' },
+  { value: '20', label: '20 minutes' },
+  { value: '30', label: '30 minutes' },
+  { value: '45', label: '45 minutes' },
+  { value: '60', label: '60 minutes' },
+];
 
 export const DoctorSchedulePage: React.FC = () => {
   const { toast } = useToast();
@@ -77,23 +87,19 @@ export const DoctorSchedulePage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Weekly Shift Availability</h1>
-          <p className="text-sm text-slate-500">
-            Define your working days, consultation shift hours, and appointment slot durations
-          </p>
-        </div>
-
-        <Button
-          onClick={handleSaveAll}
-          isLoading={updateScheduleMutation.isPending}
-          leftIcon={<Save className="w-4 h-4" />}
-          className="bg-teal-600 hover:bg-teal-700 text-white shadow-sm"
-        >
-          Save Availability
-        </Button>
-      </div>
+      <PageHeader
+        title="Weekly Shift Availability"
+        subtitle="Define your working days, consultation shift hours, and appointment slot durations"
+        actions={
+          <Button
+            onClick={handleSaveAll}
+            isLoading={updateScheduleMutation.isPending}
+            leftIcon={<Save className="w-4 h-4" />}
+          >
+            Save Availability
+          </Button>
+        }
+      />
 
       <div className="space-y-3">
         {schedules.map((item) => (
@@ -101,8 +107,8 @@ export const DoctorSchedulePage: React.FC = () => {
             key={item.dayOfWeek}
             className={`border transition-all ${
               item.isAvailable
-                ? 'border-teal-200 bg-white shadow-sm'
-                : 'border-slate-200 bg-slate-50/60 opacity-80'
+                ? 'border-emerald-200 bg-white shadow-sm'
+                : 'border-gray-200 bg-gray-50/60 opacity-80'
             }`}
           >
             <div className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -111,13 +117,13 @@ export const DoctorSchedulePage: React.FC = () => {
                   type="checkbox"
                   checked={item.isAvailable}
                   onChange={() => handleToggleDay(item.dayOfWeek)}
-                  className="h-5 w-5 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
+                  className="h-5 w-5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
                 />
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">{item.dayOfWeek}</h3>
-                  <span className="text-xs text-slate-500">
+                  <h3 className="text-base font-bold text-gray-900">{item.dayOfWeek}</h3>
+                  <span className="text-xs text-gray-500">
                     {item.isAvailable ? (
-                      <span className="text-teal-700 font-semibold">Available for Appointments</span>
+                      <span className="text-emerald-700 font-semibold">Available for Appointments</span>
                     ) : (
                       'Clinic Shift Off'
                     )}
@@ -128,35 +134,31 @@ export const DoctorSchedulePage: React.FC = () => {
               {item.isAvailable && (
                 <div className="flex flex-wrap items-center gap-4 text-xs">
                   <div className="flex items-center gap-2">
-                    <span className="text-slate-500 font-medium">Shift Hours:</span>
+                    <span className="text-gray-500 font-medium">Shift Hours:</span>
                     <input
                       type="time"
                       value={item.startTime}
                       onChange={(e) => handleTimeChange(item.dayOfWeek, 'startTime', e.target.value)}
-                      className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 font-mono text-slate-800 focus:border-teal-500 focus:outline-none"
+                      className="h-10 rounded-lg border border-gray-200 bg-gray-50 px-3 font-mono text-sm text-gray-800 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none"
                     />
-                    <span className="text-slate-400">to</span>
+                    <span className="text-gray-400">to</span>
                     <input
                       type="time"
                       value={item.endTime}
                       onChange={(e) => handleTimeChange(item.dayOfWeek, 'endTime', e.target.value)}
-                      className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 font-mono text-slate-800 focus:border-teal-500 focus:outline-none"
+                      className="h-10 rounded-lg border border-gray-200 bg-gray-50 px-3 font-mono text-sm text-gray-800 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none"
                     />
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <span className="text-slate-500 font-medium">Slot Interval:</span>
-                    <select
-                      value={item.slotDurationMinutes}
-                      onChange={(e) => handleDurationChange(item.dayOfWeek, Number(e.target.value))}
-                      className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-teal-500 focus:outline-none"
-                    >
-                      <option value={15}>15 minutes</option>
-                      <option value={20}>20 minutes</option>
-                      <option value={30}>30 minutes</option>
-                      <option value={45}>45 minutes</option>
-                      <option value={60}>60 minutes</option>
-                    </select>
+                    <span className="text-gray-500 font-medium">Slot Interval:</span>
+                    <div className="w-36">
+                      <Select
+                        value={String(item.slotDurationMinutes)}
+                        onChange={(val) => handleDurationChange(item.dayOfWeek, Number(val))}
+                        options={DURATION_OPTIONS}
+                      />
+                    </div>
                   </div>
                 </div>
               )}

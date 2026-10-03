@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
 import {
   MessageSquare,
-  Filter,
   Trash2,
   AlertCircle,
   RotateCcw,
-  ChevronLeft,
-  ChevronRight,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableHeadSerial, TableCellSerial } from '@/components/ui/Table';
+import { Button, IconButton } from '@/components/ui/Button';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { FilterBar } from '@/components/ui/FilterBar';
+import { Select } from '@/components/ui/Select';
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableHeadSerial, TableCellSerial, TablePagination } from '@/components/ui/Table';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { StarRating } from '@/features/feedback/components/StarRating';
 import { useToast } from '@/components/ui/Toast';
@@ -60,98 +60,91 @@ export const AdminFeedbackPage: React.FC = () => {
 
   const hasActiveFilters = Boolean(selectedDoctorId || selectedRating);
 
+  const doctorOptions = [
+    { value: '', label: 'All Doctors' },
+    ...doctorsList.map((doc) => ({
+      value: String(doc.id),
+      label: `Dr. ${doc.user?.name || (doc as any).name}`,
+    })),
+  ];
+
+  const ratingOptions = [
+    { value: '', label: 'All Ratings' },
+    { value: '5', label: '5 Stars', dot: 'bg-emerald-500' },
+    { value: '4', label: '4 Stars', dot: 'bg-teal-500' },
+    { value: '3', label: '3 Stars', dot: 'bg-amber-500' },
+    { value: '2', label: '2 Stars', dot: 'bg-orange-500' },
+    { value: '1', label: '1 Star', dot: 'bg-rose-500' },
+  ];
+
   return (
     <div className="space-y-6">
-      {/* Page Header & Filters */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2.5">
-              <span className="p-2 rounded-xl bg-teal-50 text-teal-600 border border-teal-100 inline-flex">
-                <MessageSquare className="w-5 h-5" />
-              </span>
-              <span>Patient Feedback Moderation</span>
-            </h1>
-            <p className="text-sm text-slate-500 mt-1">
-              Review and moderate consultation ratings, clinical reviews, and patient experiences
-            </p>
-          </div>
-
-          {data && (
-            <div className="flex items-center gap-2 bg-slate-50 px-3.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700">
+      {/* Page Header */}
+      <PageHeader
+        title="Patient Feedback Moderation"
+        subtitle="Review and moderate consultation ratings, clinical reviews, and patient experiences"
+        badge={
+          data ? (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-800">
               <span>Total Reviews:</span>
-              <span className="px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 font-bold">
-                {data.total}
-              </span>
-            </div>
-          )}
-        </div>
+              <span className="font-bold">{data.total}</span>
+            </span>
+          ) : undefined
+        }
+      />
 
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-slate-100">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-wider">
-            <Filter className="w-3.5 h-3.5 text-slate-400" />
-            <span>Filters:</span>
-          </div>
-
-          {/* Doctor Filter */}
-          <select
+      {/* Filters */}
+      <FilterBar>
+        <div className="w-full sm:w-64">
+          <Select
             value={selectedDoctorId}
-            onChange={(e) => {
-              setSelectedDoctorId(e.target.value);
+            onChange={(val) => {
+              setSelectedDoctorId(val);
               setPage(1);
             }}
-            className="text-xs py-1.5 px-3 rounded-xl border border-slate-200 bg-white font-medium text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 max-w-[220px]"
-          >
-            <option value="">All Doctors</option>
-            {doctorsList.map((doc) => (
-              <option key={doc.id} value={doc.id}>
-                Dr. {doc.user?.name || (doc as any).name}
-              </option>
-            ))}
-          </select>
-
-          {/* Rating Filter */}
-          <select
-            value={selectedRating}
-            onChange={(e) => {
-              setSelectedRating(e.target.value);
-              setPage(1);
-            }}
-            className="text-xs py-1.5 px-3 rounded-xl border border-slate-200 bg-white font-medium text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
-          >
-            <option value="">All Ratings</option>
-            <option value="5">5 Stars</option>
-            <option value="4">4 Stars</option>
-            <option value="3">3 Stars</option>
-            <option value="2">2 Stars</option>
-            <option value="1">1 Star</option>
-          </select>
-
-          {hasActiveFilters && (
-            <button
-              type="button"
-              onClick={resetFilters}
-              className="text-xs font-semibold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer ml-auto"
-            >
-              Reset Filters
-            </button>
-          )}
+            options={doctorOptions}
+            placeholder="Filter by Doctor"
+            searchable
+          />
         </div>
-      </div>
+
+        <div className="w-full sm:w-44">
+          <Select
+            value={selectedRating}
+            onChange={(val) => {
+              setSelectedRating(val);
+              setPage(1);
+            }}
+            options={ratingOptions}
+            placeholder="Filter by Rating"
+          />
+        </div>
+
+        {hasActiveFilters && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={resetFilters}
+            className="text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 ml-auto h-10"
+          >
+            Reset Filters
+          </Button>
+        )}
+      </FilterBar>
 
       {/* Loading Skeleton */}
       {isLoading && (
-        <Card className="rounded-2xl border-slate-200">
+        <Card className="rounded-xl border-gray-200">
           <CardContent className="p-6 space-y-4">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="animate-pulse flex items-center justify-between py-3 border-b border-slate-100 last:border-0">
-                <div className="w-28 h-4 bg-slate-200 rounded" />
-                <div className="w-36 h-4 bg-slate-200 rounded" />
-                <div className="w-24 h-4 bg-slate-200 rounded" />
-                <div className="w-48 h-4 bg-slate-100 rounded" />
-                <div className="w-20 h-4 bg-slate-100 rounded" />
-                <div className="w-8 h-8 bg-slate-200 rounded-lg" />
+              <div key={i} className="animate-pulse flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
+                <div className="w-28 h-4 bg-gray-200 rounded" />
+                <div className="w-36 h-4 bg-gray-200 rounded" />
+                <div className="w-24 h-4 bg-gray-200 rounded" />
+                <div className="w-48 h-4 bg-gray-100 rounded" />
+                <div className="w-20 h-4 bg-gray-100 rounded" />
+                <div className="w-8 h-8 bg-gray-200 rounded-lg" />
               </div>
             ))}
           </CardContent>
@@ -160,22 +153,22 @@ export const AdminFeedbackPage: React.FC = () => {
 
       {/* Error State */}
       {isError && (
-        <div className="p-8 text-center bg-white rounded-2xl border border-rose-200 shadow-sm space-y-3">
+        <Card className="p-8 text-center border-rose-200 space-y-3">
           <AlertCircle className="w-10 h-10 text-rose-500 mx-auto" />
-          <h3 className="text-base font-bold text-slate-900">Failed to load feedback records</h3>
-          <p className="text-xs text-slate-500 max-w-md mx-auto">
+          <h3 className="text-base font-bold text-gray-900">Failed to load feedback records</h3>
+          <p className="text-xs text-gray-500 max-w-md mx-auto">
             An error occurred while fetching feedback submissions.
           </p>
           <Button variant="outline" size="sm" onClick={() => refetch()} className="text-xs">
-            <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+            <RotateCcw className="w-3.5 h-3.5" />
             Retry
           </Button>
-        </div>
+        </Card>
       )}
 
       {/* Success Content Table */}
       {!isLoading && !isError && (
-        <Card className="rounded-2xl border-slate-200 shadow-sm overflow-hidden">
+        <Card className="rounded-xl border-gray-200 shadow-sm overflow-hidden">
           <CardContent className="p-0">
             <Table>
               <TableHeader>
@@ -186,7 +179,7 @@ export const AdminFeedbackPage: React.FC = () => {
                   <TableHead>Rating</TableHead>
                   <TableHead>Comment</TableHead>
                   <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="text-right pr-6">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -194,17 +187,17 @@ export const AdminFeedbackPage: React.FC = () => {
                   items.map((fb, idx) => {
                     const serialIndex = (page - 1) * limit + idx;
                     return (
-                      <TableRow key={fb.id} className="hover:bg-slate-50/70 transition-colors">
+                      <TableRow key={fb.id} className="hover:bg-gray-50 transition-colors">
                         <TableCellSerial index={serialIndex} />
 
                         <TableCell>
-                          <p className="font-semibold text-slate-900 text-xs sm:text-sm">
+                          <p className="font-semibold text-gray-900 text-sm">
                             {fb.patientName || 'Anonymous Patient'}
                           </p>
                         </TableCell>
 
                         <TableCell>
-                          <p className="font-medium text-slate-800 text-xs">
+                          <p className="font-medium text-gray-800 text-xs">
                             Dr. {fb.doctorName || 'Doctor'}
                           </p>
                         </TableCell>
@@ -212,42 +205,45 @@ export const AdminFeedbackPage: React.FC = () => {
                         <TableCell>
                           <div className="flex items-center gap-1.5">
                             <StarRating value={fb.rating} readOnly size="sm" />
-                            <span className="text-xs font-bold text-slate-700">({fb.rating})</span>
+                            <span className="text-xs font-bold text-gray-700">({fb.rating})</span>
                           </div>
                         </TableCell>
 
                         <TableCell className="max-w-md">
-                          <p className="text-xs text-slate-600 line-clamp-2">
-                            {fb.comment || <span className="italic text-slate-400">No written comment</span>}
+                          <p className="text-xs text-gray-600 line-clamp-2">
+                            {fb.comment || <span className="italic text-gray-400">No written comment</span>}
                           </p>
                         </TableCell>
 
                         <TableCell>
-                          <span className="text-xs text-slate-500 whitespace-nowrap">
+                          <span className="text-xs text-gray-500 whitespace-nowrap">
                             {new Date(fb.createdAt).toLocaleDateString()}
                           </span>
                         </TableCell>
 
-                        <TableCell className="text-right">
-                          <button
-                            type="button"
-                            onClick={() => setDeletingFeedback(fb)}
+                        <TableCell className="text-right pr-6">
+                          <IconButton
+                            icon={<Trash2 className="w-4 h-4" />}
+                            variant="ghost"
+                            size="sm"
                             title="Delete / Moderate Review"
-                            className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                            aria-label="Delete / Moderate Review"
+                            onClick={() => setDeletingFeedback(fb)}
+                            className="text-rose-500 hover:text-rose-700 hover:bg-rose-50"
+                          />
                         </TableCell>
                       </TableRow>
                     );
                   })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-16 text-slate-400 text-xs">
+                    <TableCell colSpan={7} className="text-center py-16 text-gray-400 text-xs">
                       <div className="flex flex-col items-center justify-center space-y-2">
-                        <MessageSquare className="w-8 h-8 text-slate-300" />
-                        <p className="font-bold text-slate-700 text-sm">No feedback reviews found</p>
-                        <p className="text-slate-400">
+                        <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-400">
+                          <MessageSquare className="w-6 h-6" />
+                        </div>
+                        <p className="font-bold text-gray-700 text-sm">No feedback reviews found</p>
+                        <p className="text-gray-400 text-xs max-w-sm">
                           {hasActiveFilters
                             ? 'No patient reviews match the selected filter criteria.'
                             : 'No feedback records exist in the system yet.'}
@@ -261,37 +257,14 @@ export const AdminFeedbackPage: React.FC = () => {
 
             {/* Pagination Controls */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/50">
-                <span className="text-xs text-slate-500 font-medium">
-                  Showing {(page - 1) * limit + 1} to{' '}
-                  {Math.min(page * limit, data?.total || 0)} of {data?.total || 0} reviews
-                </span>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page <= 1}
-                    className="text-xs h-8"
-                  >
-                    <ChevronLeft className="w-3.5 h-3.5 mr-1" />
-                    Previous
-                  </Button>
-                  <span className="text-xs font-semibold text-slate-700 px-2">
-                    {page} / {totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={page >= totalPages}
-                    className="text-xs h-8"
-                  >
-                    Next
-                    <ChevronRight className="w-3.5 h-3.5 ml-1" />
-                  </Button>
-                </div>
-              </div>
+              <TablePagination
+                page={page}
+                totalPages={totalPages}
+                totalItems={data?.total || 0}
+                limit={limit}
+                itemLabel="reviews"
+                onPageChange={(p) => setPage(p)}
+              />
             )}
           </CardContent>
         </Card>

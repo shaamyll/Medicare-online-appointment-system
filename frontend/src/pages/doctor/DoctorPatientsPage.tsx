@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { Search } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { FilterBar } from '@/components/ui/FilterBar';
+import { SearchInput } from '@/components/ui/SearchInput';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableHeadSerial, TableCellSerial } from '@/components/ui/Table';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { useAppointments } from '@/features/appointments/hooks/useAppointments';
@@ -53,27 +55,27 @@ export const DoctorPatientsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">My Consultation Patients</h1>
-          <p className="text-sm text-slate-500">
-            Patients who have scheduled visits with you across all department clinics
-          </p>
-        </div>
+      <PageHeader
+        title="My Consultation Patients"
+        subtitle="Patients who have scheduled visits with you across all department clinics"
+        badge={
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+            {patients.length} {patients.length === 1 ? 'Patient' : 'Patients'}
+          </span>
+        }
+      />
 
-        <div className="relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-          <input
-            type="text"
-            placeholder="Search patients..."
+      <FilterBar>
+        <div className="w-full sm:w-80">
+          <SearchInput
+            placeholder="Search patients by name or email..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-teal-500 w-56"
+            onChange={(val) => setSearchTerm(val)}
           />
         </div>
-      </div>
+      </FilterBar>
 
-      <Card>
+      <Card className="rounded-xl border-gray-200 shadow-sm overflow-hidden">
         <CardContent className="p-0">
           <Table>
             <TableHeader>
@@ -89,37 +91,37 @@ export const DoctorPatientsPage: React.FC = () => {
             <TableBody>
               {patients.length > 0 ? (
                 patients.map((p, idx) => (
-                  <TableRow key={p.id}>
+                  <TableRow key={p.id} className="hover:bg-gray-50 transition-colors">
                     <TableCellSerial index={idx} />
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-full bg-teal-50 border border-teal-100 flex items-center justify-center text-teal-700 font-bold text-xs">
+                        <div className="h-9 w-9 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-xs">
                           {p.name.charAt(0)}
                         </div>
                         <div>
-                          <p className="font-semibold text-slate-900 text-sm">{p.name}</p>
-                          <p className="text-xs text-slate-400">Patient ID #{p.id}</p>
+                          <p className="font-semibold text-gray-900 text-sm">{p.name}</p>
+                          <p className="text-xs text-gray-400">Patient ID #{p.id}</p>
                         </div>
                       </div>
                     </TableCell>
 
                     <TableCell>
-                      <p className="text-xs text-slate-800">{p.email}</p>
-                      <p className="text-[11px] text-teal-700 font-medium">{p.phone || 'No phone recorded'}</p>
+                      <p className="text-xs text-gray-800">{p.email}</p>
+                      <p className="text-[11px] text-emerald-700 font-medium">{p.phone || 'No phone recorded'}</p>
                     </TableCell>
 
                     <TableCell>
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-teal-50 text-xs font-semibold text-teal-800 border border-teal-100">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-xs font-semibold text-emerald-800 border border-emerald-100">
                         {p.totalVisits} Consultations
                       </span>
                     </TableCell>
 
-                    <TableCell className="text-xs font-medium text-slate-900">
+                    <TableCell className="text-xs font-medium text-gray-900">
                       {p.lastVisit}
                     </TableCell>
 
                     <TableCell>
-                      <p className="text-xs text-slate-600 truncate max-w-xs">
+                      <p className="text-xs text-gray-600 truncate max-w-xs">
                         {p.lastReason || 'Routine health evaluation'}
                       </p>
                     </TableCell>
@@ -127,7 +129,7 @@ export const DoctorPatientsPage: React.FC = () => {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-12 text-slate-400 text-xs">
+                  <TableCell colSpan={6} className="text-center py-12 text-gray-400 text-xs">
                     No patients have scheduled consultations with you yet.
                   </TableCell>
                 </TableRow>

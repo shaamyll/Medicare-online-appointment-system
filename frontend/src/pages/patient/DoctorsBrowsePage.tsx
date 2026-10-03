@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
-import { Search } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
 import { Card } from '@/components/ui/Card';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { FilterBar } from '@/components/ui/FilterBar';
+import { SearchInput } from '@/components/ui/SearchInput';
+import { Select } from '@/components/ui/Select';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { DoctorCard } from '@/features/doctors/components/DoctorCard';
@@ -23,6 +26,16 @@ export const DoctorsBrowsePage: React.FC = () => {
     search: search || undefined,
   });
 
+  const departmentOptions = useMemo(() => {
+    const list = [{ value: '', label: 'All Departments' }];
+    if (departments) {
+      departments.forEach((d) => {
+        list.push({ value: String(d.id), label: d.name });
+      });
+    }
+    return list;
+  }, [departments]);
+
   if (isLoading) {
     return <LoadingState message="Loading medical specialists..." />;
   }
@@ -30,40 +43,31 @@ export const DoctorsBrowsePage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Medical Specialists Directory</h1>
-          <p className="text-sm text-slate-500">
-            Browse verified hospital doctors, view credentials, and book consultation time slots
-          </p>
+      <PageHeader
+        title="Medical Specialists Directory"
+        subtitle="Browse verified hospital doctors, view credentials, and book consultation time slots"
+      />
+
+      {/* Filter Toolbar */}
+      <FilterBar>
+        <div className="flex-1 min-w-[240px]">
+          <SearchInput
+            value={search}
+            onChange={(val) => setSearch(val)}
+            placeholder="Search by doctor, specialization..."
+          />
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-            <input
-              type="text"
-              placeholder="Search by doctor, specialization..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-emerald-500 w-60"
-            />
-          </div>
-
-          <select
-            value={selectedDeptId || ''}
-            onChange={(e) => setSelectedDeptId(e.target.value ? Number(e.target.value) : undefined)}
-            className="text-xs py-1.5 px-3 rounded-lg border border-slate-200 bg-white font-medium text-slate-700 focus:outline-none focus:border-emerald-500"
-          >
-            <option value="">All Departments</option>
-            {departments?.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </select>
+        <div className="w-full sm:w-60">
+          <Select
+            value={selectedDeptId !== undefined ? String(selectedDeptId) : ''}
+            onChange={(val) => setSelectedDeptId(val ? Number(val) : undefined)}
+            options={departmentOptions}
+            searchable
+            placeholder="All Departments"
+          />
         </div>
-      </div>
+      </FilterBar>
 
       {/* Doctors Grid */}
       {isLoading ? (
@@ -77,6 +81,15 @@ export const DoctorsBrowsePage: React.FC = () => {
           <EmptyState
             title="No Doctors Found"
             description="No medical specialists matched your selected department or search filter. Try clearing your search or switching departments."
+            actionLabel={search || selectedDeptId ? 'Clear Filters' : undefined}
+            onAction={
+              search || selectedDeptId
+                ? () => {
+                    setSearch('');
+                    setSelectedDeptId(undefined);
+                  }
+                : undefined
+            }
           />
         </Card>
       ) : (

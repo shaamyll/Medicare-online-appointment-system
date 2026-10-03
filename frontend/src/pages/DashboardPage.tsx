@@ -8,9 +8,11 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/Card';
 import { Badge, StatusBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableHeadSerial, TableCellSerial } from '@/components/ui/Table';
 import { useToast } from '@/components/ui/Toast';
 import { useDoctors } from '@/features/doctors/hooks/useDoctors';
@@ -24,6 +26,7 @@ export const DashboardPage: React.FC = () => {
   const { toast } = useToast();
 
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [cancellingApt, setCancellingApt] = useState<{ id: number; ref: string } | null>(null);
   const [selectedDoctorId, setSelectedDoctorId] = useState<number | undefined>(undefined);
 
   const { data: doctors, isLoading: isLoadingDoctors } = useDoctors();
@@ -42,13 +45,12 @@ export const DashboardPage: React.FC = () => {
   );
   const completedApts = allApts.filter((a) => a.status === 'COMPLETED');
 
-  const handleCancel = async (id: number, ref: string) => {
-    if (!window.confirm(`Are you sure you want to cancel appointment #${ref}?`)) {
-      return;
-    }
+  const handleCancelConfirm = async () => {
+    if (!cancellingApt) return;
     try {
-      await cancelMutation.mutateAsync(id);
+      await cancelMutation.mutateAsync(cancellingApt.id);
       toast('Appointment cancelled', 'info');
+      setCancellingApt(null);
     } catch (err: any) {
       toast(err.message || 'Failed to cancel appointment', 'error');
     }
@@ -62,50 +64,40 @@ export const DashboardPage: React.FC = () => {
   return (
     <div className="space-y-8">
       {/* Welcome Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-              Welcome back, {user?.name || 'Patient'}!
-            </h1>
-            <Badge variant="success">Patient Portal</Badge>
+      <PageHeader
+        title={`Welcome back, ${user?.name || 'Patient'}!`}
+        subtitle={`Medi-Care Healthcare Portal • Today is ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}`}
+        badge={<Badge variant="success">Patient Portal</Badge>}
+        actions={
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/dashboard/doctors')}
+            >
+              Find Doctors
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => {
+                setSelectedDoctorId(undefined);
+                setIsBookingModalOpen(true);
+              }}
+              leftIcon={<PlusCircle className="w-4 h-4" />}
+            >
+              Book Appointment
+            </Button>
           </div>
-          <p className="text-sm text-slate-500">
-            Medi-Care Healthcare Portal &bull; Today is{' '}
-            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate('/dashboard/doctors')}
-            className="border-slate-300"
-          >
-            Find Doctors
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => {
-              setSelectedDoctorId(undefined);
-              setIsBookingModalOpen(true);
-            }}
-            leftIcon={<PlusCircle className="w-4 h-4" />}
-            className="bg-emerald-600 hover:bg-emerald-700 shadow-sm"
-          >
-            Book Appointment
-          </Button>
-        </div>
-      </div>
+        }
+      />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-        <Card hover>
+        <Card hover className="border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Upcoming Visits</p>
-              <p className="text-2xl font-black text-slate-900 mt-1">{upcomingApts.length}</p>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Upcoming Visits</p>
+              <p className="text-2xl font-black text-gray-900 mt-1">{upcomingApts.length}</p>
             </div>
             <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
               <Calendar className="w-5 h-5" />
@@ -118,24 +110,24 @@ export const DashboardPage: React.FC = () => {
           </p>
         </Card>
 
-        <Card hover>
+        <Card hover className="border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Completed Visits</p>
-              <p className="text-2xl font-black text-slate-900 mt-1">{completedApts.length}</p>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Completed Visits</p>
+              <p className="text-2xl font-black text-gray-900 mt-1">{completedApts.length}</p>
             </div>
             <div className="p-3 bg-sky-50 text-sky-600 rounded-xl">
               <CheckCircle2 className="w-5 h-5" />
             </div>
           </div>
-          <p className="text-xs text-slate-500 mt-3 font-medium">With clinical prescriptions</p>
+          <p className="text-xs text-gray-500 mt-3 font-medium">With clinical prescriptions</p>
         </Card>
 
-        <Card hover>
+        <Card hover className="border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Available Specialists</p>
-              <p className="text-2xl font-black text-slate-900 mt-1">{doctors?.length || 0}</p>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Available Specialists</p>
+              <p className="text-2xl font-black text-gray-900 mt-1">{doctors?.length || 0}</p>
             </div>
             <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
               <Stethoscope className="w-5 h-5" />
@@ -143,7 +135,7 @@ export const DashboardPage: React.FC = () => {
           </div>
           <button
             onClick={() => navigate('/dashboard/doctors')}
-            className="text-xs text-indigo-600 hover:text-indigo-700 font-semibold mt-3 inline-flex items-center gap-1"
+            className="text-xs text-indigo-600 hover:text-indigo-700 font-semibold mt-3 inline-flex items-center gap-1 cursor-pointer"
           >
             Browse all physicians &rarr;
           </button>
@@ -151,11 +143,11 @@ export const DashboardPage: React.FC = () => {
       </div>
 
       {/* Upcoming Appointments */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-slate-100">
+      <Card className="rounded-xl border-gray-200 shadow-sm overflow-hidden">
+        <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-gray-100">
           <div>
             <CardTitle>My Upcoming Appointments</CardTitle>
-            <p className="text-xs text-slate-500 mt-0.5">Your scheduled clinical consultations and checkups</p>
+            <p className="text-xs text-gray-500 mt-0.5">Your scheduled clinical consultations and checkups</p>
           </div>
           <Button
             variant="ghost"
@@ -177,45 +169,45 @@ export const DashboardPage: React.FC = () => {
                 <TableHead>Date & Time</TableHead>
                 <TableHead>Reason for Visit</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Action</TableHead>
+                <TableHead className="text-right pr-6">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {upcomingApts.length > 0 ? (
                 upcomingApts.map((apt, idx) => (
-                  <TableRow key={apt.id}>
+                  <TableRow key={apt.id} className="hover:bg-gray-50 transition-colors">
                     <TableCellSerial index={idx} />
-                    <TableCell className="font-mono text-xs font-semibold text-slate-800">
+                    <TableCell className="font-mono text-xs font-semibold text-gray-800">
                       {apt.appointmentNumber}
                     </TableCell>
 
                     <TableCell>
-                      <p className="font-semibold text-slate-900 text-sm">{apt.doctor.name}</p>
-                      <p className="text-xs text-slate-500">
+                      <p className="font-semibold text-gray-900 text-sm">{apt.doctor.name}</p>
+                      <p className="text-xs text-gray-500">
                         {apt.doctor.specialization} &bull; {apt.doctor.department || 'General'}
                       </p>
                     </TableCell>
 
                     <TableCell>
-                      <p className="text-xs font-semibold text-slate-900">{apt.appointmentDate}</p>
+                      <p className="text-xs font-semibold text-gray-900">{apt.appointmentDate}</p>
                       <p className="text-[11px] text-emerald-700 font-semibold">{apt.startTime} - {apt.endTime}</p>
                     </TableCell>
 
                     <TableCell>
-                      <p className="text-xs text-slate-600 max-w-xs truncate">{apt.reasonForVisit || 'Routine Checkup'}</p>
+                      <p className="text-xs text-gray-600 max-w-xs truncate">{apt.reasonForVisit || 'Routine Checkup'}</p>
                     </TableCell>
 
                     <TableCell>
                       <StatusBadge status={apt.status} />
                     </TableCell>
 
-                    <TableCell className="text-right">
+                    <TableCell className="text-right pr-6">
                       {apt.status === 'PENDING' && (
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleCancel(apt.id, apt.appointmentNumber)}
-                          className="text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                          onClick={() => setCancellingApt({ id: apt.id, ref: apt.appointmentNumber })}
+                          className="text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 h-8"
                         >
                           Cancel
                         </Button>
@@ -225,7 +217,7 @@ export const DashboardPage: React.FC = () => {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12 text-slate-400 text-xs">
+                  <TableCell colSpan={7} className="text-center py-12 text-gray-400 text-xs">
                     No upcoming appointments scheduled.
                   </TableCell>
                 </TableRow>
@@ -239,8 +231,8 @@ export const DashboardPage: React.FC = () => {
       <div>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-lg font-bold text-slate-900">Featured Hospital Physicians</h2>
-            <p className="text-xs text-slate-500">Book directly with certified specialists</p>
+            <h2 className="text-lg font-bold text-gray-900">Featured Hospital Physicians</h2>
+            <p className="text-xs text-gray-500">Book directly with certified specialists</p>
           </div>
           <Button
             variant="ghost"
@@ -255,37 +247,39 @@ export const DashboardPage: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {doctors?.slice(0, 3).map((doc) => (
-            <Card key={doc.id} hover className="p-5 flex flex-col justify-between">
-              <div>
+            <Card key={doc.id} hover className="border-gray-200 flex flex-col justify-between overflow-hidden">
+              <div className="p-5">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-700 font-bold flex items-center justify-center text-sm">
+                  <div className="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-700 font-bold flex items-center justify-center text-sm border border-emerald-100">
                     {doc.user.name.split(' ').map((n) => n[0]).slice(0, 2).join('')}
                   </div>
                   <div>
-                    <h3 className="font-bold text-slate-900 text-sm">{doc.user.name}</h3>
+                    <h3 className="font-bold text-gray-900 text-sm">{doc.user.name}</h3>
                     <p className="text-xs text-emerald-700 font-semibold">{doc.specialization}</p>
                   </div>
                 </div>
 
-                <div className="space-y-1.5 text-xs text-slate-600 mb-3">
+                <div className="space-y-1.5 text-xs text-gray-600 mb-3">
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Department:</span>
-                    <span className="font-medium text-slate-800">{doc.department?.name || 'General Clinic'}</span>
+                    <span className="text-gray-400">Department:</span>
+                    <span className="font-medium text-gray-800">{doc.department?.name || 'General Clinic'}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Consultation Fee:</span>
+                    <span className="text-gray-400">Consultation Fee:</span>
                     <span className="font-bold text-emerald-700">${doc.consultationFee?.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
 
-              <Button
-                size="sm"
-                onClick={() => openBookingForDoctor(doc.id)}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs mt-2"
-              >
-                Schedule Consultation
-              </Button>
+              <CardFooter className="p-3 bg-gray-50">
+                <Button
+                  size="sm"
+                  onClick={() => openBookingForDoctor(doc.id)}
+                  className="w-full text-xs"
+                >
+                  Schedule Consultation
+                </Button>
+              </CardFooter>
             </Card>
           ))}
         </div>
@@ -297,6 +291,20 @@ export const DashboardPage: React.FC = () => {
         onClose={() => setIsBookingModalOpen(false)}
         preselectedDoctorId={selectedDoctorId}
       />
+
+      {/* Cancellation Modal */}
+      {cancellingApt && (
+        <ConfirmModal
+          isOpen={!!cancellingApt}
+          onClose={() => setCancellingApt(null)}
+          title="Cancel Appointment"
+          description={`Are you sure you want to cancel appointment #${cancellingApt.ref}? This slot will be released.`}
+          confirmLabel="Cancel Appointment"
+          variant="danger"
+          isLoading={cancelMutation.isPending}
+          onConfirm={handleCancelConfirm}
+        />
+      )}
     </div>
   );
 };
