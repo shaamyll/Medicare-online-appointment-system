@@ -220,5 +220,27 @@ export const adminApi = {
 
   deleteDepartment: async (id: number): Promise<void> => {
     await apiClient.delete(`/departments/${id}`);
+  },
+
+  createDoctor: async (formData: FormData): Promise<AdminDoctor & { tempPassword: string }> => {
+    const response = await apiClient.post<ApiResponse<AdminDoctor & { tempPassword: string }>>(
+      '/admin/doctors',
+      formData
+    );
+    return response.data.data!;
+  },
+
+  createPatient: async (data: {
+    name: string;
+    email: string;
+    phone?: string;
+    gender?: string;
+    dateOfBirth?: string;
+  }): Promise<AdminPatient & { tempPassword: string }> => {
+    const response = await apiClient.post<ApiResponse<AdminPatient & { tempPassword: string }>>(
+      '/admin/patients',
+      data
+    );
+    return response.data.data!;
   }
 };

@@ -185,10 +185,10 @@ class NotificationTypes
 
             case self::NEW_DOCTOR_REGISTRATION:
                 $doctor = $ctx['doctorName'] ?? 'New Doctor';
-                $license = $ctx['licenseNumber'] ?? 'N/A';
+                $specialization = $ctx['specialization'] ?? 'Specialist';
                 return [
-                    'title' => 'Doctor Application Pending Verification',
-                    'message' => "Dr. {$doctor} (License: {$license}) submitted credentials awaiting verification against official medical registers.",
+                    'title' => 'New doctor request',
+                    'message' => "Dr. {$doctor} ({$specialization}) has applied and is waiting for approval.",
                     'link' => '/admin/doctor-requests',
                 ];
 

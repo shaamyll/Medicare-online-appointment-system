@@ -139,4 +139,27 @@ class AdminController {
             Response::error($e->getMessage(), 400);
         }
     }
+
+    public function createDoctor(Request $request): void {
+        try {
+            $body = $request->getBody();
+            $photoFile = $_FILES['photo'] ?? ($_FILES['profilePhoto'] ?? null);
+            $doctor = $this->service->createDoctor($body, $photoFile);
+            Response::success($doctor, 'Doctor created successfully', 201);
+        } catch (Exception $e) {
+            $code = $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 400;
+            Response::error($e->getMessage(), $code);
+        }
+    }
+
+    public function createPatient(Request $request): void {
+        try {
+            $body = $request->getBody();
+            $patient = $this->service->createPatient($body);
+            Response::success($patient, 'Patient created successfully', 201);
+        } catch (Exception $e) {
+            $code = $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 400;
+            Response::error($e->getMessage(), $code);
+        }
+    }
 }

@@ -172,3 +172,35 @@ export const useDeleteDepartment = () => {
     },
   });
 };
+
+export const useCreateDoctor = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (formData: FormData) => adminApi.createDoctor(formData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'doctors'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats });
+      queryClient.invalidateQueries({ queryKey: queryKeys.doctors.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.departments.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.reports });
+    },
+  });
+};
+
+export const useCreatePatient = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      name: string;
+      email: string;
+      phone?: string;
+      gender?: string;
+      dateOfBirth?: string;
+    }) => adminApi.createPatient(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.patients });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.reports });
+    },
+  });
+};

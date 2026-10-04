@@ -28,8 +28,8 @@ class UserRepository {
 
     public function create(array $data): int {
         $stmt = $this->db->prepare("
-            INSERT INTO users (name, email, password, role, phone, status)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO users (name, email, password, role, phone, gender, date_of_birth, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
             $data['name'],
@@ -37,6 +37,8 @@ class UserRepository {
             $data['password'],
             $data['role'],
             $data['phone'] ?? null,
+            $data['gender'] ?? null,
+            $data['date_of_birth'] ?? null,
             $data['status'] ?? 'active'
         ]);
         return (int)$this->db->lastInsertId();

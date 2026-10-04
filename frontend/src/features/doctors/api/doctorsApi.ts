@@ -34,4 +34,13 @@ export const doctorsApi = {
     const response = await apiClient.post<ApiResponse<Doctor>>('/doctor/profile', data);
     return response.data.data!;
   },
+
+  changePassword: async (data: {
+    currentPassword: string;
+    newPassword: string;
+    confirmPassword: string;
+  }): Promise<{ message: string }> => {
+    const response = await apiClient.put<ApiResponse<{ message: string }>>('/doctor/change-password', data);
+    return response.data.data || { message: response.data.message || 'Password changed successfully' };
+  },
 };

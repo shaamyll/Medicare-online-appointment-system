@@ -81,3 +81,13 @@ export const useUpdateDoctorProfile = () => {
     },
   });
 };
+
+export const useDoctorChangePassword = () => {
+  return useMutation({
+    mutationFn: (data: {
+      currentPassword: string;
+      newPassword: string;
+      confirmPassword: string;
+    }) => doctorsApi.changePassword(data),
+  });
+};

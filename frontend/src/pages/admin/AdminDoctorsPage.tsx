@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { PowerOff, Power, Trash2, AlertCircle, Eye } from 'lucide-react';
+import { PowerOff, Power, Trash2, AlertCircle, Eye, UserPlus } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Avatar } from '@/components/ui/Avatar';
 import {
@@ -22,6 +22,8 @@ import { Button } from '@/components/ui/Button';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { DoctorDetailsModal } from './DoctorDetailsModal';
+import { DoctorCreateModal } from './DoctorCreateModal';
+import { CredentialsModal } from '@/components/ui/CredentialsModal';
 import { useToast } from '@/components/ui/Toast';
 import {
   useAdminDoctors,
@@ -38,6 +40,12 @@ export const AdminDoctorsPage: React.FC = () => {
   const pageSize = 10;
 
   // Modals state
+  const [isAddDoctorOpen, setIsAddDoctorOpen] = useState(false);
+  const [createdCredentials, setCreatedCredentials] = useState<{
+    name: string;
+    email: string;
+    tempPassword: string;
+  } | null>(null);
   const [detailsDoctorId, setDetailsDoctorId] = useState<number | null>(null);
   const [deactivatingDoctor, setDeactivatingDoctor] = useState<{ id: number; name: string } | null>(null);
   const [deletingDoctor, setDeletingDoctor] = useState<{
@@ -142,6 +150,14 @@ export const AdminDoctorsPage: React.FC = () => {
       <PageHeader
         title="Registered Healthcare Providers"
         subtitle="Directory of registered independent and clinic doctors, specialties, and practice statuses"
+        actions={
+          <Button
+            leftIcon={<UserPlus className="w-4 h-4" />}
+            onClick={() => setIsAddDoctorOpen(true)}
+          >
+            Add doctor
+          </Button>
+        }
       />
 
       {/* Filter Bar */}
@@ -361,6 +377,32 @@ export const AdminDoctorsPage: React.FC = () => {
         isOpen={!!detailsDoctorId}
         onClose={() => setDetailsDoctorId(null)}
       />
+
+      {/* Doctor Create Modal */}
+      <DoctorCreateModal
+        isOpen={isAddDoctorOpen}
+        onClose={() => setIsAddDoctorOpen(false)}
+        onSuccess={(doctor) => {
+          setIsAddDoctorOpen(false);
+          setCreatedCredentials({
+            name: doctor.name,
+            email: doctor.email,
+            tempPassword: doctor.tempPassword,
+          });
+        }}
+      />
+
+      {/* Reusable Credentials Modal */}
+      {createdCredentials && (
+        <CredentialsModal
+          isOpen={!!createdCredentials}
+          onClose={() => setCreatedCredentials(null)}
+          name={createdCredentials.name}
+          email={createdCredentials.email}
+          role="doctor"
+          tempPassword={createdCredentials.tempPassword}
+        />
+      )}
     </div>
   );
 };

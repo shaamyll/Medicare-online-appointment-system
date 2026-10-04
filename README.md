@@ -538,6 +538,7 @@ All API endpoints are hosted by `BE/` and prefixed with `/api` (or accessed dire
 | `PUT` | `/api/doctor/schedule` | Doctor | Save/update weekly schedule availability |
 | `GET` | `/api/doctor/profile` | Doctor | Retrieve authenticated doctor's profile (including `clinic_address`) |
 | `PUT` | `/api/doctor/profile` | Doctor | Update bio, clinic address, room number, fee, qualification, specialization |
+| `PUT` | `/api/doctor/change-password` | Doctor | Update password verifying current password with `password_verify` (min 8 chars, letter + number) |
 | `GET` | `/api/doctor/feedback` | Doctor | View doctor's own patient ratings and reviews |
 
 ### 🛡️ Administrator Operations
@@ -545,6 +546,7 @@ All API endpoints are hosted by `BE/` and prefixed with `/api` (or accessed dire
 | :--- | :--- | :--- | :--- |
 | `GET` | `/api/admin/stats` | Admin | Aggregate dashboard counters, recent appointments, and payment revenue |
 | `GET` | `/api/admin/doctors` | Admin | List all doctors sorted by `created_at DESC, id DESC` (supports filter `?status=`) |
+| `POST`| `/api/admin/doctors` | Admin | Create a new doctor in `active` status (multipart/form-data with optional photo). Generates and returns a random 12-char alphanumeric temporary password once (`tempPassword`). |
 | `GET` | `/api/admin/doctors/{id}` | Admin | Full doctor dossier modal: profile, stats, 7-day schedule, appointments, reviews |
 | `GET` | `/api/admin/doctor-requests`| Admin | Retrieve pending doctor registrations awaiting approval |
 | `POST` | `/api/admin/doctors/{id}/approve` | Admin | Approve a pending doctor account |
@@ -553,9 +555,17 @@ All API endpoints are hosted by `BE/` and prefixed with `/api` (or accessed dire
 | `GET` | `/api/admin/doctors/{id}/delete-impact` | Admin | Return total & upcoming appointments affected by doctor deletion |
 | `DELETE`| `/api/admin/doctors/{id}` | Admin | Hard delete doctor, schedules, consultation notes, appointments, user, and avatar files |
 | `GET` | `/api/admin/patients` | Admin | List all registered patients sorted by `created_at DESC, id DESC` |
+| `POST`| `/api/admin/patients` | Admin | Create a new patient in `active` status. Generates and returns a random 12-char alphanumeric temporary password once (`tempPassword`). |
 | `GET` | `/api/admin/reports` | Admin | Distribution analytics (appointments by status, revenue, doctors per dept) |
 | `GET` | `/api/admin/feedback` | Admin | Moderation review list with filtering and pagination |
 | `DELETE`| `/api/admin/feedback/{id}` | Admin | Delete a patient review and recompute rating aggregates |
+
+> [!IMPORTANT]
+> **Temporary Password Security Policy**:
+> When an administrator provisions a doctor (`POST /api/admin/doctors`) or a patient (`POST /api/admin/patients`), a secure 12-character random alphanumeric temporary password is generated via `random_bytes()`, securely hashed via `password_hash()` with `PASSWORD_BCRYPT`, and returned strictly **once** in the API response under `tempPassword`.
+> - The temporary password is **never** logged to server logs or persisted in plain text in the database.
+> - The frontend displays it in a one-time copyable `CredentialsModal` and does not persist it in React Query cache, `localStorage`, or `sessionStorage`.
+> - The user can log in immediately with this credential and change their password anytime from their account profile settings.
 
 ### 🔔 Notifications (All Authenticated Roles)
 | Method | Endpoint | Role Required | Description |
@@ -566,6 +576,12 @@ All API endpoints are hosted by `BE/` and prefixed with `/api` (or accessed dire
 | `POST` | `/api/notifications/read-all` | Authenticated | Mark all notifications as read for current user |
 | `DELETE`| `/api/notifications/{id}` | Authenticated | Delete a single notification (scoped to current user) |
 | `DELETE`| `/api/notifications` | Authenticated | Delete all read notifications for current user |
+
+> [!NOTE]
+> **New Doctor Registration Notifications (`new_doctor_registration`)**:
+> - When a doctor self-registers via `POST /api/auth/doctor/register`, the system automatically calls `NotificationService::notifyAdmins()` with type `new_doctor_registration`, title `"New doctor request"`, message `"Dr. <name> (<specialization>) has applied and is waiting for approval."`, data `{"doctor_id": <id>}`, and link `"/admin/doctor-requests"`.
+> - Delivered in real time to all active administrators via the WebSocket bridge (`event: "notification"` and `event: "data_changed"` for doctor requests and stats), updating the header bell, sidebar badges, and dashboard counters instantly without requiring a page refresh, with seamless 30-second polling fallback.
+> - Doctors created directly by administrators through "Add doctor" do **not** dispatch this notification.
 
 ---
 

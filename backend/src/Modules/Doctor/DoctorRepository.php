@@ -322,4 +322,16 @@ class DoctorRepository {
             ] : null
         ];
     }
+
+    public function findWithPassword(int $userId): ?array {
+        $stmt = $this->db->prepare("SELECT id, email, password, role FROM users WHERE id = ? LIMIT 1");
+        $stmt->execute([$userId]);
+        $row = $stmt->fetch();
+        return $row ?: null;
+    }
+
+    public function updatePassword(int $userId, string $hashedPassword): bool {
+        $stmt = $this->db->prepare("UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?");
+        return $stmt->execute([$hashedPassword, $userId]);
+    }
 }

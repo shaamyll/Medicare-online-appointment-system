@@ -102,4 +102,20 @@ class DoctorController {
             Response::error($e->getMessage(), $code);
         }
     }
+
+    public function changePassword(Request $request): void {
+        $user = $request->getUser();
+        if (!$user) {
+            Response::error('Unauthorized', 401);
+            return;
+        }
+
+        try {
+            $result = $this->service->changePassword($user['id'], $request->getBody());
+            Response::success($result, 'Password changed successfully');
+        } catch (Exception $e) {
+            $code = $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 400;
+            Response::error($e->getMessage(), $code);
+        }
+    }
 }

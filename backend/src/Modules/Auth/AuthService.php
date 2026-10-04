@@ -277,19 +277,22 @@ class AuthService {
         // Notify admins about new doctor registration awaiting verification
         try {
             $notifService = new NotificationService();
+            $specialization = $profile['specialization'] ?? ($data['specialization'] ?? 'Specialist');
             $meta = NotificationTypes::build(
                 NotificationTypes::NEW_DOCTOR_REGISTRATION,
-                ['doctorName' => $user['name'], 'licenseNumber' => $licenseNumber]
+                ['doctorName' => $user['name'], 'specialization' => $specialization]
             );
             $notifService->notifyAdmins(
                 NotificationTypes::NEW_DOCTOR_REGISTRATION,
                 $meta['title'],
                 $meta['message'],
-                ['doctorId' => $userId, 'licenseNumber' => $licenseNumber],
+                ['doctor_id' => $userId],
                 $meta['link']
             );
             $notifService->publishDataChanged([], ['admin-stats', 'doctor-requests', 'doctors']);
-        } catch (\Throwable $ignored) {}
+        } catch (\Throwable $ignored) {
+            error_log('[doctorRegister notification error] ' . $ignored->getMessage());
+        }
 
         return [
             'token' => '',

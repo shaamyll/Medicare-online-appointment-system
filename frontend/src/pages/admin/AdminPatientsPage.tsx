@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Calendar, AlertCircle } from 'lucide-react';
+import { Calendar, AlertCircle, UserPlus } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { FilterBar } from '@/components/ui/FilterBar';
@@ -18,12 +18,21 @@ import {
   TablePagination,
 } from '@/components/ui/Table';
 import { LoadingState } from '@/components/ui/LoadingState';
+import { PatientCreateModal } from './PatientCreateModal';
+import { CredentialsModal } from '@/components/ui/CredentialsModal';
 import { useAdminPatients } from '@/features/admin/hooks/useAdmin';
 
 export const AdminPatientsPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const pageSize = 10;
+
+  const [isAddPatientOpen, setIsAddPatientOpen] = useState(false);
+  const [createdCredentials, setCreatedCredentials] = useState<{
+    name: string;
+    email: string;
+    tempPassword: string;
+  } | null>(null);
 
   const { data: patients, isLoading, isError, error, refetch } = useAdminPatients();
 
@@ -62,6 +71,14 @@ export const AdminPatientsPage: React.FC = () => {
       <PageHeader
         title="Registered Patients"
         subtitle="Patients registered in Medi-Care with their contact information and appointment history counts"
+        actions={
+          <Button
+            leftIcon={<UserPlus className="w-4 h-4" />}
+            onClick={() => setIsAddPatientOpen(true)}
+          >
+            Add patient
+          </Button>
+        }
       />
 
       {/* Filter Bar */}
@@ -156,6 +173,32 @@ export const AdminPatientsPage: React.FC = () => {
           />
         )}
       </div>
+
+      {/* Patient Create Modal */}
+      <PatientCreateModal
+        isOpen={isAddPatientOpen}
+        onClose={() => setIsAddPatientOpen(false)}
+        onSuccess={(patient) => {
+          setIsAddPatientOpen(false);
+          setCreatedCredentials({
+            name: patient.name,
+            email: patient.email,
+            tempPassword: patient.tempPassword,
+          });
+        }}
+      />
+
+      {/* Reusable Credentials Modal */}
+      {createdCredentials && (
+        <CredentialsModal
+          isOpen={!!createdCredentials}
+          onClose={() => setCreatedCredentials(null)}
+          name={createdCredentials.name}
+          email={createdCredentials.email}
+          role="patient"
+          tempPassword={createdCredentials.tempPassword}
+        />
+      )}
     </div>
   );
 };

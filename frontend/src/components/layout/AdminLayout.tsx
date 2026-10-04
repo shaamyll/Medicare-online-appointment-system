@@ -19,11 +19,13 @@ import { useAuth } from '@/features/auth/hooks/useAuth';
 import { LogoutConfirmModal } from '@/components/ui/LogoutConfirmModal';
 import { NotificationBell } from '@/features/notifications/components/NotificationBell';
 import { useUnreadCount } from '@/features/notifications/hooks/useNotifications';
+import { useAdminStats } from '@/features/admin/hooks/useAdmin';
 import { cn } from '@/lib/utils';
 
 export const AdminLayout: React.FC = () => {
   const { user } = useAuth();
   const { data: unreadCount = 0 } = useUnreadCount();
+  const { data: stats } = useAdminStats();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const location = useLocation();
@@ -35,7 +37,7 @@ export const AdminLayout: React.FC = () => {
   const navItems = [
     { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
     { label: 'Doctors', href: '/admin/doctors', icon: Stethoscope },
-    { label: 'Doctor Requests', href: '/admin/doctor-requests', icon: UserCheck },
+    { label: 'Doctor Requests', href: '/admin/doctor-requests', icon: UserCheck, badge: stats?.pendingApprovals },
     { label: 'Patients', href: '/admin/patients', icon: Users },
     { label: 'Departments', href: '/admin/departments', icon: Building2 },
     { label: 'Appointments', href: '/admin/appointments', icon: Calendar },

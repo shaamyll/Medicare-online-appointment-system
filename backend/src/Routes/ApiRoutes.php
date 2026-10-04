@@ -92,6 +92,8 @@ class ApiRoutes {
         $router->get('/doctor/profile', [DoctorController::class, 'getMyProfile'], $doctorAuth);
         $router->put('/doctor/profile', [DoctorController::class, 'updateMyProfile'], $doctorAuth);
         $router->post('/doctor/profile', [DoctorController::class, 'updateMyProfile'], $doctorAuth);
+        $router->put('/doctor/change-password', [DoctorController::class, 'changePassword'], $doctorAuth);
+        $router->put('/doctor/profile/password', [DoctorController::class, 'changePassword'], $doctorAuth);
         $router->patch('/appointments/{id}/status', [AppointmentController::class, 'updateStatus'], $doctorAuth);
         $router->post('/appointments/{id}/consultation', [AppointmentController::class, 'addConsultation'], $doctorAuth);
         $router->get('/doctor/feedback', [FeedbackController::class, 'getDoctorOwnFeedback'], $doctorAuth);
@@ -103,6 +105,7 @@ class ApiRoutes {
         ];
         $router->get('/admin/stats', [AdminController::class, 'stats'], $adminAuth);
         $router->get('/admin/doctors', [AdminController::class, 'doctors'], $adminAuth);
+        $router->post('/admin/doctors', [AdminController::class, 'createDoctor'], $adminAuth);
         $router->get('/admin/doctors/{id}', [AdminController::class, 'showDoctor'], $adminAuth);
         $router->get('/admin/doctor-requests', [AdminController::class, 'doctorRequests'], $adminAuth);
         $router->post('/admin/doctors/{id}/approve', [AdminController::class, 'approveDoctor'], $adminAuth);
@@ -111,6 +114,7 @@ class ApiRoutes {
         $router->get('/admin/doctors/{id}/delete-impact', [AdminController::class, 'deleteImpact'], $adminAuth);
         $router->delete('/admin/doctors/{id}', [AdminController::class, 'deleteDoctor'], $adminAuth);
         $router->get('/admin/patients', [AdminController::class, 'patients'], $adminAuth);
+        $router->post('/admin/patients', [AdminController::class, 'createPatient'], $adminAuth);
         $router->get('/admin/reports', [AdminController::class, 'reports'], $adminAuth);
         $router->get('/admin/feedback', [FeedbackController::class, 'getAdminList'], $adminAuth);
         $router->delete('/admin/feedback/{id}', [FeedbackController::class, 'delete'], $adminAuth);
