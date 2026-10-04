@@ -29,14 +29,22 @@ class PaymentService {
         }
 
         // Only owning patient can pay
-        if ($user['role'] !== 'patient' || $apt['patient']['id'] !== $user['id']) {
+        if ($user['role'] !== 'patient' || (int)$apt['patient']['id'] !== (int)$user['id']) {
             throw new Exception('Only the patient who booked this appointment can submit payment.', 403);
         }
 
-        // Validate appointment is not rejected or cancelled
+        // Validate appointment status
         $status = strtolower($apt['status']);
+        if ($status === 'pending') {
+            throw new Exception('Payment is available after the doctor approves your appointment.', 422);
+        }
+
         if ($status === 'cancelled' || $status === 'rejected') {
             throw new Exception("Cannot process payment for a {$status} appointment.", 422);
+        }
+
+        if ($status !== 'approved' && $status !== 'completed') {
+            throw new Exception('Payment is available after the doctor approves your appointment.', 422);
         }
 
         // Validate method
@@ -55,6 +63,14 @@ class PaymentService {
 
         if ($payment['status'] === 'paid') {
             throw new Exception('Payment has already been completed for this appointment.', 422);
+        }
+
+        if ($payment['status'] === 'refunded') {
+            throw new Exception('Cannot submit payment for a refunded appointment.', 422);
+        }
+
+        if ($payment['status'] !== 'unpaid') {
+            throw new Exception('Payment is not available for this appointment.', 422);
         }
 
         // Generate demo transaction reference: e.g. MC-YYYYMMDD-XXXXXX

@@ -7,6 +7,7 @@ import {
   ArrowRight,
   Star,
   Compass,
+  CreditCard,
 } from 'lucide-react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/Card';
@@ -259,16 +260,29 @@ export const DashboardPage: React.FC = () => {
                     </TableCell>
 
                     <TableCell className="text-right pr-6">
-                      {apt.status === 'PENDING' && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setCancellingApt({ id: apt.id, ref: apt.appointmentNumber })}
-                          className="text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 h-8"
-                        >
-                          Cancel
-                        </Button>
-                      )}
+                      <div className="flex items-center justify-end gap-1.5">
+                        {Boolean(apt.canPay ?? apt.can_pay) && (
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={() => navigate(`/dashboard/appointments?pay=${apt.id}`)}
+                            leftIcon={<CreditCard className="w-3.5 h-3.5" />}
+                            className="text-xs h-8"
+                          >
+                            Pay now
+                          </Button>
+                        )}
+                        {apt.status === 'PENDING' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setCancellingApt({ id: apt.id, ref: apt.appointmentNumber })}
+                            className="text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 h-8"
+                          >
+                            Cancel
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))

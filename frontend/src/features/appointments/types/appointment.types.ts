@@ -2,6 +2,7 @@ export type AppointmentStatus = 'PENDING' | 'APPROVED' | 'CONFIRMED' | 'COMPLETE
 
 export type PaymentStatus = 'unpaid' | 'paid' | 'refunded';
 export type PaymentMethod = 'upi' | 'card' | 'cash';
+export type PaymentState = 'awaiting_approval' | 'payable' | 'paid' | 'refunded' | 'not_applicable';
 
 export interface PaymentInfo {
   id: number;
@@ -10,6 +11,9 @@ export interface PaymentInfo {
   method?: PaymentMethod | null;
   transactionRef?: string | null;
   paidAt?: string | null;
+  state?: PaymentState;
+  paymentState?: PaymentState;
+  canPay?: boolean;
 }
 
 export interface FeedbackInfo {
@@ -86,6 +90,10 @@ export interface Appointment {
   rejectionReason?: string | null;
   rescheduleCount?: number;
   payment?: PaymentInfo | null;
+  canPay?: boolean;
+  can_pay?: boolean;
+  paymentState?: PaymentState;
+  payment_state?: PaymentState;
   feedback?: FeedbackInfo | null;
   canReview?: boolean;
   can_review?: boolean;

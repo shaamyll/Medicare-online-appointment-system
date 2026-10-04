@@ -330,20 +330,30 @@ class AppointmentService {
         $updated = $this->repository->findById($appointmentId);
 
         if ($status === 'approved') {
-            $meta = NotificationTypes::build(NotificationTypes::APPOINTMENT_APPROVED, [
-                'appointmentNumber' => $apt['appointmentNumber'],
-                'doctorName' => $apt['doctor']['name'] ?? 'Doctor',
-                'appointmentDate' => $apt['appointmentDate'],
-                'startTime' => $apt['startTime'],
-            ]);
-            $this->notificationService->notify(
-                $patientId,
-                NotificationTypes::APPOINTMENT_APPROVED,
-                $meta['title'],
-                $meta['message'],
-                ['appointmentId' => $appointmentId],
-                $meta['link']
-            );
+            try {
+                $fee = (float)($apt['payment']['amount'] ?? $apt['doctor']['consultationFee'] ?? 100.00);
+                $amountStr = (float)$fee == (int)$fee ? (string)(int)$fee : number_format($fee, 2);
+                $date = $apt['appointmentDate'];
+                $time = substr($apt['startTime'], 0, 5);
+
+                $meta = NotificationTypes::build(NotificationTypes::PAYMENT_DUE, [
+                    'doctorName' => $apt['doctor']['name'] ?? 'Doctor',
+                    'appointmentDate' => $date,
+                    'startTime' => $time,
+                    'amount' => $amountStr,
+                    'appointmentId' => $appointmentId,
+                ]);
+                $this->notificationService->notify(
+                    $patientId,
+                    NotificationTypes::PAYMENT_DUE,
+                    $meta['title'],
+                    $meta['message'],
+                    ['appointmentId' => $appointmentId, 'amount' => $fee],
+                    $meta['link']
+                );
+            } catch (\Throwable $e) {
+                error_log("Failed to dispatch payment_due notification: " . $e->getMessage());
+            }
         } elseif ($status === 'rejected') {
             $meta = NotificationTypes::build(NotificationTypes::APPOINTMENT_REJECTED, [
                 'appointmentNumber' => $apt['appointmentNumber'],
@@ -374,7 +384,7 @@ class AppointmentService {
             );
         }
 
-        $this->notificationService->publishDataChanged([$patientId, $doctorId], ['appointments']);
+        $this->notificationService->publishDataChanged([$patientId, $doctorId], ['appointments', 'admin-stats', 'reports']);
 
         return $updated;
     }

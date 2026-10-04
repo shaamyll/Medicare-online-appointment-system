@@ -41,6 +41,7 @@ export const PatientAppointmentsPage: React.FC = () => {
 
   const tabParam = searchParams.get('tab');
   const rateParam = searchParams.get('rate');
+  const payParam = searchParams.get('pay');
 
   const [activeTab, setActiveTab] = useState<'upcoming' | 'history' | 'all'>(
     tabParam === 'history' ? 'history' : tabParam === 'all' ? 'all' : 'upcoming'
@@ -100,6 +101,44 @@ export const PatientAppointmentsPage: React.FC = () => {
       }, 200);
     }
   }, [rateParam, appointments]);
+
+  // Handle ?pay={id} deep link from notifications
+  const autoPayOpenedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!payParam || !appointments || appointments.length === 0) return;
+    if (autoPayOpenedRef.current === payParam) return;
+
+    const targetApt = appointments.find((a) => String(a.id) === String(payParam));
+    if (targetApt) {
+      autoPayOpenedRef.current = payParam;
+
+      const today = new Date().toISOString().split('T')[0];
+      const isPast =
+        targetApt.status === 'COMPLETED' ||
+        targetApt.status === 'CANCELLED' ||
+        targetApt.status === 'REJECTED' ||
+        targetApt.appointmentDate < today;
+      setActiveTab(isPast ? 'history' : 'upcoming');
+
+      // Scroll to element if present
+      setTimeout(() => {
+        const el = document.getElementById(`appointment-card-${targetApt.id}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 200);
+
+      // Open PaymentModal only if it is payable
+      const isPayable = Boolean(
+        targetApt.canPay ??
+          targetApt.can_pay ??
+          (targetApt.paymentState === 'payable' || targetApt.payment_state === 'payable')
+      );
+      if (isPayable) {
+        setPaymentAppointment(targetApt);
+      }
+    }
+  }, [payParam, appointments]);
 
   const handleConfirmCancel = async () => {
     if (!cancellingAppointment) return;
@@ -324,7 +363,25 @@ export const PatientAppointmentsPage: React.FC = () => {
             const isPaid = paymentStatus === 'paid';
             const fee = apt.payment?.amount ?? apt.doctor.consultationFee ?? 0;
 
-            const canPay = !isPaid && !isRejected && !isCancelled;
+            const paymentState =
+              apt.paymentState ||
+              apt.payment_state ||
+              apt.payment?.state ||
+              (isPaid
+                ? 'paid'
+                : paymentStatus === 'refunded'
+                ? 'refunded'
+                : isRejected || isCancelled
+                ? 'not_applicable'
+                : isPending
+                ? 'awaiting_approval'
+                : 'payable');
+
+            const canPay = Boolean(
+              apt.canPay ??
+                apt.can_pay ??
+                (paymentState === 'payable' && (isApproved || isCompleted))
+            );
             const canReschedule = (isPending || isApproved) && (apt.rescheduleCount || 0) < 2;
             const canCancel = isPending || isApproved;
 
@@ -405,7 +462,7 @@ export const PatientAppointmentsPage: React.FC = () => {
                   </div>
 
                   {/* Approval & payment status, stacked */}
-                  <div className="w-full md:w-52 shrink-0 self-start md:self-center rounded-lg border border-gray-100 bg-gray-50/60 divide-y divide-gray-100">
+                  <div className="w-full md:w-60 shrink-0 self-start md:self-center rounded-lg border border-gray-100 bg-gray-50/60 divide-y divide-gray-100">
                     <div className="flex items-center justify-between gap-3 px-3 py-2">
                       <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
                         Approval
@@ -416,12 +473,28 @@ export const PatientAppointmentsPage: React.FC = () => {
                         rejectionReason={apt.rejectionReason}
                       />
                     </div>
-                    <div className="flex items-center justify-between gap-3 px-3 py-2">
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-                        Payment
-                      </span>
-                      <PaymentBadge status={paymentStatus} />
-                    </div>
+                    {paymentState !== 'not_applicable' && (
+                      <div className="px-3 py-2 space-y-1">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                            Payment
+                          </span>
+                          {paymentState === 'awaiting_approval' ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200 shadow-2xs select-none">
+                              <Clock className="w-3 h-3 shrink-0" />
+                              Payment opens after approval
+                            </span>
+                          ) : (
+                            <PaymentBadge status={paymentState === 'payable' ? 'unpaid' : paymentState} />
+                          )}
+                        </div>
+                        {paymentState === 'awaiting_approval' && (
+                          <p className="text-[10px] text-gray-500 leading-tight">
+                            You can pay once the doctor approves your request.
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -511,7 +584,7 @@ export const PatientAppointmentsPage: React.FC = () => {
                         onClick={() => setPaymentAppointment(apt)}
                         leftIcon={<CreditCard className="h-3.5 w-3.5" />}
                       >
-                        Pay Now
+                        Pay now
                       </Button>
                     )}
 
@@ -522,7 +595,7 @@ export const PatientAppointmentsPage: React.FC = () => {
                         onClick={() => setReceiptAppointmentId(apt.id)}
                         leftIcon={<Receipt className="h-3.5 w-3.5 text-emerald-600" />}
                       >
-                        Receipt
+                        View receipt
                       </Button>
                     )}
 

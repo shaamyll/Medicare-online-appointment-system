@@ -284,6 +284,34 @@ class AppointmentRepository {
             ];
         }
 
+        $aptStatus = strtolower($row['status'] ?? 'pending');
+        $rawPaymentStatus = !empty($row['payment_status']) ? strtolower($row['payment_status']) : 'unpaid';
+
+        if ($rawPaymentStatus === 'paid') {
+            $paymentState = 'paid';
+            $canPay = false;
+        } elseif ($rawPaymentStatus === 'refunded') {
+            $paymentState = 'refunded';
+            $canPay = false;
+        } elseif ($aptStatus === 'cancelled' || $aptStatus === 'rejected') {
+            $paymentState = 'not_applicable';
+            $canPay = false;
+        } elseif ($aptStatus === 'pending') {
+            $paymentState = 'awaiting_approval';
+            $canPay = false;
+        } elseif ($aptStatus === 'approved' || $aptStatus === 'completed') {
+            if ($rawPaymentStatus === 'unpaid') {
+                $paymentState = 'payable';
+                $canPay = true;
+            } else {
+                $paymentState = $rawPaymentStatus;
+                $canPay = false;
+            }
+        } else {
+            $paymentState = 'not_applicable';
+            $canPay = false;
+        }
+
         return [
             'id' => (int)$row['id'],
             'appointmentNumber' => $row['appointment_number'],
@@ -295,6 +323,10 @@ class AppointmentRepository {
             'rejectionReason' => $row['rejection_reason'] ?? null,
             'rescheduleCount' => (int)($row['reschedule_count'] ?? 0),
             'createdAt' => $row['created_at'],
+            'can_pay' => $canPay,
+            'canPay' => $canPay,
+            'payment_state' => $paymentState,
+            'paymentState' => $paymentState,
             'patient' => [
                 'id' => (int)$row['patient_id'],
                 'name' => $row['patient_name'],
@@ -321,7 +353,10 @@ class AppointmentRepository {
                 'status' => $row['payment_status'],
                 'method' => $row['payment_method'],
                 'transactionRef' => $row['payment_transaction_ref'],
-                'paidAt' => $row['payment_paid_at']
+                'paidAt' => $row['payment_paid_at'],
+                'state' => $paymentState,
+                'paymentState' => $paymentState,
+                'canPay' => $canPay,
             ] : null,
             'feedback' => !empty($row['feedback_id']) ? [
                 'id' => (int)$row['feedback_id'],

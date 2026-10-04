@@ -296,7 +296,13 @@ export const AdminAppointmentsPage: React.FC = () => {
                         </TableCell>
 
                         <TableCell>
-                          <PaymentBadge status={apt.payment?.status} />
+                          <PaymentBadge
+                            status={
+                              apt.status === 'PENDING' && apt.payment?.status !== 'paid'
+                                ? 'awaiting_approval'
+                                : apt.payment?.status
+                            }
+                          />
                           {apt.payment?.amount && (
                             <span className="block text-[10px] text-gray-500 font-medium mt-0.5">
                               Rs. {Number(apt.payment.amount).toFixed(0)}
@@ -389,7 +395,13 @@ export const AdminAppointmentsPage: React.FC = () => {
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">Payment</span>
                 <div className="mt-0.5">
-                  <PaymentBadge status={selectedAppointment.payment?.status} />
+                  <PaymentBadge
+                    status={
+                      selectedAppointment.status === 'PENDING' && selectedAppointment.payment?.status !== 'paid'
+                        ? 'awaiting_approval'
+                        : selectedAppointment.payment?.status
+                    }
+                  />
                 </div>
               </div>
             </div>

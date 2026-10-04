@@ -13,6 +13,7 @@ class NotificationTypes
     public const APPOINTMENT_RESCHEDULED = 'appointment_rescheduled';
     public const PAYMENT_CONFIRMED = 'payment_confirmed';
     public const PAYMENT_REFUNDED = 'payment_refunded';
+    public const PAYMENT_DUE = 'payment_due';
 
     // Doctor events
     public const NEW_APPOINTMENT_REQUEST = 'new_appointment_request';
@@ -53,6 +54,20 @@ class NotificationTypes
                     'title' => 'Appointment Confirmed',
                     'message' => "Dr. {$doctor} has approved your appointment #{$ref} for {$date} at {$time}.",
                     'link' => '/dashboard/appointments',
+                ];
+
+            case self::PAYMENT_DUE:
+                $doctor = $ctx['doctorName'] ?? 'Doctor';
+                $doctorFormatted = preg_match('/^Dr\.?\s+/i', $doctor) ? $doctor : "Dr. {$doctor}";
+                $date = $ctx['appointmentDate'] ?? '';
+                $time = $ctx['startTime'] ?? '';
+                $dateTimeStr = trim("{$date}, {$time}");
+                $amount = $ctx['amount'] ?? '0.00';
+                $aptId = $ctx['appointmentId'] ?? '';
+                return [
+                    'title' => 'Appointment approved',
+                    'message' => "{$doctorFormatted} approved your appointment on {$dateTimeStr}. You can now pay Rs. {$amount}.",
+                    'link' => "/dashboard/appointments?pay={$aptId}",
                 ];
 
             case self::APPOINTMENT_REJECTED:

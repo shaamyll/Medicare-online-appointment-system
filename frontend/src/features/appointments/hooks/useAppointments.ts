@@ -35,6 +35,7 @@ export const useBookAppointment = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
       queryClient.invalidateQueries({ queryKey: ['appointments', 'slots'] });
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats });
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
     },
   });
 };
@@ -52,6 +53,8 @@ export const useCancelAppointment = () => {
       queryClient.invalidateQueries({ queryKey: ['appointments', 'slots'] });
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats });
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.reports });
+      queryClient.invalidateQueries({ queryKey: queryKeys.payments.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
     },
   });
 };
@@ -65,6 +68,9 @@ export const useRescheduleAppointment = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
       queryClient.invalidateQueries({ queryKey: ['appointments', 'slots'] });
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.reports });
+      queryClient.invalidateQueries({ queryKey: queryKeys.payments.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
     },
   });
 };
@@ -79,6 +85,7 @@ export const useUpdateAppointmentStatus = () => {
       queryClient.invalidateQueries({ queryKey: ['appointments', 'slots'] });
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats });
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.reports });
+      queryClient.invalidateQueries({ queryKey: queryKeys.payments.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
     },
   });

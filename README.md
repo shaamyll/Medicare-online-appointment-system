@@ -517,8 +517,25 @@ All API endpoints are hosted by `BE/` and prefixed with `/api` (or accessed dire
 ### 💳 Demo Payments & Receipts
 | Method | Endpoint | Role Required | Description |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/api/appointments/{id}/pay` | Owning Patient | Simulated payment checkout (`upi`, `card`, `cash`); sets paid, generates ref |
+| `POST` | `/api/appointments/{id}/pay` | Owning Patient | Simulated payment checkout (`upi`, `card`, `cash`). Available strictly **only after doctor approves** the appointment (`approved` or `completed` with `unpaid` payment). Returns 422 for `pending`, `rejected`, or `cancelled` appointments. |
 | `GET` | `/api/appointments/{id}/receipt` | Authenticated | Retrieve printable receipt data (patient, doctor of appointment, or admin) |
+
+> [!IMPORTANT]
+> **Payment Lifecycle & Approval Enforcement**:
+> - **Doctor Approval Gate**: An appointment cannot be paid while `pending`, `rejected`, or `cancelled`. The pay endpoint and "Pay now" actions are only unlocked after the doctor approves the appointment.
+> - **Computed Payload Fields**:
+>   - `can_pay` / `canPay` (boolean): `true` strictly when appointment status is `approved` (or `completed`) and payment status is `unpaid`.
+>   - `payment_state` / `paymentState` (enum):
+>     - `awaiting_approval`: appointment is `pending` with `unpaid` fee. UI displays muted badge *"Payment opens after approval"* with explanation.
+>     - `payable`: appointment is `approved` or `completed` with `unpaid` fee. UI shows *"Unpaid"* badge and active *"Pay now"* button.
+>     - `paid`: payment completed. UI shows green *"Paid"* badge and *"View receipt"* button.
+>     - `refunded`: payment was refunded upon cancellation. UI shows gray *"Refunded"* badge.
+>     - `not_applicable`: appointment was `rejected` or `cancelled` while unpaid. No payment UI is rendered.
+> - **`payment_due` Real-time Notification**:
+>   - When a doctor approves an appointment, the system automatically sends a notification of type `payment_due`:
+>     - Title: `"Appointment approved"`
+>     - Message: `"Dr. <name> approved your appointment on <date, time>. You can now pay Rs. <amount>."`
+>     - Link: `"/dashboard/appointments?pay={appointmentId}"` (switches to the appropriate tab, smoothly scrolls to the card, and opens the PaymentModal).
 
 ### ⭐ Feedback & Reviews
 | Method | Endpoint | Role Required | Description |

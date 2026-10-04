@@ -68,6 +68,7 @@ export function getNotificationMeta(type: string): NotificationMeta {
         defaultLink: '/dashboard/appointments',
       };
 
+    case 'payment_due':
     case 'payment_confirmed':
     case 'payment_received':
       return {

@@ -5,12 +5,14 @@ import { PaymentStatus } from '@/features/payments/types/payment.types';
 
 export interface PaymentBadgeProps {
   status?: PaymentStatus | string | null;
+  label?: string;
   className?: string;
   size?: 'sm' | 'md';
 }
 
 export const PaymentBadge: React.FC<PaymentBadgeProps> = ({
   status = 'unpaid',
+  label: customLabel,
   className,
   size = 'sm',
 }) => {
@@ -18,26 +20,34 @@ export const PaymentBadge: React.FC<PaymentBadgeProps> = ({
 
   let badgeStyle = 'bg-amber-50 text-amber-700 border-amber-200';
   let Icon = Clock;
-  let label = 'Unpaid';
+  let label = customLabel || 'Unpaid';
 
   switch (norm) {
     case 'paid':
       badgeStyle = 'bg-emerald-50 text-emerald-700 border-emerald-200';
       Icon = CheckCircle2;
-      label = 'Paid';
+      label = customLabel || 'Paid';
       break;
 
     case 'refunded':
       badgeStyle = 'bg-slate-100 text-slate-600 border-slate-200';
       Icon = RotateCcw;
-      label = 'Refunded';
+      label = customLabel || 'Refunded';
+      break;
+
+    case 'awaiting_approval':
+    case 'awaiting approval':
+      badgeStyle = 'bg-slate-100 text-slate-600 border-slate-200';
+      Icon = Clock;
+      label = customLabel || 'Awaiting approval';
       break;
 
     case 'unpaid':
+    case 'payable':
     default:
       badgeStyle = 'bg-amber-50 text-amber-700 border-amber-200';
       Icon = Clock;
-      label = 'Unpaid';
+      label = customLabel || 'Unpaid';
       break;
   }
 

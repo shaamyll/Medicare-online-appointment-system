@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
+import { useToast } from '@/components/ui/Toast';
+import { useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/queryKeys';
 import { usePayAppointment } from '../hooks/usePayments';
 import { PaymentMethod } from '../types/payment.types';
 import {
@@ -43,6 +46,8 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const [transactionRef, setTransactionRef] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const payMutation = usePayAppointment();
 
   const handleClose = () => {
@@ -72,9 +77,18 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
       onSuccess?.();
     } catch (err: any) {
       setIsProcessing(false);
-      setErrorMsg(
-        err?.response?.data?.message || err?.message || 'Payment simulation failed. Please try again.'
-      );
+      const is422 = err?.response?.status === 422;
+      const msg =
+        err?.response?.data?.message || err?.message || 'Payment simulation failed. Please try again.';
+
+      if (is422) {
+        toast(msg, 'error');
+        queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
+        onClose();
+        return;
+      }
+
+      setErrorMsg(msg);
     }
   };
 

@@ -144,7 +144,7 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
         reasonForVisit: reason.trim(),
       });
 
-      toast('Appointment scheduled successfully!', 'success');
+      toast('Your request was sent. You can pay after the doctor approves it.', 'success');
       onSuccess?.();
       onClose();
       setSelectedSlot(null);

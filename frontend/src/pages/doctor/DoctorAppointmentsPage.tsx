@@ -327,7 +327,13 @@ export const DoctorAppointmentsPage: React.FC = () => {
                         </TableCell>
 
                         <TableCell>
-                          <PaymentBadge status={apt.payment?.status} />
+                          <PaymentBadge
+                            status={
+                              apt.status === 'PENDING' && apt.payment?.status !== 'paid'
+                                ? 'awaiting_approval'
+                                : apt.payment?.status
+                            }
+                          />
                           {apt.payment?.method && (
                             <span className="block text-[10px] text-gray-400 capitalize mt-0.5">
                               via {apt.payment.method}
