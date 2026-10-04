@@ -70,6 +70,15 @@ export const PatientAppointmentsPage: React.FC = () => {
     }
   }, [tabParam, activeTab]);
 
+  // Reset to page 1 whenever appointment count increases (e.g. after booking)
+  const prevCountRef = useRef<number>(appointments?.length ?? 0);
+  useEffect(() => {
+    if (appointments && appointments.length > prevCountRef.current) {
+      setPage(1);
+    }
+    prevCountRef.current = appointments?.length ?? 0;
+  }, [appointments]);
+
   // Handle ?rate={id} deep link from notifications
   const autoRateOpenedRef = useRef<string | null>(null);
   useEffect(() => {

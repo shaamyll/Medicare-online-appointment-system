@@ -553,9 +553,11 @@ All API endpoints are hosted by `BE/` and prefixed with `/api` (or accessed dire
 | `POST` | `/api/admin/doctors/{id}/reject` | Admin | Reject a pending doctor account |
 | `PATCH`| `/api/admin/doctors/{id}/status` | Admin | Change doctor status (`active`, `inactive`, `rejected`) |
 | `GET` | `/api/admin/doctors/{id}/delete-impact` | Admin | Return total & upcoming appointments affected by doctor deletion |
-| `DELETE`| `/api/admin/doctors/{id}` | Admin | Hard delete doctor, schedules, consultation notes, appointments, user, and avatar files |
 | `GET` | `/api/admin/patients` | Admin | List all registered patients sorted by `created_at DESC, id DESC` |
 | `POST`| `/api/admin/patients` | Admin | Create a new patient in `active` status. Generates and returns a random 12-char alphanumeric temporary password once (`tempPassword`). |
+| `PATCH`| `/api/admin/patients/{id}/status` | Admin | Toggle patient account status (`active` / `inactive`). Automatically force-logs out deactivated patients via WebSocket. |
+| `GET` | `/api/admin/patients/{id}/delete-impact` | Admin | Return total appointments, upcoming appointments, and reviews affected by patient deletion |
+| `DELETE`| `/api/admin/patients/{id}` | Admin | Hard delete patient, appointments, payments, feedback, consultation notes, reschedules, notifications, and user record in one atomic transaction. Recomputes doctor ratings. |
 | `GET` | `/api/admin/reports` | Admin | Distribution analytics (appointments by status, revenue, doctors per dept) |
 | `GET` | `/api/admin/feedback` | Admin | Moderation review list with filtering and pagination |
 | `DELETE`| `/api/admin/feedback/{id}` | Admin | Delete a patient review and recompute rating aggregates |
@@ -597,7 +599,7 @@ To guarantee deterministic, consistent lists and avoid unstable pagination, Medi
 | **Doctor Booking Requests** | `GET /api/appointments?status=pending` | `created_at`, `appointment_date` | `created_at DESC` (newest first) | `a.id DESC` |
 | **Doctor Upcoming Visits** | `GET /api/appointments?tab=upcoming` | `appointment_date`, `start_time` | `appointment_date ASC, start_time ASC` | `a.id ASC` |
 | **Doctor Past History** | `GET /api/appointments?tab=history` | `appointment_date`, `start_time` | `appointment_date DESC, start_time DESC` | `a.id DESC` |
-| **Patient Appointments** | `GET /api/appointments` | `created_at`, `appointment_date`, `status` | `created_at DESC` | `a.id DESC` |
+| **Patient Appointments (Upcoming, History, All, Dashboard)** | `GET /api/appointments` | `created_at` | `created_at DESC` (newest booked first) | `a.id DESC` |
 | **Admin Doctor Roster** | `GET /api/admin/doctors` | `created_at`, `name`, `status` | `created_at DESC` | `u.id DESC` |
 | **Admin Doctor Requests** | `GET /api/admin/doctor-requests`| `created_at` | `created_at DESC` (oldest pending first or newest) | `u.id DESC` |
 | **Admin Patient Directory**| `GET /api/admin/patients` | `created_at`, `name` | `created_at DESC` | `u.id DESC` |
@@ -606,6 +608,10 @@ To guarantee deterministic, consistent lists and avoid unstable pagination, Medi
 | **Public Doctor Directory**| `GET /api/doctors` | `rating_avg`, `name`, `experience_years` | `rating_avg DESC, u.name ASC` | `u.id ASC` |
 | **Notifications** | `GET /api/notifications` | `created_at` | `created_at DESC` | `id DESC` |
 | **Feedback / Reviews** | `GET /api/admin/feedback` | `created_at`, `rating` | `created_at DESC` | `f.id DESC` |
+
+> [!NOTE]
+> **Patient Appointment Ordering Rule**:
+> For all patient appointment views (Upcoming visits, Consultation history, All records, and Dashboard recent/upcoming widgets), the query order is strictly `ORDER BY a.created_at DESC, a.id DESC`, applied on the server before `LIMIT` and `OFFSET`. The most recently booked appointment is always first. Rescheduled appointments maintain their original booking timestamp (`created_at`) and position without jumping. The frontend renders lists directly as delivered by the server without client-side reordering.
 
 ### Security & Whitelisting
 - Every incoming query parameter `?sort=` and `?order=` is strictly validated against `SortConfig::$whitelists`.

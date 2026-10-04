@@ -109,6 +109,46 @@ class AdminController {
         }
     }
 
+    public function patientDeleteImpact(Request $request): void {
+        $id = (int)$request->getRouteParam('id');
+        try {
+            $impact = $this->service->getPatientDeleteImpact($id);
+            Response::success($impact, 'Patient delete impact retrieved');
+        } catch (Exception $e) {
+            $code = $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 400;
+            Response::error($e->getMessage(), $code);
+        }
+    }
+
+    public function deletePatient(Request $request): void {
+        $id = (int)$request->getRouteParam('id');
+        try {
+            $result = $this->service->deletePatient($id);
+            Response::success($result, $result['message'] ?? 'Patient deleted permanently');
+        } catch (Exception $e) {
+            $code = $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 400;
+            Response::error($e->getMessage(), $code);
+        }
+    }
+
+    public function togglePatientStatus(Request $request): void {
+        $id = (int)$request->getRouteParam('id');
+        $status = $request->get('status');
+
+        if (!$status) {
+            Response::error('Status is required.', 400);
+            return;
+        }
+
+        try {
+            $result = $this->service->setPatientStatus($id, $status);
+            Response::success($result, "Patient status updated to {$status}");
+        } catch (Exception $e) {
+            $code = $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 400;
+            Response::error($e->getMessage(), $code);
+        }
+    }
+
     public function deleteImpact(Request $request): void {
         $id = (int)$request->getRouteParam('id');
         try {

@@ -36,7 +36,10 @@ export const queryKeys = {
       ['admin', 'doctorDetail', id] as const,
     doctorDeleteImpact: (id: number | string) =>
       ['admin', 'doctorDeleteImpact', id] as const,
+    patientDeleteImpact: (id: number | string) =>
+      ['admin', 'patientDeleteImpact', id] as const,
     patients: ['admin', 'patients'] as const,
+    appointments: ['admin', 'appointments'] as const,
     reports: ['admin', 'reports'] as const,
   },
   patient: {

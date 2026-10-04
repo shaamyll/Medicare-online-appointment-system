@@ -65,6 +65,20 @@ export interface AdminPatient {
   appointmentCount: number;
 }
 
+export interface PatientDeleteImpact {
+  patientId: number;
+  patient: {
+    id: number;
+    name: string;
+    email: string;
+    status: string;
+  };
+  totalAppointments: number;
+  upcomingAppointments: number;
+  totalReviews: number;
+  reviewsCount?: number;
+}
+
 export interface AdminReports {
   appointmentsByStatus: { status: string; count: number }[];
   doctorsByDepartment: { name: string; count: number }[];
@@ -242,5 +256,19 @@ export const adminApi = {
       data
     );
     return response.data.data!;
-  }
+  },
+
+  getPatientDeleteImpact: async (id: number): Promise<PatientDeleteImpact> => {
+    const response = await apiClient.get<ApiResponse<PatientDeleteImpact>>(`/admin/patients/${id}/delete-impact`);
+    return response.data.data!;
+  },
+
+  deletePatient: async (id: number): Promise<void> => {
+    await apiClient.delete(`/admin/patients/${id}`);
+  },
+
+  togglePatientStatus: async (id: number, status: string): Promise<any> => {
+    const response = await apiClient.patch<ApiResponse<any>>(`/admin/patients/${id}/status`, { status });
+    return response.data.data;
+  },
 };

@@ -111,6 +111,10 @@ class ApiRoutes {
         $router->get('/admin/doctors/{id}/delete-impact', [AdminController::class, 'deleteImpact'], $adminAuth);
         $router->delete('/admin/doctors/{id}', [AdminController::class, 'deleteDoctor'], $adminAuth);
         $router->get('/admin/patients', [AdminController::class, 'patients'], $adminAuth);
+        $router->post('/admin/patients', [AdminController::class, 'createPatient'], $adminAuth);
+        $router->patch('/admin/patients/{id}/status', [AdminController::class, 'togglePatientStatus'], $adminAuth);
+        $router->get('/admin/patients/{id}/delete-impact', [AdminController::class, 'patientDeleteImpact'], $adminAuth);
+        $router->delete('/admin/patients/{id}', [AdminController::class, 'deletePatient'], $adminAuth);
         $router->get('/admin/reports', [AdminController::class, 'reports'], $adminAuth);
         $router->get('/admin/feedback', [FeedbackController::class, 'getAdminList'], $adminAuth);
         $router->delete('/admin/feedback/{id}', [FeedbackController::class, 'delete'], $adminAuth);

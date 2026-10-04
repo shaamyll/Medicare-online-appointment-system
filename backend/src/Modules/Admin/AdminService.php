@@ -558,6 +558,229 @@ class AdminService {
         return $row;
     }
 
+    public function getPatientDeleteImpact(int $patientId): array {
+        $stmt = $this->db->prepare("SELECT id, name, email, role, status FROM users WHERE id = ?");
+        $stmt->execute([$patientId]);
+        $user = $stmt->fetch();
+
+        if (!$user) {
+            throw new Exception("Patient not found.", 404);
+        }
+
+        if ($user['role'] === 'admin') {
+            throw new Exception("Cannot delete administrative accounts.", 403);
+        }
+
+        if ($user['role'] !== 'patient') {
+            throw new Exception("User is not a patient.", 403);
+        }
+
+        // Count total appointments
+        $stmtTotal = $this->db->prepare("SELECT COUNT(*) AS total FROM appointments WHERE patient_id = ?");
+        $stmtTotal->execute([$patientId]);
+        $totalAppointments = (int)($stmtTotal->fetch()['total'] ?? 0);
+
+        // Count upcoming appointments (appointment_date >= today, not cancelled or rejected)
+        $today = date('Y-m-d');
+        $stmtUpcoming = $this->db->prepare("
+            SELECT COUNT(*) AS upcoming 
+            FROM appointments 
+            WHERE patient_id = ? 
+              AND appointment_date >= ? 
+              AND status NOT IN ('cancelled', 'rejected')
+        ");
+        $stmtUpcoming->execute([$patientId, $today]);
+        $upcomingAppointments = (int)($stmtUpcoming->fetch()['upcoming'] ?? 0);
+
+        // Count reviews
+        $stmtReviews = $this->db->prepare("SELECT COUNT(*) AS total FROM feedback WHERE patient_id = ?");
+        $stmtReviews->execute([$patientId]);
+        $totalReviews = (int)($stmtReviews->fetch()['total'] ?? 0);
+
+        return [
+            'patientId' => $patientId,
+            'patient' => [
+                'id' => $patientId,
+                'name' => $user['name'],
+                'email' => $user['email'],
+                'status' => $user['status'],
+            ],
+            'totalAppointments' => $totalAppointments,
+            'upcomingAppointments' => $upcomingAppointments,
+            'totalReviews' => $totalReviews,
+            'reviewsCount' => $totalReviews,
+        ];
+    }
+
+    public function deletePatient(int $patientId): array {
+        $stmt = $this->db->prepare("SELECT id, name, email, role, status FROM users WHERE id = ?");
+        $stmt->execute([$patientId]);
+        $user = $stmt->fetch();
+
+        if (!$user) {
+            throw new Exception("Patient not found.", 404);
+        }
+
+        if ($user['role'] === 'admin') {
+            throw new Exception("Cannot delete administrative accounts.", 403);
+        }
+
+        if ($user['role'] !== 'patient') {
+            throw new Exception("User is not a patient.", 403);
+        }
+
+        // Gather upcoming appointments and doctor details before deletion for notifications
+        $today = date('Y-m-d');
+        $stmtUpcomingDocs = $this->db->prepare("
+            SELECT DISTINCT a.doctor_id, d.name AS doctor_name, a.appointment_date, a.start_time
+            FROM appointments a
+            JOIN users d ON d.id = a.doctor_id
+            WHERE a.patient_id = ?
+              AND a.appointment_date >= ?
+              AND a.status NOT IN ('cancelled', 'rejected')
+        ");
+        $stmtUpcomingDocs->execute([$patientId, $today]);
+        $upcomingDocs = $stmtUpcomingDocs->fetchAll();
+
+        // Doctors who received reviews from this patient or have appointments (for data_changed)
+        $stmtAffected = $this->db->prepare("
+            SELECT DISTINCT doctor_id FROM (
+                SELECT doctor_id FROM appointments WHERE patient_id = ?
+                UNION
+                SELECT doctor_id FROM feedback WHERE patient_id = ?
+            ) t
+        ");
+        $stmtAffected->execute([$patientId, $patientId]);
+        $affectedDoctorIds = array_map('intval', $stmtAffected->fetchAll(\PDO::FETCH_COLUMN));
+
+        $this->db->beginTransaction();
+        try {
+            // 1. Delete payments linked to patient's appointments
+            $stmtPay = $this->db->prepare("
+                DELETE p FROM payments p
+                INNER JOIN appointments a ON a.id = p.appointment_id
+                WHERE a.patient_id = ?
+            ");
+            $stmtPay->execute([$patientId]);
+
+            // 2. Delete consultation records for patient's appointments
+            $stmtCr = $this->db->prepare("
+                DELETE cr FROM consultation_records cr
+                INNER JOIN appointments a ON a.id = cr.appointment_id
+                WHERE a.patient_id = ?
+            ");
+            $stmtCr->execute([$patientId]);
+
+            // 3. Delete appointment reschedules for patient's appointments or rescheduled by patient
+            $stmtResched = $this->db->prepare("
+                DELETE ar FROM appointment_reschedules ar
+                INNER JOIN appointments a ON a.id = ar.appointment_id
+                WHERE a.patient_id = ?
+            ");
+            $stmtResched->execute([$patientId]);
+
+            $stmtReschedBy = $this->db->prepare("DELETE FROM appointment_reschedules WHERE rescheduled_by = ?");
+            $stmtReschedBy->execute([$patientId]);
+
+            // 4. Delete feedback submitted by this patient
+            $stmtFb = $this->db->prepare("DELETE FROM feedback WHERE patient_id = ?");
+            $stmtFb->execute([$patientId]);
+
+            // 5. Delete patient notifications
+            $stmtNotif = $this->db->prepare("DELETE FROM notifications WHERE user_id = ?");
+            $stmtNotif->execute([$patientId]);
+
+            // 6. Delete patient appointments
+            $stmtAppt = $this->db->prepare("DELETE FROM appointments WHERE patient_id = ?");
+            $stmtAppt->execute([$patientId]);
+
+            // 7. Delete user record
+            $stmtUserDel = $this->db->prepare("DELETE FROM users WHERE id = ? AND role = 'patient'");
+            $stmtUserDel->execute([$patientId]);
+
+            $this->db->commit();
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            throw new Exception("Failed to delete patient: " . $e->getMessage(), 500);
+        }
+
+        // Notify affected doctors about cancelled upcoming appointments
+        foreach ($upcomingDocs as $docApt) {
+            try {
+                $this->notificationService->notify(
+                    (int)$docApt['doctor_id'],
+                    NotificationTypes::APPOINTMENT_CANCELLED,
+                    "Upcoming Appointment Removed",
+                    "The scheduled appointment on {$docApt['appointment_date']} at {$docApt['start_time']} with {$user['name']} was cancelled as the patient account was removed.",
+                    ['appointmentDate' => $docApt['appointment_date'], 'patientName' => $user['name']],
+                    '/doctor/appointments'
+                );
+            } catch (\Throwable $ignored) {}
+        }
+
+        // Force logout deleted patient if online
+        try {
+            $this->notificationService->publishForceLogout(
+                $patientId,
+                'Your session has ended or your account is no longer active.'
+            );
+        } catch (\Throwable $ignored) {}
+
+        // Broadcast data_changed to affected doctors and admin
+        try {
+            $recipients = array_merge([$patientId], $affectedDoctorIds);
+            $this->notificationService->publishDataChanged(
+                $recipients,
+                ['patients', 'appointments', 'admin-stats', 'doctors', 'feedback']
+            );
+        } catch (\Throwable $ignored) {}
+
+        return [
+            'id' => $patientId,
+            'name' => $user['name'],
+            'deleted' => true,
+            'message' => "Patient {$user['name']} has been permanently deleted."
+        ];
+    }
+
+    public function setPatientStatus(int $patientId, string $status): array {
+        $allowed = ['active', 'inactive'];
+        if (!in_array($status, $allowed, true)) {
+            throw new Exception("Invalid status '{$status}'. Allowed values are 'active' or 'inactive'.", 400);
+        }
+
+        $stmt = $this->db->prepare("SELECT id, name, email, role, status FROM users WHERE id = ? AND role = 'patient'");
+        $stmt->execute([$patientId]);
+        $patient = $stmt->fetch();
+
+        if (!$patient) {
+            throw new Exception("Patient not found.", 404);
+        }
+
+        $updateStmt = $this->db->prepare("UPDATE users SET status = ? WHERE id = ? AND role = 'patient'");
+        $updateStmt->execute([$status, $patientId]);
+
+        if ($status === 'inactive') {
+            try {
+                $this->notificationService->publishForceLogout(
+                    $patientId,
+                    'Your account has been deactivated by administration.'
+                );
+            } catch (\Throwable $ignored) {}
+        }
+
+        try {
+            $this->notificationService->publishDataChanged([$patientId], ['patients', 'admin-stats']);
+        } catch (\Throwable $ignored) {}
+
+        return [
+            'id' => $patientId,
+            'name' => $patient['name'],
+            'status' => $status,
+            'message' => "Patient status updated to {$status}."
+        ];
+    }
+
     private function generateTempPassword(int $length = 12): string {
         $chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
         $max = strlen($chars) - 1;

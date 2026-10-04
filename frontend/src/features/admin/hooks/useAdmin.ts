@@ -204,3 +204,40 @@ export const useCreatePatient = () => {
     },
   });
 };
+
+export const usePatientDeleteImpact = (id: number | null, enabled: boolean = true) => {
+  return useQuery({
+    queryKey: queryKeys.admin.patientDeleteImpact(id ?? 0),
+    queryFn: () => adminApi.getPatientDeleteImpact(id!),
+    enabled: !!id && enabled,
+    staleTime: 0,
+  });
+};
+
+export const useDeletePatient = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => adminApi.deletePatient(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.patients });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'appointments'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.reports });
+      queryClient.invalidateQueries({ queryKey: queryKeys.doctors.all });
+      queryClient.invalidateQueries({ queryKey: ['doctors', 'detail'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
+    },
+  });
+};
+
+export const useTogglePatientStatus = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: number; status: string }) =>
+      adminApi.togglePatientStatus(id, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.patients });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats });
+    },
+  });
+};

@@ -14,9 +14,9 @@ class SortConfig {
     public const APPOINTMENTS_DOCTOR_REQUESTS = "a.created_at DESC, a.id DESC";
     public const APPOINTMENTS_DOCTOR_UPCOMING = "a.appointment_date ASC, a.start_time ASC, a.id ASC";
     public const APPOINTMENTS_DOCTOR_HISTORY = "a.appointment_date DESC, a.start_time DESC, a.id DESC";
-    public const APPOINTMENTS_PATIENT_UPCOMING = "a.appointment_date ASC, a.start_time ASC, a.id ASC";
-    public const APPOINTMENTS_PATIENT_HISTORY = "a.appointment_date DESC, a.start_time DESC, a.id DESC";
-    public const APPOINTMENTS_PATIENT_ALL = "a.appointment_date DESC, a.start_time DESC, a.id DESC";
+    public const APPOINTMENTS_PATIENT_UPCOMING = "a.created_at DESC, a.id DESC";
+    public const APPOINTMENTS_PATIENT_HISTORY = "a.created_at DESC, a.id DESC";
+    public const APPOINTMENTS_PATIENT_ALL = "a.created_at DESC, a.id DESC";
     public const APPOINTMENTS_RECENT = "a.created_at DESC, a.id DESC";
     public const ADMIN_DOCTORS = "u.created_at DESC, u.id DESC";
     public const ADMIN_PATIENTS = "u.created_at DESC, u.id DESC";
