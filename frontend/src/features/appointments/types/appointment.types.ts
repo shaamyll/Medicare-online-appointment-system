@@ -1,8 +1,8 @@
 export type AppointmentStatus = 'PENDING' | 'APPROVED' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'REJECTED';
 
 export type PaymentStatus = 'unpaid' | 'paid' | 'refunded';
-export type PaymentMethod = 'upi' | 'card' | 'cash';
-export type PaymentState = 'awaiting_approval' | 'payable' | 'paid' | 'refunded' | 'not_applicable';
+export type PaymentMethod = 'upi' | 'card' | 'cash' | 'clinic';
+export type PaymentState = 'awaiting_approval' | 'payable' | 'pay_at_clinic' | 'paid' | 'refunded' | 'not_applicable';
 
 export interface PaymentInfo {
   id: number;

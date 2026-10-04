@@ -52,7 +52,8 @@ class AdminService {
                 COALESCE(SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END), 0) AS total_revenue,
                 SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) AS paid_count,
                 SUM(CASE WHEN status = 'unpaid' THEN 1 ELSE 0 END) AS unpaid_count,
-                SUM(CASE WHEN status = 'refunded' THEN 1 ELSE 0 END) AS refunded_count
+                SUM(CASE WHEN status = 'refunded' THEN 1 ELSE 0 END) AS refunded_count,
+                SUM(CASE WHEN status = 'unpaid' AND method IN ('clinic', 'cash') THEN 1 ELSE 0 END) AS clinic_pending_count
             FROM payments
         ");
         $payStats = $stmt->fetch();
@@ -60,6 +61,7 @@ class AdminService {
         $paidCount = (int)($payStats['paid_count'] ?? 0);
         $unpaidCount = (int)($payStats['unpaid_count'] ?? 0);
         $refundedCount = (int)($payStats['refunded_count'] ?? 0);
+        $clinicPendingCount = (int)($payStats['clinic_pending_count'] ?? 0);
 
         // Recent appointments
         $stmt = $this->db->query("
@@ -291,7 +293,8 @@ class AdminService {
                 COALESCE(SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END), 0) AS total_revenue,
                 SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) AS paid_count,
                 SUM(CASE WHEN status = 'unpaid' THEN 1 ELSE 0 END) AS unpaid_count,
-                SUM(CASE WHEN status = 'refunded' THEN 1 ELSE 0 END) AS refunded_count
+                SUM(CASE WHEN status = 'refunded' THEN 1 ELSE 0 END) AS refunded_count,
+                SUM(CASE WHEN status = 'unpaid' AND method IN ('clinic', 'cash') THEN 1 ELSE 0 END) AS clinic_pending_count
             FROM payments
         ");
         $payTotals = $revStmt->fetch();
@@ -305,6 +308,7 @@ class AdminService {
                 'paidCount' => (int)($payTotals['paid_count'] ?? 0),
                 'unpaidCount' => (int)($payTotals['unpaid_count'] ?? 0),
                 'refundedCount' => (int)($payTotals['refunded_count'] ?? 0),
+                'clinicPendingCount' => (int)($payTotals['clinic_pending_count'] ?? 0),
             ]
         ];
     }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, CheckCircle2, RotateCcw } from 'lucide-react';
+import { Clock, CheckCircle2, RotateCcw, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PaymentStatus } from '@/features/payments/types/payment.types';
 
@@ -29,6 +29,13 @@ export const PaymentBadge: React.FC<PaymentBadgeProps> = ({
       label = customLabel || 'Paid';
       break;
 
+    case 'pay_at_clinic':
+    case 'clinic':
+      badgeStyle = 'bg-amber-50 text-amber-700 border-amber-200';
+      Icon = Building2;
+      label = customLabel || 'Pay at clinic';
+      break;
+
     case 'refunded':
       badgeStyle = 'bg-slate-100 text-slate-600 border-slate-200';
       Icon = RotateCcw;
@@ -40,6 +47,12 @@ export const PaymentBadge: React.FC<PaymentBadgeProps> = ({
       badgeStyle = 'bg-slate-100 text-slate-600 border-slate-200';
       Icon = Clock;
       label = customLabel || 'Awaiting approval';
+      break;
+
+    case 'not_applicable':
+      badgeStyle = 'bg-slate-100 text-slate-500 border-slate-200';
+      Icon = Clock;
+      label = customLabel || 'Not applicable';
       break;
 
     case 'unpaid':

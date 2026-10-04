@@ -9,13 +9,14 @@ import { PaymentMethod } from '../types/payment.types';
 import {
   CreditCard,
   QrCode,
-  Banknote,
+  Building2,
   CheckCircle2,
   ShieldCheck,
-  Loader2,
   AlertCircle,
   Receipt,
   Sparkles,
+  Calendar,
+  Clock,
 } from 'lucide-react';
 
 export interface PaymentModalProps {
@@ -26,6 +27,8 @@ export interface PaymentModalProps {
   amount: number;
   doctorName: string;
   specialization?: string;
+  appointmentDate?: string;
+  startTime?: string;
   onSuccess?: () => void;
   onViewReceipt?: () => void;
 }
@@ -38,11 +41,14 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   amount,
   doctorName,
   specialization,
+  appointmentDate,
+  startTime,
   onSuccess,
   onViewReceipt,
 }) => {
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('upi');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [successState, setSuccessState] = useState<'online' | 'clinic' | null>(null);
   const [transactionRef, setTransactionRef] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -53,6 +59,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const handleClose = () => {
     if (isProcessing) return;
     setIsProcessing(false);
+    setSuccessState(null);
     setTransactionRef(null);
     setErrorMsg(null);
     onClose();
@@ -63,16 +70,26 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     setErrorMsg(null);
     setIsProcessing(true);
 
+    const isClinic = selectedMethod === 'clinic' || selectedMethod === 'cash';
+
     try {
-      // 1.5s simulated realistic banking transaction state
-      await new Promise((res) => setTimeout(res, 1500));
+      if (!isClinic) {
+        // Simulated realistic demo banking delay for online payments
+        await new Promise((res) => setTimeout(res, 1200));
+      }
 
       const res = await payMutation.mutateAsync({
         appointmentId,
-        method: selectedMethod,
+        method: isClinic ? 'clinic' : selectedMethod,
       });
 
-      setTransactionRef(res.transactionRef);
+      if (isClinic) {
+        setSuccessState('clinic');
+      } else {
+        setTransactionRef(res.transactionRef || null);
+        setSuccessState('online');
+      }
+
       setIsProcessing(false);
       onSuccess?.();
     } catch (err: any) {
@@ -110,23 +127,31 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
       badge: 'Instant',
     },
     {
-      id: 'cash' as PaymentMethod,
+      id: 'clinic' as PaymentMethod,
       title: 'Pay at Clinic Desk',
-      description: 'Cash payment upon arrival',
-      icon: Banknote,
-      color: 'text-emerald-600',
+      description: 'Cash or card payment upon arrival at clinic desk',
+      icon: Building2,
+      color: 'text-amber-600',
       badge: 'Counter',
     },
   ];
+
+  const modalTitle =
+    successState === 'online'
+      ? 'Payment Successful'
+      : successState === 'clinic'
+      ? 'Pay at Clinic Selected'
+      : 'Consultation Fee Payment';
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title={transactionRef ? 'Payment Successful' : 'Demo Consultation Payment'}
+      title={modalTitle}
       maxWidth="md"
     >
-      {transactionRef ? (
+      {/* 1. Online Success Screen */}
+      {successState === 'online' && (
         <div className="py-6 text-center space-y-4">
           <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-xs border border-emerald-100">
             <CheckCircle2 className="w-8 h-8" />
@@ -137,9 +162,11 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               <Sparkles className="w-3 h-3" /> Demo Payment Completed
             </span>
             <h3 className="text-xl font-bold text-slate-900 mt-2">Rs. {amount.toFixed(2)} Paid</h3>
-            <p className="text-xs text-slate-500 mt-1">
-              Transaction Reference: <span className="font-mono font-bold text-slate-800">{transactionRef}</span>
-            </p>
+            {transactionRef && (
+              <p className="text-xs text-slate-500 mt-1">
+                Transaction Reference: <span className="font-mono font-bold text-slate-800">{transactionRef}</span>
+              </p>
+            )}
           </div>
 
           <p className="text-xs text-slate-500 max-w-sm mx-auto bg-slate-50 p-3 rounded-xl border border-slate-100">
@@ -153,7 +180,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               onClick={handleClose}
               className="min-w-[100px]"
             >
-              Close
+              Done
             </Button>
             {onViewReceipt && (
               <Button
@@ -163,21 +190,73 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                   handleClose();
                   onViewReceipt();
                 }}
-                className="flex items-center gap-1.5"
                 leftIcon={<Receipt className="w-4 h-4" />}
               >
-                <span>View Receipt</span>
+                <span>View receipt</span>
               </Button>
             )}
           </div>
         </div>
-      ) : (
+      )}
+
+      {/* 2. Pay at Clinic Confirmation Screen */}
+      {successState === 'clinic' && (
+        <div className="py-6 text-center space-y-4">
+          <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto shadow-xs border border-amber-200">
+            <Building2 className="w-8 h-8" />
+          </div>
+
+          <div>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
+              <Building2 className="w-3.5 h-3.5" /> Pay at clinic selected
+            </span>
+            <h3 className="text-lg font-bold text-slate-900 mt-2">
+              Please pay Rs. {amount.toFixed(2)} at the clinic desk during your visit
+            </h3>
+          </div>
+
+          {(appointmentDate || startTime) && (
+            <div className="inline-flex flex-wrap items-center justify-center gap-3 px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 font-medium mx-auto">
+              {appointmentDate && (
+                <span className="inline-flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                  <strong>{appointmentDate}</strong>
+                </span>
+              )}
+              {startTime && (
+                <span className="inline-flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-emerald-600" />
+                  <strong>{startTime}</strong>
+                </span>
+              )}
+            </div>
+          )}
+
+          <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl text-xs text-amber-800 max-w-sm mx-auto">
+            You will get a receipt after the clinic confirms your payment.
+          </div>
+
+          <div className="flex items-center justify-center pt-2">
+            <Button
+              type="button"
+              variant="primary"
+              onClick={handleClose}
+              className="min-w-[120px]"
+            >
+              Done
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Payment Method Selection & Checkout Form */}
+      {!successState && (
         <form onSubmit={handlePay} className="space-y-4">
           {/* Demo Notice Banner */}
           <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-200/80 text-amber-800 text-xs flex items-center gap-2.5">
             <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
             <span>
-              <strong>Demo payment mode:</strong> No real money is charged. No card credentials required.
+              <strong>Payment Option:</strong> Select instant online payment or choose to pay at the clinic reception.
             </span>
           </div>
 
@@ -279,17 +358,12 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             <Button
               type="submit"
               variant="primary"
+              isLoading={isProcessing}
               disabled={isProcessing}
-              className="flex items-center gap-2"
             >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Processing Demo Payment...</span>
-                </>
-              ) : (
-                <span>Pay Rs. {amount.toFixed(2)}</span>
-              )}
+              {selectedMethod === 'clinic' || selectedMethod === 'cash'
+                ? 'Confirm pay at clinic'
+                : `Pay Rs. ${amount.toFixed(2)}`}
             </Button>
           </div>
         </form>

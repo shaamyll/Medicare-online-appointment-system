@@ -65,6 +65,10 @@ class ApiRoutes {
             AuthMiddleware::class,
             fn($req) => RoleMiddleware::hasRole($req, ['patient'])
         ]);
+        $router->patch('/appointments/{id}/payment/collect', [PaymentController::class, 'collect'], [
+            AuthMiddleware::class,
+            fn($req) => RoleMiddleware::hasRole($req, ['doctor', 'admin'])
+        ]);
         $router->get('/appointments/{id}/receipt', [PaymentController::class, 'receipt'], [AuthMiddleware::class]);
 
         // Feedback & Reviews (Patient submitting, editing, deleting review)

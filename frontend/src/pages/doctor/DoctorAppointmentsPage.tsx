@@ -9,12 +9,14 @@ import {
   RotateCcw,
   Check,
   X,
+  Banknote,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { PaymentBadge } from '@/components/ui/PaymentBadge';
 import { Modal } from '@/components/ui/Modal';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { FilterBar } from '@/components/ui/FilterBar';
 import { SearchInput } from '@/components/ui/SearchInput';
@@ -37,6 +39,7 @@ import {
   useUpdateAppointmentStatus,
   useAddConsultation,
 } from '@/features/appointments/hooks/useAppointments';
+import { useCollectPayment } from '@/features/payments/hooks/usePayments';
 import { Appointment } from '@/features/appointments/types/appointment.types';
 import { RejectReasonModal } from '@/features/appointments/components/RejectReasonModal';
 import { RescheduleModal } from '@/features/appointments/components/RescheduleModal';
@@ -52,12 +55,14 @@ export const DoctorAppointmentsPage: React.FC = () => {
   const [rejectingApt, setRejectingApt] = useState<Appointment | null>(null);
   const [reschedulingApt, setReschedulingApt] = useState<Appointment | null>(null);
   const [consultationModalApt, setConsultationModalApt] = useState<Appointment | null>(null);
+  const [collectingPaymentApt, setCollectingPaymentApt] = useState<Appointment | null>(null);
   const [diagnosis, setDiagnosis] = useState('');
   const [prescription, setPrescription] = useState('');
   const [consultationNotes, setConsultationNotes] = useState('');
 
   const { data: appointments, isLoading, isError, refetch } = useAppointments();
   const updateStatusMutation = useUpdateAppointmentStatus();
+  const collectPaymentMutation = useCollectPayment();
   const addConsultationMutation = useAddConsultation();
 
   const allApts = appointments || [];
@@ -329,14 +334,16 @@ export const DoctorAppointmentsPage: React.FC = () => {
                         <TableCell>
                           <PaymentBadge
                             status={
-                              apt.status === 'PENDING' && apt.payment?.status !== 'paid'
+                              apt.payment_state ||
+                              apt.paymentState ||
+                              (apt.status === 'PENDING' && apt.payment?.status !== 'paid'
                                 ? 'awaiting_approval'
-                                : apt.payment?.status
+                                : apt.payment?.status)
                             }
                           />
                           {apt.payment?.method && (
                             <span className="block text-[10px] text-gray-400 capitalize mt-0.5">
-                              via {apt.payment.method}
+                              via {apt.payment.method === 'clinic' ? 'pay at clinic' : apt.payment.method}
                             </span>
                           )}
                         </TableCell>
@@ -374,6 +381,23 @@ export const DoctorAppointmentsPage: React.FC = () => {
                                   Approve
                                 </Button>
                               </>
+                            )}
+
+                            {/* Pay at clinic collection action */}
+                            {((apt.payment_state === 'pay_at_clinic' ||
+                              apt.paymentState === 'pay_at_clinic' ||
+                              (apt.payment?.status === 'unpaid' &&
+                                (apt.payment?.method === 'clinic' || apt.payment?.method === 'cash'))) &&
+                              (st === 'APPROVED' || st === 'COMPLETED')) && (
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => setCollectingPaymentApt(apt)}
+                                className="text-emerald-700 bg-emerald-50 border-emerald-200 hover:bg-emerald-100"
+                                leftIcon={<Banknote className="h-3.5 w-3.5 text-emerald-600" />}
+                              >
+                                Mark as paid
+                              </Button>
                             )}
 
                             {/* Reschedule option */}
@@ -509,6 +533,41 @@ export const DoctorAppointmentsPage: React.FC = () => {
             </div>
           </form>
         </Modal>
+      )}
+
+      {/* Collect Pay-at-Clinic Confirmation Modal */}
+      {collectingPaymentApt && (
+        <ConfirmModal
+          isOpen={!!collectingPaymentApt}
+          onClose={() => setCollectingPaymentApt(null)}
+          title="Confirm Clinic Payment"
+          description={
+            <span>
+              Confirm that you received{' '}
+              <strong className="text-gray-900">
+                Rs.{' '}
+                {Number(
+                  collectingPaymentApt.payment?.amount ??
+                    collectingPaymentApt.doctor.consultationFee ??
+                    100
+                ).toFixed(0)}
+              </strong>{' '}
+              from <strong className="text-gray-900">{collectingPaymentApt.patient.name}</strong>?
+            </span>
+          }
+          confirmLabel="Mark as Paid"
+          variant="primary"
+          isLoading={collectPaymentMutation.isPending}
+          onConfirm={async () => {
+            try {
+              await collectPaymentMutation.mutateAsync(collectingPaymentApt.id);
+              toast('Payment marked as collected successfully', 'success');
+              setCollectingPaymentApt(null);
+            } catch (err: any) {
+              toast(err?.response?.data?.message || err?.message || 'Failed to mark payment', 'error');
+            }
+          }}
+        />
       )}
     </div>
   );

@@ -49,10 +49,14 @@ class PaymentService {
 
         // Validate method
         $method = strtolower(trim($method));
-        $allowedMethods = ['upi', 'card', 'cash'];
+        $allowedMethods = ['upi', 'card', 'cash', 'clinic'];
         if (!in_array($method, $allowedMethods, true)) {
-            throw new Exception('Invalid payment method. Allowed: UPI, Card, Cash.', 400);
+            throw new Exception('Invalid payment method. Allowed: UPI, Card, Pay at Clinic.', 400);
         }
+
+        // Normalize clinic/cash
+        $isClinic = ($method === 'clinic' || $method === 'cash');
+        $storedMethod = $isClinic ? 'clinic' : $method;
 
         // Check existing payment
         $payment = $this->repository->findByAppointmentId($appointmentId);
@@ -73,21 +77,52 @@ class PaymentService {
             throw new Exception('Payment is not available for this appointment.', 422);
         }
 
-        // Generate demo transaction reference: e.g. MC-YYYYMMDD-XXXXXX
+        $doctorId = (int)$apt['doctor']['id'];
+        $patientId = (int)$apt['patient']['id'];
+        $amount = (float)$payment['amount'];
+        $amountStr = (float)$amount == (int)$amount ? (string)(int)$amount : number_format($amount, 2);
+
+        // Branch 1: Pay at Clinic (remains unpaid until collected by clinic)
+        if ($isClinic) {
+            $this->repository->setClinicMethod((int)$payment['id'], $storedMethod);
+
+            // Notify doctor: "<patient> will pay Rs. X at the clinic"
+            $patientName = $user['name'] ?? $apt['patient']['name'] ?? 'Patient';
+            $this->notificationService->notify(
+                $doctorId,
+                'payment_clinic_chosen',
+                'Pay at Clinic Selected',
+                "{$patientName} will pay Rs. {$amountStr} at the clinic",
+                ['appointmentId' => $appointmentId, 'appointmentNumber' => $apt['appointmentNumber'], 'amount' => $amount],
+                '/doctor/appointments'
+            );
+
+            // Broadcast data changes to relevant queries
+            $this->notificationService->publishDataChanged([$patientId, $doctorId], ['appointments', 'admin-stats', 'reports']);
+
+            return [
+                'id' => (int)$payment['id'],
+                'appointmentId' => $appointmentId,
+                'amount' => $amount,
+                'status' => 'unpaid',
+                'method' => $storedMethod,
+                'paymentState' => 'pay_at_clinic',
+                'transactionRef' => null,
+                'paidAt' => null,
+                'message' => 'Pay at clinic selected. Please pay at the clinic desk during your visit.'
+            ];
+        }
+
+        // Branch 2: Instant online demo payment (UPI / Card)
         $datePart = date('Ymd');
         $randomHex = strtoupper(bin2hex(random_bytes(3)));
         $transactionRef = "MC-{$datePart}-{$randomHex}";
         $paidAt = date('Y-m-d H:i:s');
 
-        $this->repository->markAsPaid((int)$payment['id'], $method, $transactionRef, $paidAt);
+        $this->repository->markAsPaid((int)$payment['id'], $storedMethod, $transactionRef, $paidAt);
 
         // Fetch updated payment with joined appointment info
         $updatedPayment = $this->repository->findByAppointmentId($appointmentId);
-
-        // Send notifications
-        $doctorId = (int)$apt['doctor']['id'];
-        $patientId = (int)$apt['patient']['id'];
-        $amountStr = number_format((float)$payment['amount'], 2);
 
         // 1. Notify doctor
         $docMeta = NotificationTypes::build(NotificationTypes::PAYMENT_RECEIVED, [
@@ -128,9 +163,90 @@ class PaymentService {
             'amount' => (float)$updatedPayment['amount'],
             'status' => $updatedPayment['status'],
             'method' => $updatedPayment['method'],
+            'paymentState' => 'paid',
             'transactionRef' => $updatedPayment['transaction_ref'],
             'paidAt' => $updatedPayment['paid_at'],
             'message' => 'Demo payment completed successfully. No real money was charged.'
+        ];
+    }
+
+    /**
+     * Mark a pay-at-clinic payment as paid/collected
+     * Allowed for owning doctor or admin only
+     * Allowed when appointment is approved or completed and payment is unpaid with method clinic
+     */
+    public function collectPayment(int $appointmentId, array $user): array {
+        $apt = $this->appointmentRepository->findById($appointmentId);
+        if (!$apt) {
+            throw new Exception('Appointment not found.', 404);
+        }
+
+        $isDoctor = ($user['role'] === 'doctor' && (int)$apt['doctor']['id'] === (int)$user['id']);
+        $isAdmin = ($user['role'] === 'admin');
+
+        if (!$isDoctor && !$isAdmin) {
+            throw new Exception('Unauthorized to collect payment for this appointment.', 403);
+        }
+
+        $aptStatus = strtolower($apt['status']);
+        if ($aptStatus !== 'approved' && $aptStatus !== 'completed') {
+            throw new Exception('Payment collection is only allowed for approved or completed appointments.', 422);
+        }
+
+        $payment = $this->repository->findByAppointmentId($appointmentId);
+        if (!$payment) {
+            throw new Exception('No payment record found for this appointment.', 422);
+        }
+
+        if ($payment['status'] !== 'unpaid') {
+            throw new Exception("Payment has already been marked as {$payment['status']}.", 422);
+        }
+
+        $method = strtolower($payment['method'] ?? '');
+        if ($method !== 'clinic' && $method !== 'cash') {
+            throw new Exception('Only pay-at-clinic payments can be marked as collected.', 422);
+        }
+
+        $datePart = date('Ymd');
+        $randomHex = strtoupper(bin2hex(random_bytes(3)));
+        $transactionRef = "MC-{$datePart}-{$randomHex}";
+        $paidAt = date('Y-m-d H:i:s');
+        $collectedById = (int)$user['id'];
+
+        $this->repository->collectPayment((int)$payment['id'], $transactionRef, $paidAt, $collectedById);
+
+        // Fetch updated payment
+        $updatedPayment = $this->repository->findByAppointmentId($appointmentId);
+
+        $patientId = (int)$apt['patient']['id'];
+        $doctorId = (int)$apt['doctor']['id'];
+        $amount = (float)$payment['amount'];
+        $amountStr = (float)$amount == (int)$amount ? (string)(int)$amount : number_format($amount, 2);
+
+        // Notify patient: "Payment of Rs. X received. Receipt available."
+        $this->notificationService->notify(
+            $patientId,
+            NotificationTypes::PAYMENT_CONFIRMED,
+            'Payment Received',
+            "Payment of Rs. {$amountStr} received. Receipt available.",
+            ['appointmentId' => $appointmentId, 'transactionRef' => $transactionRef, 'amount' => $amount],
+            '/dashboard/appointments'
+        );
+
+        // Broadcast data changes to relevant queries
+        $this->notificationService->publishDataChanged([$patientId, $doctorId], ['appointments', 'admin-stats', 'reports']);
+
+        return [
+            'id' => (int)$updatedPayment['id'],
+            'appointmentId' => $appointmentId,
+            'amount' => (float)$updatedPayment['amount'],
+            'status' => 'paid',
+            'method' => $updatedPayment['method'],
+            'paymentState' => 'paid',
+            'transactionRef' => $updatedPayment['transaction_ref'],
+            'paidAt' => $updatedPayment['paid_at'],
+            'collectedBy' => $collectedById,
+            'message' => 'Payment collected and marked as paid successfully.'
         ];
     }
 

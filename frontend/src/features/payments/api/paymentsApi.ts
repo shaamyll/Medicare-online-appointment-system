@@ -22,4 +22,14 @@ export const paymentsApi = {
     }
     return response.data.data;
   },
+
+  collectPayment: async (appointmentId: number): Promise<PayResponse> => {
+    const response = await apiClient.patch<ApiResponse<PayResponse>>(
+      `/appointments/${appointmentId}/payment/collect`
+    );
+    if (!response.data.data) {
+      throw new Error(response.data.message || 'Payment collection failed');
+    }
+    return response.data.data;
+  },
 };

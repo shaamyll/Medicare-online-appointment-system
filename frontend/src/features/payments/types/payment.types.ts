@@ -1,5 +1,12 @@
 export type PaymentStatus = 'unpaid' | 'paid' | 'refunded';
-export type PaymentMethod = 'upi' | 'card' | 'cash';
+export type PaymentMethod = 'upi' | 'card' | 'cash' | 'clinic';
+export type PaymentState =
+  | 'payable'
+  | 'pay_at_clinic'
+  | 'paid'
+  | 'refunded'
+  | 'awaiting_approval'
+  | 'not_applicable';
 
 export interface PayResponse {
   id: number;
@@ -7,8 +14,10 @@ export interface PayResponse {
   amount: number;
   status: PaymentStatus;
   method: PaymentMethod;
-  transactionRef: string;
-  paidAt: string;
+  paymentState?: PaymentState;
+  transactionRef?: string | null;
+  paidAt?: string | null;
+  collectedBy?: number | null;
   message: string;
 }
 

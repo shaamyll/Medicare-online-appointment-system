@@ -47,7 +47,8 @@ class AppointmentRepository {
                    d.name AS department_name,
                    cr.diagnosis, cr.prescription, cr.consultation_notes,
                    pm.id AS payment_id, pm.amount AS payment_amount, pm.status AS payment_status,
-                   pm.method AS payment_method, pm.transaction_ref AS payment_transaction_ref, pm.paid_at AS payment_paid_at,
+                   pm.method AS payment_method, pm.transaction_ref AS payment_transaction_ref,
+                   pm.paid_at AS payment_paid_at, pm.collected_by AS payment_collected_by,
                    fb.id AS feedback_id, fb.rating AS feedback_rating, fb.comment AS feedback_comment, fb.tags AS feedback_tags,
                    fb.created_at AS feedback_created_at, fb.updated_at AS feedback_updated_at
             FROM appointments a
@@ -286,6 +287,7 @@ class AppointmentRepository {
 
         $aptStatus = strtolower($row['status'] ?? 'pending');
         $rawPaymentStatus = !empty($row['payment_status']) ? strtolower($row['payment_status']) : 'unpaid';
+        $paymentMethod = !empty($row['payment_method']) ? strtolower($row['payment_method']) : null;
 
         if ($rawPaymentStatus === 'paid') {
             $paymentState = 'paid';
@@ -301,8 +303,13 @@ class AppointmentRepository {
             $canPay = false;
         } elseif ($aptStatus === 'approved' || $aptStatus === 'completed') {
             if ($rawPaymentStatus === 'unpaid') {
-                $paymentState = 'payable';
-                $canPay = true;
+                if ($paymentMethod === 'clinic' || $paymentMethod === 'cash') {
+                    $paymentState = 'pay_at_clinic';
+                    $canPay = true; // patient can switch to online payment while unpaid
+                } else {
+                    $paymentState = 'payable';
+                    $canPay = true;
+                }
             } else {
                 $paymentState = $rawPaymentStatus;
                 $canPay = false;
@@ -354,6 +361,7 @@ class AppointmentRepository {
                 'method' => $row['payment_method'],
                 'transactionRef' => $row['payment_transaction_ref'],
                 'paidAt' => $row['payment_paid_at'],
+                'collectedBy' => !empty($row['payment_collected_by']) ? (int)$row['payment_collected_by'] : null,
                 'state' => $paymentState,
                 'paymentState' => $paymentState,
                 'canPay' => $canPay,

@@ -444,7 +444,6 @@ The application features exactly **two public authentication screens** (Patient/
 | `/admin/patients` | Admin | `AdminPatientsPage` | Directory of registered hospital patients |
 | `/admin/departments`| Admin | `AdminDepartmentsPage` | Create, update, and manage medical departments |
 | `/admin/appointments`| Admin | `AdminAppointmentsPage` | Global oversight and filters for all hospital bookings |
-| `/admin/settings` | Admin | `AdminSettingsPage` | Administrative environment and configuration overview |
 | `/admin/notifications` | Admin | `AdminLayout` | New doctor registrations, patient signups, cancellations overview |
 
 ---
@@ -514,28 +513,34 @@ All API endpoints are hosted by `BE/` and prefixed with `/api` (or accessed dire
 | `PATCH`| `/api/appointments/{id}/status` | Doctor | Update status (`approved`, `completed`, `cancelled`, `rejected`) with optional reason |
 | `POST` | `/api/appointments/{id}/consultation` | Doctor | Save diagnosis, prescription, and consultation notes; marks completed |
 
-### 💳 Demo Payments & Receipts
+### 💳 Demo Payments, Pay-at-Clinic & Receipts
 | Method | Endpoint | Role Required | Description |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/api/appointments/{id}/pay` | Owning Patient | Simulated payment checkout (`upi`, `card`, `cash`). Available strictly **only after doctor approves** the appointment (`approved` or `completed` with `unpaid` payment). Returns 422 for `pending`, `rejected`, or `cancelled` appointments. |
+| `POST` | `/api/appointments/{id}/pay` | Owning Patient | Payment checkout (`upi`, `card`, `clinic`). Available strictly **only after doctor approves** the appointment (`approved` or `completed` with `unpaid` payment). Online methods (`upi`, `card`) mark paid immediately and generate a transaction reference. Selecting `clinic` keeps payment `unpaid`, stores method `clinic`, notifies doctor, and allows the patient to switch to online payment later while unpaid. Returns 422 for `pending`, `rejected`, or `cancelled` appointments. |
+| `PATCH`| `/api/appointments/{id}/payment/collect` | Owning Doctor / Admin | Marks a pay-at-clinic payment as paid (`status='paid'`, keeps method, generates `transaction_ref`, `paid_at=NOW()`, `collected_by=userId`). Allowed only when appointment is `approved` or `completed` and payment is `unpaid` with `clinic` method (422 otherwise; 403 for unauthorized users). Notifies patient that payment was received and receipt is available. |
 | `GET` | `/api/appointments/{id}/receipt` | Authenticated | Retrieve printable receipt data (patient, doctor of appointment, or admin) |
 
 > [!IMPORTANT]
 > **Payment Lifecycle & Approval Enforcement**:
 > - **Doctor Approval Gate**: An appointment cannot be paid while `pending`, `rejected`, or `cancelled`. The pay endpoint and "Pay now" actions are only unlocked after the doctor approves the appointment.
+> - **Pay-at-Clinic Flow**:
+>   - Choosing "Pay at clinic" displays an immediate confirmation with visit details and guidance to pay at the clinic desk during the appointment. No instant receipt or fake transaction reference is produced.
+>   - The payment stays `unpaid` with state `pay_at_clinic`. While unpaid, the patient can switch to online payment anytime via the "Pay online instead" action.
+>   - The owning doctor (or admin) can mark the fee as collected via `PATCH /api/appointments/{id}/payment/collect` behind a confirmation dialog. Upon collection, the badge updates to *"Paid"* without a refresh, the receipt unlocks, and the patient receives a notification.
+>   - Cancelling an appointment with an uncollected clinic payment simply marks it as `not_applicable` with no refund created.
 > - **Computed Payload Fields**:
->   - `can_pay` / `canPay` (boolean): `true` strictly when appointment status is `approved` (or `completed`) and payment status is `unpaid`.
+>   - `can_pay` / `canPay` (boolean): `true` when appointment is `approved` or `completed` and payment is `unpaid` (allowing payment or switching to online).
 >   - `payment_state` / `paymentState` (enum):
->     - `awaiting_approval`: appointment is `pending` with `unpaid` fee. UI displays muted badge *"Payment opens after approval"* with explanation.
+>     - `awaiting_approval`: appointment is `pending` with `unpaid` fee. UI displays muted badge *"Payment opens after approval"*.
 >     - `payable`: appointment is `approved` or `completed` with `unpaid` fee. UI shows *"Unpaid"* badge and active *"Pay now"* button.
->     - `paid`: payment completed. UI shows green *"Paid"* badge and *"View receipt"* button.
->     - `refunded`: payment was refunded upon cancellation. UI shows gray *"Refunded"* badge.
->     - `not_applicable`: appointment was `rejected` or `cancelled` while unpaid. No payment UI is rendered.
-> - **`payment_due` Real-time Notification**:
->   - When a doctor approves an appointment, the system automatically sends a notification of type `payment_due`:
->     - Title: `"Appointment approved"`
->     - Message: `"Dr. <name> approved your appointment on <date, time>. You can now pay Rs. <amount>."`
->     - Link: `"/dashboard/appointments?pay={appointmentId}"` (switches to the appropriate tab, smoothly scrolls to the card, and opens the PaymentModal).
+>     - `pay_at_clinic`: patient selected pay-at-clinic; remains unpaid until collected. UI displays amber *"Pay at clinic"* badge, helper text, and secondary *"Pay online instead"* button.
+>     - `paid`: payment completed online or collected at the clinic desk. UI shows green *"Paid"* badge and *"View receipt"* button.
+>     - `refunded`: online payment was refunded upon cancellation. UI shows gray *"Refunded"* badge.
+>     - `not_applicable`: appointment was `rejected` or `cancelled` while unpaid.
+> - **Real-time Notifications**:
+>   - When patient selects pay-at-clinic: doctor is notified (`"<patient> will pay Rs. X at the clinic"`).
+>   - When doctor collects clinic payment: patient is notified (`"Payment of Rs. X received. Receipt available."`).
+>   - When doctor approves an appointment: patient receives `payment_due` notification with direct payment link.
 
 ### ⭐ Feedback & Reviews
 | Method | Endpoint | Role Required | Description |

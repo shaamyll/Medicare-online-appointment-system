@@ -27,6 +27,19 @@ class PaymentController {
         }
     }
 
+    public function collect(Request $request): void {
+        $user = $request->getUser();
+        $appointmentId = (int)$request->getRouteParam('id');
+
+        try {
+            $result = $this->service->collectPayment($appointmentId, $user);
+            Response::success($result, 'Payment collected successfully');
+        } catch (Exception $e) {
+            $code = $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 400;
+            Response::error($e->getMessage(), $code);
+        }
+    }
+
     public function receipt(Request $request): void {
         $user = $request->getUser();
         $appointmentId = (int)$request->getRouteParam('id');

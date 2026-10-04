@@ -6,7 +6,6 @@ import {
   Clock,
   Users,
   User,
-  Settings,
   LogOut,
   Stethoscope,
   Menu,
@@ -41,7 +40,6 @@ export const DoctorLayout: React.FC = () => {
     { label: 'Patients', href: '/doctor/patients', icon: Users },
     { label: 'Notifications', href: '/doctor/notifications', icon: Bell, badge: unreadCount },
     { label: 'Profile', href: '/doctor/profile', icon: User },
-    { label: 'Settings', href: '/doctor/settings', icon: Settings },
   ];
 
   const photoPath =

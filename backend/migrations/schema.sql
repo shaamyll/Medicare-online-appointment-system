@@ -111,12 +111,14 @@ CREATE TABLE IF NOT EXISTS `payments` (
     `appointment_id` INT NOT NULL UNIQUE,
     `amount` DECIMAL(10,2) NOT NULL,
     `status` ENUM('unpaid', 'paid', 'refunded') DEFAULT 'unpaid',
-    `method` ENUM('upi', 'card', 'cash') NULL,
+    `method` ENUM('upi', 'card', 'cash', 'clinic') NULL,
     `transaction_ref` VARCHAR(50) NULL UNIQUE,
     `paid_at` DATETIME NULL,
+    `collected_by` INT NULL,
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (`appointment_id`) REFERENCES `appointments`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`collected_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     INDEX `idx_payment_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

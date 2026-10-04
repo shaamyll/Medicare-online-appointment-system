@@ -50,6 +50,7 @@ export const useCancelAppointment = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.appointments });
       queryClient.invalidateQueries({ queryKey: ['appointments', 'slots'] });
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats });
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.reports });
@@ -66,6 +67,7 @@ export const useRescheduleAppointment = () => {
       appointmentsApi.reschedule(id, { date, startTime }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.appointments });
       queryClient.invalidateQueries({ queryKey: ['appointments', 'slots'] });
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats });
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.reports });
@@ -82,6 +84,7 @@ export const useUpdateAppointmentStatus = () => {
       appointmentsApi.updateStatus(id, status, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.appointments });
       queryClient.invalidateQueries({ queryKey: ['appointments', 'slots'] });
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats });
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.reports });

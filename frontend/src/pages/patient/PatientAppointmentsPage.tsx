@@ -375,12 +375,14 @@ export const PatientAppointmentsPage: React.FC = () => {
                 ? 'not_applicable'
                 : isPending
                 ? 'awaiting_approval'
+                : apt.payment?.method === 'clinic' || apt.payment?.method === 'cash'
+                ? 'pay_at_clinic'
                 : 'payable');
 
             const canPay = Boolean(
               apt.canPay ??
                 apt.can_pay ??
-                (paymentState === 'payable' && (isApproved || isCompleted))
+                ((paymentState === 'payable' || paymentState === 'pay_at_clinic') && (isApproved || isCompleted))
             );
             const canReschedule = (isPending || isApproved) && (apt.rescheduleCount || 0) < 2;
             const canCancel = isPending || isApproved;
@@ -485,12 +487,17 @@ export const PatientAppointmentsPage: React.FC = () => {
                               Payment opens after approval
                             </span>
                           ) : (
-                            <PaymentBadge status={paymentState === 'payable' ? 'unpaid' : paymentState} />
+                            <PaymentBadge status={paymentState} />
                           )}
                         </div>
                         {paymentState === 'awaiting_approval' && (
                           <p className="text-[10px] text-gray-500 leading-tight">
                             You can pay once the doctor approves your request.
+                          </p>
+                        )}
+                        {paymentState === 'pay_at_clinic' && (
+                          <p className="text-[10px] text-amber-700 font-medium leading-tight">
+                            Pay Rs. {Number(fee).toFixed(0)} at the clinic desk
                           </p>
                         )}
                       </div>
@@ -577,7 +584,16 @@ export const PatientAppointmentsPage: React.FC = () => {
 
                   {/* Right-aligned action buttons */}
                   <div className="flex flex-wrap items-center gap-2 shrink-0 justify-end">
-                    {canPay && (
+                    {paymentState === 'pay_at_clinic' ? (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => setPaymentAppointment(apt)}
+                        leftIcon={<CreditCard className="h-3.5 w-3.5 text-emerald-600" />}
+                      >
+                        Pay online instead
+                      </Button>
+                    ) : canPay ? (
                       <Button
                         size="sm"
                         variant="primary"
@@ -586,7 +602,7 @@ export const PatientAppointmentsPage: React.FC = () => {
                       >
                         Pay now
                       </Button>
-                    )}
+                    ) : null}
 
                     {isPaid && (
                       <Button
@@ -683,6 +699,8 @@ export const PatientAppointmentsPage: React.FC = () => {
           amount={paymentAppointment.payment?.amount ?? paymentAppointment.doctor.consultationFee ?? 100}
           doctorName={paymentAppointment.doctor.name}
           specialization={paymentAppointment.doctor.specialization}
+          appointmentDate={paymentAppointment.appointmentDate}
+          startTime={paymentAppointment.startTime}
           onViewReceipt={() => {
             const id = paymentAppointment.id;
             setPaymentAppointment(null);

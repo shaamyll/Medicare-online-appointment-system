@@ -52,10 +52,28 @@ class PaymentRepository {
     public function markAsPaid(int $paymentId, string $method, string $transactionRef, string $paidAt): bool {
         $stmt = $this->db->prepare("
             UPDATE payments
-            SET status = 'paid', method = ?, transaction_ref = ?, paid_at = ?
+            SET status = 'paid', method = ?, transaction_ref = ?, paid_at = ?, collected_by = NULL
             WHERE id = ?
         ");
         return $stmt->execute([$method, $transactionRef, $paidAt, $paymentId]);
+    }
+
+    public function setClinicMethod(int $paymentId, string $method = 'clinic'): bool {
+        $stmt = $this->db->prepare("
+            UPDATE payments
+            SET status = 'unpaid', method = ?, transaction_ref = NULL, paid_at = NULL, collected_by = NULL
+            WHERE id = ?
+        ");
+        return $stmt->execute([$method, $paymentId]);
+    }
+
+    public function collectPayment(int $paymentId, string $transactionRef, string $paidAt, int $collectedBy): bool {
+        $stmt = $this->db->prepare("
+            UPDATE payments
+            SET status = 'paid', transaction_ref = ?, paid_at = ?, collected_by = ?
+            WHERE id = ?
+        ");
+        return $stmt->execute([$transactionRef, $paidAt, $collectedBy, $paymentId]);
     }
 
     public function markAsRefunded(int $appointmentId): bool {
@@ -73,7 +91,8 @@ class PaymentRepository {
                 COALESCE(SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END), 0) AS total_revenue,
                 SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) AS paid_count,
                 SUM(CASE WHEN status = 'unpaid' THEN 1 ELSE 0 END) AS unpaid_count,
-                SUM(CASE WHEN status = 'refunded' THEN 1 ELSE 0 END) AS refunded_count
+                SUM(CASE WHEN status = 'refunded' THEN 1 ELSE 0 END) AS refunded_count,
+                SUM(CASE WHEN status = 'unpaid' AND method IN ('clinic', 'cash') THEN 1 ELSE 0 END) AS clinic_pending_count
             FROM payments
         ");
         $row = $stmt->fetch();
@@ -82,6 +101,7 @@ class PaymentRepository {
             'paidCount' => (int)($row['paid_count'] ?? 0),
             'unpaidCount' => (int)($row['unpaid_count'] ?? 0),
             'refundedCount' => (int)($row['refunded_count'] ?? 0),
+            'clinicPendingCount' => (int)($row['clinic_pending_count'] ?? 0),
         ];
     }
 }

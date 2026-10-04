@@ -11,9 +11,30 @@ export const usePayAppointment = () => {
       paymentsApi.pay(appointmentId, method),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.appointments });
       queryClient.invalidateQueries({
         queryKey: queryKeys.payments.receipt(variables.appointmentId),
       });
+      queryClient.invalidateQueries({ queryKey: queryKeys.payments.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.reports });
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
+    },
+  });
+};
+
+export const useCollectPayment = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (appointmentId: number) => paymentsApi.collectPayment(appointmentId),
+    onSuccess: (_, appointmentId) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.appointments });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.payments.receipt(appointmentId),
+      });
+      queryClient.invalidateQueries({ queryKey: queryKeys.payments.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats });
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.reports });
       queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });

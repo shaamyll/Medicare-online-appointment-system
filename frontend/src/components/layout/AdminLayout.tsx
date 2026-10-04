@@ -7,7 +7,6 @@ import {
   Users,
   Building2,
   Calendar,
-  Settings,
   LogOut,
   ShieldAlert,
   Menu,
@@ -43,7 +42,6 @@ export const AdminLayout: React.FC = () => {
     { label: 'Appointments', href: '/admin/appointments', icon: Calendar },
     { label: 'Feedback', href: '/admin/feedback', icon: MessageSquare },
     { label: 'Notifications', href: '/admin/notifications', icon: Bell, badge: unreadCount },
-    { label: 'Settings', href: '/admin/settings', icon: Settings },
   ];
 
   return (

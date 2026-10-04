@@ -14,7 +14,6 @@ import { AdminPatientsPage } from '@/pages/admin/AdminPatientsPage';
 import { AdminDepartmentsPage } from '@/pages/admin/AdminDepartmentsPage';
 import { AdminAppointmentsPage } from '@/pages/admin/AdminAppointmentsPage';
 import { AdminFeedbackPage } from '@/pages/admin/AdminFeedbackPage';
-import { AdminSettingsPage } from '@/pages/admin/AdminSettingsPage';
 
 // Doctor Pages
 import { DoctorDashboardPage } from '@/pages/doctor/DoctorDashboardPage';
@@ -64,6 +63,7 @@ export const AppRouter: React.FC = () => {
         <Route path="appointments" element={<PatientAppointmentsPage />} />
         <Route path="doctors" element={<DoctorsBrowsePage />} />
         <Route path="profile" element={<PatientProfilePage />} />
+        <Route path="settings" element={<Navigate to="/dashboard" replace />} />
         <Route path="notifications" element={<NotificationsPage />} />
       </Route>
 
@@ -85,7 +85,7 @@ export const AppRouter: React.FC = () => {
         <Route path="schedule" element={<DoctorSchedulePage />} />
         <Route path="patients" element={<DoctorPatientsPage />} />
         <Route path="profile" element={<DoctorProfilePage />} />
-        <Route path="settings" element={<DoctorProfilePage />} />
+        <Route path="settings" element={<Navigate to="/doctor/dashboard" replace />} />
         <Route path="notifications" element={<NotificationsPage />} />
       </Route>
 
@@ -108,7 +108,7 @@ export const AppRouter: React.FC = () => {
         <Route path="departments" element={<AdminDepartmentsPage />} />
         <Route path="appointments" element={<AdminAppointmentsPage />} />
         <Route path="feedback" element={<AdminFeedbackPage />} />
-        <Route path="settings" element={<AdminSettingsPage />} />
+        <Route path="settings" element={<Navigate to="/admin/dashboard" replace />} />
         <Route path="notifications" element={<NotificationsPage />} />
       </Route>
 

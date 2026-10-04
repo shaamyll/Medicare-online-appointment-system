@@ -106,7 +106,7 @@ export const CredentialsModal: React.FC<CredentialsModalProps> = ({
         <div className="flex items-start gap-2.5 p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-900">
           <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
           <p className="leading-relaxed">
-            <strong className="font-semibold">Important:</strong> This password is shown only once. Share it with the user; they can change it from their profile settings.
+            <strong className="font-semibold">Important:</strong> This password is shown only once. Share it with the user; they can change it from their profile page.
           </p>
         </div>
 

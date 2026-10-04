@@ -6,11 +6,13 @@ import {
   AlertCircle,
   Eye,
   XCircle,
+  Banknote,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { PaymentBadge } from '@/components/ui/PaymentBadge';
 import { Modal } from '@/components/ui/Modal';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { FilterBar } from '@/components/ui/FilterBar';
 import { SearchInput } from '@/components/ui/SearchInput';
@@ -29,6 +31,7 @@ import {
 } from '@/components/ui/Table';
 import { useToast } from '@/components/ui/Toast';
 import { useAppointments, useCancelAppointment } from '@/features/appointments/hooks/useAppointments';
+import { useCollectPayment } from '@/features/payments/hooks/usePayments';
 import { useDoctors } from '@/features/doctors/hooks/useDoctors';
 import { Appointment } from '@/features/appointments/types/appointment.types';
 
@@ -39,8 +42,11 @@ export const AdminAppointmentsPage: React.FC = () => {
   const [doctorFilter, setDoctorFilter] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [collectingPaymentApt, setCollectingPaymentApt] = useState<Appointment | null>(null);
   const [page, setPage] = useState(1);
   const itemsPerPage = 10;
+
+  const collectPaymentMutation = useCollectPayment();
 
   const { data: doctorsData } = useDoctors();
   const doctorsList = doctorsData || [];
@@ -298,9 +304,11 @@ export const AdminAppointmentsPage: React.FC = () => {
                         <TableCell>
                           <PaymentBadge
                             status={
-                              apt.status === 'PENDING' && apt.payment?.status !== 'paid'
+                              apt.payment_state ||
+                              apt.paymentState ||
+                              (apt.status === 'PENDING' && apt.payment?.status !== 'paid'
                                 ? 'awaiting_approval'
-                                : apt.payment?.status
+                                : apt.payment?.status)
                             }
                           />
                           {apt.payment?.amount && (
@@ -320,14 +328,31 @@ export const AdminAppointmentsPage: React.FC = () => {
                         </TableCell>
 
                         <TableCell className="text-right">
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => setSelectedAppointment(apt)}
-                            leftIcon={<Eye className="h-3.5 w-3.5 text-gray-500" />}
-                          >
-                            Details
-                          </Button>
+                          <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                            {((apt.payment_state === 'pay_at_clinic' ||
+                              apt.paymentState === 'pay_at_clinic' ||
+                              (apt.payment?.status === 'unpaid' &&
+                                (apt.payment?.method === 'clinic' || apt.payment?.method === 'cash'))) &&
+                              (apt.status === 'APPROVED' || apt.status === 'COMPLETED')) && (
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => setCollectingPaymentApt(apt)}
+                                className="text-emerald-700 bg-emerald-50 border-emerald-200 hover:bg-emerald-100"
+                                leftIcon={<Banknote className="h-3.5 w-3.5 text-emerald-600" />}
+                              >
+                                Mark as paid
+                              </Button>
+                            )}
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => setSelectedAppointment(apt)}
+                              leftIcon={<Eye className="h-3.5 w-3.5 text-gray-500" />}
+                            >
+                              Details
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -459,6 +484,41 @@ export const AdminAppointmentsPage: React.FC = () => {
             </div>
           </div>
         </Modal>
+      )}
+
+      {/* Collect Pay-at-Clinic Confirmation Modal */}
+      {collectingPaymentApt && (
+        <ConfirmModal
+          isOpen={!!collectingPaymentApt}
+          onClose={() => setCollectingPaymentApt(null)}
+          title="Confirm Clinic Payment"
+          description={
+            <span>
+              Confirm that you received{' '}
+              <strong className="text-gray-900">
+                Rs.{' '}
+                {Number(
+                  collectingPaymentApt.payment?.amount ??
+                    collectingPaymentApt.doctor.consultationFee ??
+                    100
+                ).toFixed(0)}
+              </strong>{' '}
+              from <strong className="text-gray-900">{collectingPaymentApt.patient.name}</strong>?
+            </span>
+          }
+          confirmLabel="Mark as Paid"
+          variant="primary"
+          isLoading={collectPaymentMutation.isPending}
+          onConfirm={async () => {
+            try {
+              await collectPaymentMutation.mutateAsync(collectingPaymentApt.id);
+              toast('Payment marked as collected successfully', 'success');
+              setCollectingPaymentApt(null);
+            } catch (err: any) {
+              toast(err?.response?.data?.message || err?.message || 'Failed to mark payment', 'error');
+            }
+          }}
+        />
       )}
     </div>
   );
