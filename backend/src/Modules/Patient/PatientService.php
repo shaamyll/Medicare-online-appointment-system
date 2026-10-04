@@ -134,16 +134,11 @@ class PatientService {
         }
 
         if (!password_verify($currentPassword, $user['password'])) {
-            throw new Exception('Incorrect current password.', 400);
+            throw new Exception('Current password is incorrect.', 400);
         }
 
         if ($newPassword !== $confirmPassword) {
             throw new Exception('New password and confirmation password do not match.', 422);
-        }
-
-        // Min 8 chars with at least one letter and at least one number
-        if (strlen($newPassword) < 8 || !preg_match('/[A-Za-z]/', $newPassword) || !preg_match('/\d/', $newPassword)) {
-            throw new Exception('New password must be at least 8 characters long and contain at least one letter and one number.', 422);
         }
 
         $hashed = password_hash($newPassword, PASSWORD_BCRYPT);

@@ -37,6 +37,7 @@ class ApiRoutes {
         $router->get('/patient/profile', [\App\Modules\Patient\PatientController::class, 'getProfile'], $patientAuth);
         $router->put('/patient/profile', [\App\Modules\Patient\PatientController::class, 'updateProfile'], $patientAuth);
         $router->put('/patient/change-password', [\App\Modules\Patient\PatientController::class, 'changePassword'], $patientAuth);
+        $router->put('/patient/profile/password', [\App\Modules\Patient\PatientController::class, 'changePassword'], $patientAuth);
 
         // Departments (Public viewing)
         $router->get('/departments', [DepartmentController::class, 'index']);

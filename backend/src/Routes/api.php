@@ -37,6 +37,7 @@ class ApiRoutes {
         $router->get('/patient/profile', [\App\Modules\Patient\PatientController::class, 'getProfile'], $patientAuth);
         $router->put('/patient/profile', [\App\Modules\Patient\PatientController::class, 'updateProfile'], $patientAuth);
         $router->put('/patient/change-password', [\App\Modules\Patient\PatientController::class, 'changePassword'], $patientAuth);
+        $router->put('/patient/profile/password', [\App\Modules\Patient\PatientController::class, 'changePassword'], $patientAuth);
 
         // Departments (Public viewing)
         $router->get('/departments', [DepartmentController::class, 'index']);
@@ -96,6 +97,8 @@ class ApiRoutes {
         $router->get('/doctor/profile', [DoctorController::class, 'getMyProfile'], $doctorAuth);
         $router->put('/doctor/profile', [DoctorController::class, 'updateMyProfile'], $doctorAuth);
         $router->post('/doctor/profile', [DoctorController::class, 'updateMyProfile'], $doctorAuth);
+        $router->put('/doctor/change-password', [DoctorController::class, 'changePassword'], $doctorAuth);
+        $router->put('/doctor/profile/password', [DoctorController::class, 'changePassword'], $doctorAuth);
         $router->patch('/appointments/{id}/status', [AppointmentController::class, 'updateStatus'], $doctorAuth);
         $router->post('/appointments/{id}/consultation', [AppointmentController::class, 'addConsultation'], $doctorAuth);
         $router->get('/doctor/feedback', [FeedbackController::class, 'getDoctorOwnFeedback'], $doctorAuth);

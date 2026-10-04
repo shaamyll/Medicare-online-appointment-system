@@ -462,7 +462,7 @@ All API endpoints are hosted by `BE/` and prefixed with `/api` (or accessed dire
 | `GET` | `/api/auth/me` | Authenticated | Retrieve current user profile and doctor metadata |
 | `GET` | `/api/patient/profile` | Patient | Retrieve patient profile (name, email, phone, gender, date of birth, age) |
 | `PUT` | `/api/patient/profile` | Patient | Update personal info (name, phone, gender, date of birth; email read-only, no photo) |
-| `PUT` | `/api/patient/profile/password` | Patient | Update password with current password verification (`password_verify`) |
+| `PUT` | `/api/patient/change-password` | Patient | Update password verifying current password (`password_verify`) and matching confirmation, with no format rules |
 | `GET` | `/api/health` | Public | Verify backend availability and system timestamp |
 
 ### 🏥 Departments & Doctors
@@ -560,7 +560,7 @@ All API endpoints are hosted by `BE/` and prefixed with `/api` (or accessed dire
 | `PUT` | `/api/doctor/schedule` | Doctor | Save/update weekly schedule availability |
 | `GET` | `/api/doctor/profile` | Doctor | Retrieve authenticated doctor's profile (including `clinic_address`) |
 | `PUT` | `/api/doctor/profile` | Doctor | Update bio, clinic address, room number, fee, qualification, specialization |
-| `PUT` | `/api/doctor/change-password` | Doctor | Update password verifying current password with `password_verify` (min 8 chars, letter + number) |
+| `PUT` | `/api/doctor/change-password` | Doctor | Update password verifying current password (`password_verify`) and matching confirmation, with no format rules |
 | `GET` | `/api/doctor/feedback` | Doctor | View doctor's own patient ratings and reviews |
 
 ### 🛡️ Administrator Operations

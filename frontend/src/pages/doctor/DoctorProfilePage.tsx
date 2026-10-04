@@ -46,21 +46,6 @@ export const DoctorProfilePage: React.FC = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordErrors, setPasswordErrors] = useState<{ [key: string]: string }>({});
 
-  const getPasswordStrength = (pwd: string) => {
-    if (!pwd) return { score: 0, text: '', color: '' };
-    let score = 0;
-    if (pwd.length >= 8) score++;
-    if (/[A-Z]/.test(pwd) && /[a-z]/.test(pwd)) score++;
-    if (/[0-9]/.test(pwd)) score++;
-    if (/[^A-Za-z0-9]/.test(pwd)) score++;
-    if (score <= 1) return { score: 1, text: 'Weak', color: 'bg-rose-500' };
-    if (score === 2) return { score: 2, text: 'Fair', color: 'bg-amber-500' };
-    if (score === 3) return { score: 3, text: 'Good', color: 'bg-blue-500' };
-    return { score: 4, text: 'Strong', color: 'bg-emerald-500' };
-  };
-
-  const passwordStrength = getPasswordStrength(passwordData.newPassword);
-
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errors: { [key: string]: string } = {};
@@ -71,10 +56,6 @@ export const DoctorProfilePage: React.FC = () => {
 
     if (!passwordData.newPassword) {
       errors.newPassword = 'Enter a new password';
-    } else if (passwordData.newPassword.length < 8) {
-      errors.newPassword = 'Password must be at least 8 characters long';
-    } else if (!/[A-Za-z]/.test(passwordData.newPassword) || !/[0-9]/.test(passwordData.newPassword)) {
-      errors.newPassword = 'Password must include at least one letter and one number';
     }
 
     if (passwordData.newPassword !== passwordData.confirmPassword) {
@@ -456,7 +437,7 @@ export const DoctorProfilePage: React.FC = () => {
                     ? 'border-rose-300 focus:ring-rose-500'
                     : 'border-gray-200 focus:ring-emerald-500'
                 }`}
-                placeholder="Minimum 8 chars (letters and numbers)"
+                placeholder="Enter new password"
               />
               <button
                 type="button"
@@ -468,21 +449,6 @@ export const DoctorProfilePage: React.FC = () => {
             </div>
             {passwordErrors.newPassword && (
               <p className="text-[11px] text-rose-600 font-medium">{passwordErrors.newPassword}</p>
-            )}
-
-            {/* Password strength indicator */}
-            {passwordData.newPassword && (
-              <div className="pt-1.5 space-y-1">
-                <div className="flex items-center gap-1.5 h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full transition-all duration-300 ${passwordStrength.color}`}
-                    style={{ width: `${(passwordStrength.score / 4) * 100}%` }}
-                  />
-                </div>
-                <span className="text-[10px] font-semibold text-gray-500">
-                  Strength: {passwordStrength.text}
-                </span>
-              </div>
             )}
           </div>
 
@@ -526,6 +492,7 @@ export const DoctorProfilePage: React.FC = () => {
               disabled={
                 !passwordData.currentPassword ||
                 !passwordData.newPassword ||
+                !passwordData.confirmPassword ||
                 changePasswordMutation.isPending
               }
               leftIcon={<Lock className="h-4 w-4" />}
