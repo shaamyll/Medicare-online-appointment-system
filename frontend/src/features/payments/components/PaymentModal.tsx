@@ -150,8 +150,8 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                   onViewReceipt();
                 }}
                 className="flex items-center gap-1.5"
+                leftIcon={<Receipt className="w-4 h-4" />}
               >
-                <Receipt className="w-4 h-4" />
                 <span>View Receipt</span>
               </Button>
             )}

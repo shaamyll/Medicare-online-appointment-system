@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS `doctor_profiles` (
     `consultation_fee` DECIMAL(10,2) DEFAULT 0.00,
     `bio` TEXT NULL,
     `room_number` VARCHAR(50) NULL,
+    `clinic_address` VARCHAR(255) NULL,
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,

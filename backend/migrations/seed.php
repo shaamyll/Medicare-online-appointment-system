@@ -33,7 +33,8 @@ $requiredColumns = [
     'doctor_profiles' => [
         'license_number' => "ALTER TABLE `doctor_profiles` ADD COLUMN `license_number` VARCHAR(50) NULL UNIQUE AFTER `qualification`",
         'image_path' => "ALTER TABLE `doctor_profiles` ADD COLUMN `image_path` VARCHAR(255) NULL AFTER `bio`",
-        'thumbnail_path' => "ALTER TABLE `doctor_profiles` ADD COLUMN `thumbnail_path` VARCHAR(255) NULL AFTER `image_path`"
+        'thumbnail_path' => "ALTER TABLE `doctor_profiles` ADD COLUMN `thumbnail_path` VARCHAR(255) NULL AFTER `image_path`",
+        'clinic_address' => "ALTER TABLE `doctor_profiles` ADD COLUMN `clinic_address` VARCHAR(255) NULL AFTER `room_number`"
     ],
     'appointments' => [
         'rejection_reason' => "ALTER TABLE `appointments` ADD COLUMN `rejection_reason` VARCHAR(255) NULL AFTER `reason_for_visit`",

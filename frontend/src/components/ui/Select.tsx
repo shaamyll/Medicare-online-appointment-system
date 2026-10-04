@@ -21,7 +21,9 @@ export interface SelectProps<T = string | number> {
   disabled?: boolean;
   error?: string;
   size?: 'sm' | 'md';
+  variant?: 'light' | 'dark';
   className?: string;
+  buttonClassName?: string;
   name?: string;
   id?: string;
   'aria-label'?: string;
@@ -38,7 +40,9 @@ export function Select<T extends string | number = string | number>({
   disabled = false,
   error,
   size = 'md',
+  variant = 'light',
   className,
+  buttonClassName,
   id,
   'aria-label': ariaLabel,
 }: SelectProps<T>) {
@@ -186,42 +190,49 @@ export function Select<T extends string | number = string | number>({
         disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          'w-full flex items-center justify-between gap-2 bg-white border font-normal text-left transition-all duration-150 shadow-2xs select-none cursor-pointer',
+          'w-full flex items-center justify-between gap-2 border font-normal text-left transition-all duration-150 select-none cursor-pointer',
           sizes[size],
+          variant === 'dark'
+            ? 'bg-slate-900 border-slate-700 text-slate-100 hover:border-slate-500 focus:ring-teal-500/20 focus:border-teal-500'
+            : 'bg-white border-gray-200 hover:border-gray-300 text-gray-900 focus:ring-emerald-500/20 focus:border-emerald-500 shadow-2xs',
           error
-            ? 'border-rose-400 focus:ring-rose-500/20 text-rose-900'
-            : 'border-gray-200 hover:border-gray-300 text-gray-900',
-          'focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500',
-          disabled && 'opacity-60 cursor-not-allowed bg-gray-50'
+            ? variant === 'dark'
+              ? 'border-rose-500 text-rose-300 focus:border-rose-500'
+              : 'border-rose-400 focus:ring-rose-500/20 text-rose-900'
+            : '',
+          'focus:outline-none focus:ring-2',
+          disabled && (variant === 'dark' ? 'opacity-60 cursor-not-allowed bg-slate-800' : 'opacity-60 cursor-not-allowed bg-gray-50'),
+          buttonClassName
         )}
       >
         <span className="flex items-center gap-2 truncate">
           {leadingIcon && (
-            <span className="text-gray-400 shrink-0 [&>svg]:h-4 [&>svg]:w-4">
+            <span className={cn('shrink-0 [&>svg]:h-4 [&>svg]:w-4', variant === 'dark' ? 'text-slate-400' : 'text-gray-400')}>
               {leadingIcon}
             </span>
           )}
           {selectedOption ? (
-            <span className="flex items-center gap-2 truncate text-gray-900 font-medium">
+            <span className={cn('flex items-center gap-2 truncate font-medium', variant === 'dark' ? 'text-slate-100' : 'text-gray-900')}>
               {selectedOption.dot && (
                 <span className={cn('h-2 w-2 rounded-full shrink-0', selectedOption.dot)} />
               )}
               {selectedOption.icon && (
-                <span className="shrink-0 text-gray-500 [&>svg]:h-4 [&>svg]:w-4">
+                <span className={cn('shrink-0 [&>svg]:h-4 [&>svg]:w-4', variant === 'dark' ? 'text-slate-400' : 'text-gray-500')}>
                   {selectedOption.icon}
                 </span>
               )}
               <span className="truncate">{selectedOption.label}</span>
             </span>
           ) : (
-            <span className="text-gray-400 truncate">{placeholder}</span>
+            <span className={cn('truncate', variant === 'dark' ? 'text-slate-500' : 'text-gray-400')}>{placeholder}</span>
           )}
         </span>
 
         <ChevronDown
           className={cn(
-            'h-4 w-4 shrink-0 text-gray-400 transition-transform duration-200',
-            isOpen && 'rotate-180 text-gray-600'
+            'h-4 w-4 shrink-0 transition-transform duration-200',
+            variant === 'dark' ? 'text-slate-400' : 'text-gray-400',
+            isOpen && (variant === 'dark' ? 'rotate-180 text-teal-400' : 'rotate-180 text-gray-600')
           )}
         />
       </button>
@@ -230,7 +241,10 @@ export function Select<T extends string | number = string | number>({
       {isOpen && (
         <div
           className={cn(
-            'absolute z-50 w-full min-w-[200px] rounded-xl bg-white border border-gray-200 shadow-xl p-1',
+            'absolute z-50 w-full min-w-[200px] rounded-xl border p-1',
+            variant === 'dark'
+              ? 'bg-slate-900 border-slate-700 shadow-2xl text-slate-100'
+              : 'bg-white border-gray-200 shadow-xl text-gray-900',
             openUpward
               ? 'bottom-full mb-1.5 origin-bottom'
               : 'top-full mt-1.5 origin-top',
@@ -239,9 +253,9 @@ export function Select<T extends string | number = string | number>({
         >
           {/* Optional Search Input */}
           {searchable && (
-            <div className="p-1 pb-1.5 border-b border-gray-100">
+            <div className={cn('p-1 pb-1.5 border-b', variant === 'dark' ? 'border-slate-800' : 'border-gray-100')}>
               <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
+                <Search className={cn('absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 pointer-events-none', variant === 'dark' ? 'text-slate-500' : 'text-gray-400')} />
                 <input
                   ref={searchInputRef}
                   type="text"
@@ -251,7 +265,12 @@ export function Select<T extends string | number = string | number>({
                     setHighlightedIndex(0);
                   }}
                   placeholder={searchPlaceholder}
-                  className="w-full h-8 pl-9 pr-3 text-xs bg-gray-50 rounded-lg border border-gray-200 focus:bg-white focus:outline-none focus:border-emerald-500 text-gray-900"
+                  className={cn(
+                    'w-full h-8 pl-9 pr-3 text-xs rounded-lg border focus:outline-none',
+                    variant === 'dark'
+                      ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500 focus:border-teal-500'
+                      : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400 focus:bg-white focus:border-emerald-500'
+                  )}
                 />
               </div>
             </div>
@@ -265,7 +284,7 @@ export function Select<T extends string | number = string | number>({
             className="max-h-60 overflow-y-auto py-1 space-y-0.5"
           >
             {filteredOptions.length === 0 ? (
-              <li className="px-3 py-3 text-center text-xs text-gray-400 italic">
+              <li className={cn('px-3 py-3 text-center text-xs italic', variant === 'dark' ? 'text-slate-500' : 'text-gray-400')}>
                 No options found
               </li>
             ) : (
@@ -282,7 +301,13 @@ export function Select<T extends string | number = string | number>({
                     onMouseEnter={() => setHighlightedIndex(idx)}
                     className={cn(
                       'flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-colors cursor-pointer select-none',
-                      isSelected
+                      variant === 'dark'
+                        ? isSelected
+                          ? 'bg-teal-500/20 text-teal-300 font-semibold'
+                          : isHighlighted
+                          ? 'bg-slate-800 text-white'
+                          : 'text-slate-300 hover:bg-slate-800/70'
+                        : isSelected
                         ? 'bg-emerald-50 text-emerald-800 font-semibold'
                         : isHighlighted
                         ? 'bg-gray-100 text-gray-900'
@@ -295,7 +320,7 @@ export function Select<T extends string | number = string | number>({
                         <span className={cn('h-2 w-2 rounded-full shrink-0', opt.dot)} />
                       )}
                       {opt.icon && (
-                        <span className="shrink-0 text-gray-500 [&>svg]:h-4 [&>svg]:w-4">
+                        <span className={cn('shrink-0 [&>svg]:h-4 [&>svg]:w-4', variant === 'dark' ? 'text-slate-400' : 'text-gray-500')}>
                           {opt.icon}
                         </span>
                       )}
@@ -303,7 +328,7 @@ export function Select<T extends string | number = string | number>({
                     </span>
 
                     {isSelected && (
-                      <Check className="h-4 w-4 text-emerald-600 shrink-0 ml-2" />
+                      <Check className={cn('h-4 w-4 shrink-0 ml-2', variant === 'dark' ? 'text-teal-400' : 'text-emerald-600')} />
                     )}
                   </li>
                 );

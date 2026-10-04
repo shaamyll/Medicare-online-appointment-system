@@ -17,7 +17,8 @@ import {
   UserCheck,
   UploadCloud,
   FileBadge,
-  X as CloseIcon,
+  MapPin,
+  Camera,
 } from 'lucide-react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
@@ -65,6 +66,7 @@ export const DoctorLoginPage: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [departmentId, setDepartmentId] = useState<number | undefined>(undefined);
   const [specialization, setSpecialization] = useState('');
+  const [clinicAddress, setClinicAddress] = useState('');
   const [qualification, setQualification] = useState('');
   const [experienceYears, setExperienceYears] = useState<number | ''>(5);
   const [consultationFee, setConsultationFee] = useState<number | ''>(100);
@@ -204,6 +206,11 @@ export const DoctorLoginPage: React.FC = () => {
       return;
     }
 
+    if (!clinicAddress.trim()) {
+      setErrorMessage('Please enter your clinic or practice address.');
+      return;
+    }
+
     try {
       const formData = new FormData();
       formData.append('name', name.trim());
@@ -212,6 +219,9 @@ export const DoctorLoginPage: React.FC = () => {
       if (phone.trim()) formData.append('phone', phone.trim());
       if (departmentId) formData.append('departmentId', String(departmentId));
       formData.append('specialization', specialization.trim());
+      formData.append('clinicAddress', clinicAddress.trim());
+      formData.append('roomNumber', clinicAddress.trim());
+      formData.append('location', clinicAddress.trim());
       formData.append('qualification', qualification.trim() || 'MD / MBBS');
       formData.append('licenseNumber', trimmedLicense);
       formData.append('experienceYears', String(experienceYears || 0));
@@ -294,8 +304,8 @@ export const DoctorLoginPage: React.FC = () => {
         </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-lg px-4 sm:px-0">
-        <Card className="p-7 sm:p-8 bg-slate-800/95 border-slate-700/80 shadow-2xl text-slate-100">
+      <div className={`mt-8 sm:mx-auto sm:w-full transition-all duration-300 px-4 sm:px-0 ${activeTab === 'register' ? 'sm:max-w-3xl' : 'sm:max-w-md'}`}>
+        <Card className="p-7 sm:p-9 bg-slate-800/95 border-slate-700/80 shadow-2xl text-slate-100 rounded-2xl">
           {/* Tabs Navigation */}
           <div className="flex rounded-xl bg-slate-900/80 p-1 mb-6 border border-slate-700/60">
             <button
@@ -381,12 +391,12 @@ export const DoctorLoginPage: React.FC = () => {
                     Doctor Email Address
                   </label>
                   <Input
+                    variant="dark"
                     type="email"
                     placeholder="doctor@medicare.com"
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
                     leftIcon={<Mail className="w-4 h-4 text-slate-400" />}
-                    className="bg-slate-900/70 border-slate-700 text-white placeholder-slate-500 focus:border-teal-500"
                     required
                   />
                 </div>
@@ -396,18 +406,19 @@ export const DoctorLoginPage: React.FC = () => {
                     Doctor Password
                   </label>
                   <Input
+                    variant="dark"
                     type="password"
                     placeholder="••••••••"
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
                     leftIcon={<Lock className="w-4 h-4 text-slate-400" />}
-                    className="bg-slate-900/70 border-slate-700 text-white placeholder-slate-500 focus:border-teal-500"
                     required
                   />
                 </div>
 
                 <Button
                   type="submit"
+                  size="lg"
                   className="w-full mt-2 bg-teal-600 hover:bg-teal-500 text-white font-bold shadow-lg shadow-teal-600/20"
                   isLoading={isLoading}
                   rightIcon={<ArrowRight className="w-4 h-4" />}
@@ -418,238 +429,307 @@ export const DoctorLoginPage: React.FC = () => {
             </div>
           ) : (
             /* TAB 2: DOCTOR REGISTRATION FORM */
-            <form onSubmit={handleRegisterSubmit} className="space-y-3.5 text-slate-200">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Full Name & Title *</label>
-                  <Input
-                    placeholder="Dr. Sarah Jenkins, MD"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    leftIcon={<UserIcon className="w-4 h-4 text-slate-400" />}
-                    className="bg-slate-900/70 border-slate-700 text-white placeholder-slate-500 focus:border-teal-500"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Official Email *</label>
-                  <Input
-                    type="email"
-                    placeholder="dr.jenkins@medicare.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    leftIcon={<Mail className="w-4 h-4 text-slate-400" />}
-                    className="bg-slate-900/70 border-slate-700 text-white placeholder-slate-500 focus:border-teal-500"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Password (min 6) *</label>
-                  <Input
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    leftIcon={<Lock className="w-4 h-4 text-slate-400" />}
-                    className="bg-slate-900/70 border-slate-700 text-white placeholder-slate-500 focus:border-teal-500"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Contact Phone</label>
-                  <Input
-                    placeholder="+1 555-019-2831"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    leftIcon={<Phone className="w-4 h-4 text-slate-400" />}
-                    className="bg-slate-900/70 border-slate-700 text-white placeholder-slate-500 focus:border-teal-500"
-                  />
-                </div>
-              </div>
-
-              {/* Two New Mandatory Credential Fields: License Number & Profile Photo */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-slate-700/60">
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">
-                    Medical License Number *
-                  </label>
-                  <Input
-                    placeholder="e.g. MED-CA-2024-1049"
-                    value={licenseNumber}
-                    onChange={(e) => handleLicenseChange(e.target.value)}
-                    leftIcon={<FileBadge className="w-4 h-4 text-slate-400" />}
-                    className="bg-slate-900/70 border-slate-700 text-white placeholder-slate-500 focus:border-teal-500"
-                    required
-                  />
-                  {licenseError ? (
-                    <p className="text-[11px] text-rose-400 mt-1">{licenseError}</p>
-                  ) : (
-                    <p className="text-[10px] text-slate-400 mt-0.5">5-30 characters (letters, numbers, hyphens, slashes)</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">
-                    Profile Photo * (Max 2 MB)
-                  </label>
-                  {photoPreview ? (
-                    <div className="flex items-center gap-2.5 p-1.5 rounded-lg bg-slate-900/80 border border-slate-700">
-                      <img
-                        src={photoPreview}
-                        alt="Doctor Preview"
-                        className="w-10 h-10 rounded-lg object-cover border border-teal-500/50 shrink-0"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs text-slate-200 truncate">{profilePhoto?.name}</p>
-                        <p className="text-[10px] text-slate-400">
-                          {profilePhoto ? `${(profilePhoto.size / 1024).toFixed(0)} KB` : ''}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setProfilePhoto(null);
-                          setPhotoPreview(null);
-                        }}
-                        className="text-slate-400 hover:text-rose-400 p-1"
-                        title="Remove photo"
-                      >
-                        <CloseIcon className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        setIsDraggingPhoto(true);
-                      }}
-                      onDragLeave={() => setIsDraggingPhoto(false)}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        setIsDraggingPhoto(false);
-                        const file = e.dataTransfer.files?.[0];
-                        handlePhotoSelect(file);
-                      }}
-                      className={`relative border border-dashed rounded-lg p-2.5 text-center cursor-pointer transition-colors ${
-                        isDraggingPhoto
-                          ? 'border-teal-400 bg-teal-500/10'
-                          : 'border-slate-700 hover:border-slate-500 bg-slate-900/50'
-                      }`}
-                    >
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        onChange={(e) => handlePhotoSelect(e.target.files?.[0])}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                        required={!profilePhoto}
-                      />
-                      <div className="flex items-center justify-center gap-2 pointer-events-none text-xs text-slate-300">
-                        <UploadCloud className="w-4 h-4 text-teal-400 shrink-0" />
-                        <span className="truncate">Click or drag photo (JPG/PNG/WebP)</span>
-                      </div>
-                    </div>
-                  )}
-                  {photoError && <p className="text-[11px] text-rose-400 mt-1">{photoError}</p>}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-slate-700/60">
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Department Affiliation *</label>
-                  <Select
-                    value={departmentId ? String(departmentId) : ''}
-                    onChange={(val) => setDepartmentId(val ? Number(val) : undefined)}
-                    options={[
-                      { value: '', label: 'Select Department' },
-                      ...(departments?.map((d) => ({
-                        value: String(d.id),
-                        label: d.name,
-                      })) || []),
-                    ]}
-                    placeholder="Select Department"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Specialization *</label>
-                  <Input
-                    placeholder="e.g. Interventional Cardiology"
-                    value={specialization}
-                    onChange={(e) => setSpecialization(e.target.value)}
-                    leftIcon={<Briefcase className="w-4 h-4 text-slate-400" />}
-                    className="bg-slate-900/70 border-slate-700 text-white placeholder-slate-500 focus:border-teal-500"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Qualification *</label>
-                  <Input
-                    placeholder="MD, FACC"
-                    value={qualification}
-                    onChange={(e) => setQualification(e.target.value)}
-                    leftIcon={<GraduationCap className="w-4 h-4 text-slate-400" />}
-                    className="bg-slate-900/70 border-slate-700 text-white placeholder-slate-500 focus:border-teal-500"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Experience (Yrs) *</label>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={experienceYears}
-                    onChange={(e) => setExperienceYears(e.target.value === '' ? '' : Number(e.target.value))}
-                    className="bg-slate-900/70 border-slate-700 text-white placeholder-slate-500 focus:border-teal-500"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Fee ($) *</label>
-                  <Input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={consultationFee}
-                    onChange={(e) => setConsultationFee(e.target.value === '' ? '' : Number(e.target.value))}
-                    leftIcon={<DollarSign className="w-4 h-4 text-slate-400" />}
-                    className="bg-slate-900/70 border-slate-700 text-white placeholder-slate-500 focus:border-teal-500"
-                    required
-                  />
-                </div>
-              </div>
-
+            <form onSubmit={handleRegisterSubmit} className="space-y-6 text-slate-200">
+              {/* Section 1: Account Information */}
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Bio / Profile Summary</label>
-                <textarea
-                  rows={2}
-                  placeholder="Brief clinical background, specialties, and professional achievements..."
-                  value={bio}
-                  onChange={(e) => setBio(e.target.value)}
-                  className="w-full rounded-lg border border-slate-700 bg-slate-900/70 p-2 text-xs text-white placeholder-slate-500 focus:border-teal-500 focus:outline-none"
-                />
+                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-700/60">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-teal-500/20 text-teal-400 text-xs font-bold">1</span>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-300">Provider & Account Details</h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 mb-1.5">Full Name & Title *</label>
+                    <Input
+                      variant="dark"
+                      placeholder="Dr. Sarah Jenkins, MD"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      leftIcon={<UserIcon className="w-4 h-4 text-slate-400" />}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 mb-1.5">Official Doctor Email *</label>
+                    <Input
+                      variant="dark"
+                      type="email"
+                      placeholder="dr.jenkins@medicare.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      leftIcon={<Mail className="w-4 h-4 text-slate-400" />}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 mb-1.5">Password (min 6 characters) *</label>
+                    <Input
+                      variant="dark"
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      leftIcon={<Lock className="w-4 h-4 text-slate-400" />}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 mb-1.5">Contact Phone Number</label>
+                    <Input
+                      variant="dark"
+                      placeholder="+1 (555) 019-2831"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      leftIcon={<Phone className="w-4 h-4 text-slate-400" />}
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div className="p-3 rounded-lg bg-teal-500/10 border border-teal-500/20 text-[11px] text-teal-200">
-                Notice: All doctor applications undergo administrative review before clinical access is granted.
+              {/* Section 2: Verification Credentials & Headshot Photo */}
+              <div>
+                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-700/60">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-teal-500/20 text-teal-400 text-xs font-bold">2</span>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-300">Credentials & Profile Headshot</h3>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                      Medical License Number *
+                    </label>
+                    <Input
+                      variant="dark"
+                      placeholder="e.g. MED-CA-2024-1049"
+                      value={licenseNumber}
+                      onChange={(e) => handleLicenseChange(e.target.value)}
+                      leftIcon={<FileBadge className="w-4 h-4 text-slate-400" />}
+                      required
+                    />
+                    {licenseError ? (
+                      <p className="text-[11px] text-rose-400 mt-1">{licenseError}</p>
+                    ) : (
+                      <p className="text-[10px] text-slate-400 mt-1">Official national/state medical board ID</p>
+                    )}
+                  </div>
+
+                  {/* Profile Photo Upload - Prominent & Professional */}
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                      Profile Headshot * <span className="text-[10px] text-slate-400 font-normal">(Max 2 MB)</span>
+                    </label>
+                    {photoPreview ? (
+                      <div className="flex items-center gap-4 p-3 rounded-xl bg-slate-900/90 border border-slate-700">
+                        <div className="relative shrink-0">
+                          <img
+                            src={photoPreview}
+                            alt="Doctor Headshot Preview"
+                            className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover ring-2 ring-teal-500/60 shadow-lg"
+                          />
+                          <div className="absolute -bottom-1 -right-1 bg-teal-500 text-slate-950 p-1.5 rounded-full shadow-md">
+                            <Camera className="w-3.5 h-3.5" />
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                            <span className="text-xs font-semibold text-slate-200 truncate max-w-[140px] sm:max-w-[180px]">
+                              {profilePhoto?.name}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-400">
+                            {profilePhoto ? `${(profilePhoto.size / 1024).toFixed(0)} KB` : ''} • Image verified
+                          </p>
+                          <div className="mt-2.5 flex items-center gap-3">
+                            <label className="text-xs font-medium text-teal-400 hover:text-teal-300 cursor-pointer hover:underline">
+                              Change photo
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp"
+                                onChange={(e) => handlePhotoSelect(e.target.files?.[0])}
+                                className="hidden"
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setProfilePhoto(null);
+                                setPhotoPreview(null);
+                              }}
+                              className="text-xs font-medium text-rose-400 hover:text-rose-300 hover:underline"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          setIsDraggingPhoto(true);
+                        }}
+                        onDragLeave={() => setIsDraggingPhoto(false)}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          setIsDraggingPhoto(false);
+                          const file = e.dataTransfer.files?.[0];
+                          handlePhotoSelect(file);
+                        }}
+                        className={`relative border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all duration-200 ${
+                          isDraggingPhoto
+                            ? 'border-teal-400 bg-teal-500/10'
+                            : 'border-slate-700 hover:border-teal-500/60 bg-slate-900/60 hover:bg-slate-900/80'
+                        }`}
+                      >
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          onChange={(e) => handlePhotoSelect(e.target.files?.[0])}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          required={!profilePhoto}
+                        />
+                        <div className="flex flex-col items-center justify-center gap-1 pointer-events-none py-1">
+                          <div className="w-10 h-10 rounded-xl bg-teal-500/15 border border-teal-500/30 flex items-center justify-center text-teal-400 mb-0.5">
+                            <UploadCloud className="w-5 h-5" />
+                          </div>
+                          <span className="text-xs font-semibold text-slate-200">
+                            Upload Doctor Photo
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            Drag & drop or browse (JPG, PNG, WebP)
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {photoError && <p className="text-[11px] text-rose-400 mt-1">{photoError}</p>}
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 3: Practice, Specialty & Location */}
+              <div>
+                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-700/60">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-teal-500/20 text-teal-400 text-xs font-bold">3</span>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-300">Practice, Specialty & Location</h3>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 mb-1.5">Department Affiliation *</label>
+                    <Select
+                      variant="dark"
+                      value={departmentId ? String(departmentId) : ''}
+                      onChange={(val) => setDepartmentId(val ? Number(val) : undefined)}
+                      options={[
+                        { value: '', label: 'Select Department' },
+                        ...(departments?.map((d) => ({
+                          value: String(d.id),
+                          label: d.name,
+                        })) || []),
+                      ]}
+                      placeholder="Select Department"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 mb-1.5">Primary Specialization *</label>
+                    <Input
+                      variant="dark"
+                      placeholder="e.g. Interventional Cardiology"
+                      value={specialization}
+                      onChange={(e) => setSpecialization(e.target.value)}
+                      leftIcon={<Briefcase className="w-4 h-4 text-slate-400" />}
+                      required
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                      Clinic / Practice Address & Location *
+                    </label>
+                    <Input
+                      variant="dark"
+                      placeholder="e.g. Suite 402, Metro Health Center, 120 Medical Center Blvd, New York"
+                      value={clinicAddress}
+                      onChange={(e) => setClinicAddress(e.target.value)}
+                      leftIcon={<MapPin className="w-4 h-4 text-slate-400" />}
+                      required
+                    />
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      Independent clinic, practice office, or hospital room address visible to patients when scheduling visits.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 mb-1.5">Medical Qualification *</label>
+                    <Input
+                      variant="dark"
+                      placeholder="MD, FACC, MBBS"
+                      value={qualification}
+                      onChange={(e) => setQualification(e.target.value)}
+                      leftIcon={<GraduationCap className="w-4 h-4 text-slate-400" />}
+                      required
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-300 mb-1.5">Experience (Yrs) *</label>
+                      <Input
+                        variant="dark"
+                        type="number"
+                        min={0}
+                        value={experienceYears}
+                        onChange={(e) => setExperienceYears(e.target.value === '' ? '' : Number(e.target.value))}
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-slate-300 mb-1.5">Consultation Fee ($) *</label>
+                      <Input
+                        variant="dark"
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={consultationFee}
+                        onChange={(e) => setConsultationFee(e.target.value === '' ? '' : Number(e.target.value))}
+                        leftIcon={<DollarSign className="w-4 h-4 text-slate-400" />}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-medium text-slate-300 mb-1.5">Bio / Clinical Profile Summary</label>
+                    <textarea
+                      rows={3}
+                      placeholder="Brief clinical background, clinical interests, certifications, and affiliations..."
+                      value={bio}
+                      onChange={(e) => setBio(e.target.value)}
+                      className="w-full rounded-lg border border-slate-700 bg-slate-900/90 p-3 text-sm text-white placeholder-slate-500 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-teal-500/10 border border-teal-500/20 text-xs text-teal-200 flex items-start gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0 mt-0.5" />
+                <p>
+                  <strong>Platform Provider Verification:</strong> All healthcare provider registrations undergo administrative credential review before appointment bookings are activated.
+                </p>
               </div>
 
               <Button
                 type="submit"
-                className="w-full mt-2 bg-teal-600 hover:bg-teal-500 text-white font-bold shadow-lg shadow-teal-600/20"
+                size="lg"
+                className="w-full bg-teal-600 hover:bg-teal-500 text-white font-bold shadow-lg shadow-teal-600/20"
                 isLoading={isLoading}
                 rightIcon={<ArrowRight className="w-4 h-4" />}
               >
-                Submit Doctor Application
+                Submit Provider Application
               </Button>
             </form>
           )}

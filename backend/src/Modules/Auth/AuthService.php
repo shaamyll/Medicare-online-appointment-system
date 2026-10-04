@@ -245,6 +245,8 @@ class AuthService {
                 'status' => 'pending'
             ]);
 
+            $clinicAddress = !empty($data['clinicAddress']) ? trim($data['clinicAddress']) : (!empty($data['location']) ? trim($data['location']) : (!empty($data['address']) ? trim($data['address']) : (!empty($data['roomNumber']) ? trim($data['roomNumber']) : null)));
+
             $this->userRepository->createDoctorProfile([
                 'user_id' => $userId,
                 'department_id' => !empty($data['departmentId']) ? (int)$data['departmentId'] : null,
@@ -256,7 +258,8 @@ class AuthService {
                 'experience_years' => !empty($data['experienceYears']) ? (int)$data['experienceYears'] : 0,
                 'consultation_fee' => !empty($data['consultationFee']) ? (float)$data['consultationFee'] : 0.00,
                 'bio' => $data['bio'] ?? null,
-                'room_number' => $data['roomNumber'] ?? null
+                'room_number' => $clinicAddress ? substr($clinicAddress, 0, 50) : null,
+                'clinic_address' => $clinicAddress
             ]);
 
             $db->commit();

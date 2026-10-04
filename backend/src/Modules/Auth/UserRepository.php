@@ -64,8 +64,8 @@ class UserRepository {
 
     public function createDoctorProfile(array $data): int {
         $stmt = $this->db->prepare("
-            INSERT INTO doctor_profiles (user_id, department_id, specialization, qualification, license_number, image_path, thumbnail_path, experience_years, consultation_fee, bio, room_number)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO doctor_profiles (user_id, department_id, specialization, qualification, license_number, image_path, thumbnail_path, experience_years, consultation_fee, bio, room_number, clinic_address)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
             $data['user_id'],
@@ -78,7 +78,8 @@ class UserRepository {
             $data['experience_years'] ?? 0,
             $data['consultation_fee'] ?? 0.00,
             $data['bio'] ?? null,
-            $data['room_number'] ?? null
+            $data['room_number'] ?? null,
+            $data['clinic_address'] ?? $data['room_number'] ?? null
         ]);
         return (int)$this->db->lastInsertId();
     }
