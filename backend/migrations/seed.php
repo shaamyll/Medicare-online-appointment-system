@@ -388,6 +388,22 @@ if ($approvedDocId && $patientId) {
             'pay_status' => 'refunded',
             'pay_method' => 'upi',
             'pay_ref' => 'MC-20261002-REF001',
+            'created_interval' => '-1 day',
+            'is_completed' => false,
+            'has_review' => false,
+            'is_rescheduled' => false,
+        ],
+        [
+            'num' => 'APT-202609-0006',
+            'date' => date('Y-m-d', strtotime('-4 days')),
+            'start' => '16:00:00',
+            'end' => '16:30:00',
+            'status' => 'cancelled',
+            'reason' => 'Patient had scheduling conflict and cancelled.',
+            'pay_status' => 'unpaid',
+            'pay_method' => null,
+            'pay_ref' => null,
+            'created_interval' => '-4 days',
             'is_completed' => false,
             'has_review' => false,
             'is_rescheduled' => false,
@@ -402,11 +418,12 @@ if ($approvedDocId && $patientId) {
         }
 
         $insAppt = $pdo->prepare("
-            INSERT INTO appointments (appointment_number, patient_id, doctor_id, appointment_date, start_time, end_time, status, reason_for_visit, rejection_reason, reschedule_count)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO appointments (appointment_number, patient_id, doctor_id, appointment_date, start_time, end_time, status, reason_for_visit, rejection_reason, reschedule_count, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $resCount = $item['is_rescheduled'] ? 1 : 0;
         $rejReason = $item['rejection_reason'] ?? null;
+        $createdAt = isset($item['created_interval']) ? date('Y-m-d H:i:s', strtotime($item['created_interval'])) : date('Y-m-d H:i:s');
         $insAppt->execute([
             $item['num'],
             $patientId,
@@ -417,7 +434,8 @@ if ($approvedDocId && $patientId) {
             $item['status'],
             $item['reason'],
             $rejReason,
-            $resCount
+            $resCount,
+            $createdAt
         ]);
         $apptId = (int)$pdo->lastInsertId();
 

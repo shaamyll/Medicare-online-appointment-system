@@ -214,9 +214,9 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
             isLoading={rescheduleMutation.isPending}
             disabled={!selectedSlot}
             className="flex items-center gap-1.5"
+            rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
           >
             <span>Confirm Reschedule</span>
-            <ArrowRight className="w-3.5 h-3.5" />
           </Button>
         </div>
       </form>

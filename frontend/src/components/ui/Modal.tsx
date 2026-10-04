@@ -59,7 +59,7 @@ export const Modal: React.FC<ModalProps> = ({
       {/* Modal Dialog */}
       <div
         className={cn(
-          'relative w-full rounded-2xl bg-white border border-gray-200 p-6 shadow-2xl transition-all z-10 animate-in fade-in zoom-in-95 duration-200',
+          'relative w-full rounded-2xl bg-white border border-gray-200 p-6 shadow-xl transition-all z-10 animate-in fade-in zoom-in-95 duration-200',
           maxWidths[maxWidth]
         )}
       >

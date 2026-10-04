@@ -631,15 +631,15 @@ class AppointmentService {
         return $this->repository->findById($id);
     }
 
-    public function getPatientAppointments(int $patientId): array {
-        return $this->repository->findByPatient($patientId);
+    public function getPatientAppointments(int $patientId, ?string $sort = null, ?string $order = null): array {
+        return $this->repository->findByPatient($patientId, $sort, $order);
     }
 
-    public function getDoctorAppointments(int $doctorId, ?string $status = null): array {
-        return $this->repository->findByDoctor($doctorId, $status);
+    public function getDoctorAppointments(int $doctorId, ?string $status = null, ?string $sort = null, ?string $order = null): array {
+        return $this->repository->findByDoctor($doctorId, $status, $sort, $order);
     }
 
-    public function getAllAppointments(?string $status = null, ?string $date = null, ?int $doctorId = null): array {
-        return $this->repository->findAll($status, $date, $doctorId);
+    public function getAllAppointments(?string $status = null, ?string $date = null, ?int $doctorId = null, ?string $sort = null, ?string $order = null): array {
+        return $this->repository->findAll($status, $date, $doctorId, $sort, $order);
     }
 }

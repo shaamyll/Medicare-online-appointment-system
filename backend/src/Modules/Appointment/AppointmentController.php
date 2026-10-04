@@ -18,14 +18,16 @@ class AppointmentController {
         $status = $request->getQuery('status');
         $date = $request->getQuery('date');
         $doctorId = $request->getQuery('doctorId') ? (int)$request->getQuery('doctorId') : null;
+        $sort = $request->getQuery('sort');
+        $order = $request->getQuery('order');
 
         try {
             if ($user['role'] === 'patient') {
-                $appointments = $this->service->getPatientAppointments($user['id']);
+                $appointments = $this->service->getPatientAppointments($user['id'], $sort, $order);
             } elseif ($user['role'] === 'doctor') {
-                $appointments = $this->service->getDoctorAppointments($user['id'], $status);
+                $appointments = $this->service->getDoctorAppointments($user['id'], $status, $sort, $order);
             } else { // admin
-                $appointments = $this->service->getAllAppointments($status, $date, $doctorId);
+                $appointments = $this->service->getAllAppointments($status, $date, $doctorId, $sort, $order);
             }
             Response::success($appointments);
         } catch (Exception $e) {

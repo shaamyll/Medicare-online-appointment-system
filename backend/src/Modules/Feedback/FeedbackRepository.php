@@ -109,7 +109,7 @@ class FeedbackRepository {
             FROM feedback f
             JOIN users u ON u.id = f.patient_id
             WHERE f.doctor_id = ?
-            ORDER BY f.created_at DESC
+            ORDER BY f.created_at DESC, f.id DESC
             LIMIT ? OFFSET ?
         ");
         $stmt->bindValue(1, $doctorId, PDO::PARAM_INT);
@@ -179,7 +179,7 @@ class FeedbackRepository {
             LEFT JOIN doctor_profiles dp ON dp.user_id = u_doc.id
             LEFT JOIN appointments a ON a.id = f.appointment_id
             WHERE {$whereClause}
-            ORDER BY f.created_at DESC
+            ORDER BY f.created_at DESC, f.id DESC
             LIMIT ? OFFSET ?
         ";
 

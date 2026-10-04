@@ -17,8 +17,10 @@ class DoctorController {
         $deptId = $request->getQuery('departmentId');
         $deptId = $deptId ? (int)$deptId : null;
         $search = $request->getQuery('search');
+        $sort = $request->getQuery('sort');
+        $order = $request->getQuery('order');
 
-        $doctors = $this->service->getAllDoctors($deptId, $search);
+        $doctors = $this->service->getAllDoctors($deptId, $search, $sort, $order);
         Response::success($doctors);
     }
 

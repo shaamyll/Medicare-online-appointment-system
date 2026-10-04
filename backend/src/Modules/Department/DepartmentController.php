@@ -15,7 +15,9 @@ class DepartmentController {
 
     public function index(Request $request): void {
         $includeInactive = $request->getQuery('all') === 'true';
-        $departments = $this->service->getAll(!$includeInactive);
+        $sort = $request->getQuery('sort');
+        $order = $request->getQuery('order');
+        $departments = $this->service->getAll(!$includeInactive, $sort, $order);
         Response::success($departments);
     }
 

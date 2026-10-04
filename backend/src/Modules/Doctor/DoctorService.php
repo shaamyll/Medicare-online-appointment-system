@@ -11,8 +11,8 @@ class DoctorService {
         $this->repository = new DoctorRepository();
     }
 
-    public function getAllDoctors(?int $departmentId = null, ?string $search = null): array {
-        return $this->repository->findAllApproved($departmentId, $search);
+    public function getAllDoctors(?int $departmentId = null, ?string $search = null, ?string $sort = null, ?string $order = null): array {
+        return $this->repository->findAllApproved($departmentId, $search, $sort, $order);
     }
 
     public function getDoctorById(int $id): array {

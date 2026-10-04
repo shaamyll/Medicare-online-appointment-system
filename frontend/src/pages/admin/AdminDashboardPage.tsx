@@ -73,7 +73,7 @@ export const AdminDashboardPage: React.FC = () => {
 
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
-        <Card hover className="border-gray-200">
+        <Card hover className="border-gray-200 shadow-md">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Active Doctors</p>
@@ -88,7 +88,7 @@ export const AdminDashboardPage: React.FC = () => {
           </p>
         </Card>
 
-        <Card hover className="border-gray-200">
+        <Card hover className="border-gray-200 shadow-md">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Pending Approvals</p>
@@ -108,7 +108,7 @@ export const AdminDashboardPage: React.FC = () => {
           </button>
         </Card>
 
-        <Card hover className="border-gray-200">
+        <Card hover className="border-gray-200 shadow-md">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Total Patients</p>
@@ -121,7 +121,7 @@ export const AdminDashboardPage: React.FC = () => {
           <p className="text-xs text-gray-500 mt-3 font-medium">Registered user base</p>
         </Card>
 
-        <Card hover className="border-gray-200">
+        <Card hover className="border-gray-200 shadow-md">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Today's Visits</p>
@@ -134,7 +134,7 @@ export const AdminDashboardPage: React.FC = () => {
           <p className="text-xs text-indigo-600 mt-3 font-medium">Scheduled today</p>
         </Card>
 
-        <Card hover className="border-gray-200">
+        <Card hover className="border-gray-200 shadow-md">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Upcoming Visits</p>
@@ -149,7 +149,7 @@ export const AdminDashboardPage: React.FC = () => {
       </div>
 
       {/* Revenue & Payment Intelligence (Demo Gateway) */}
-      <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+      <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-md">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">

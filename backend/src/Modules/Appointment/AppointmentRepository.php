@@ -3,6 +3,7 @@
 namespace App\Modules\Appointment;
 
 use App\Config\Database;
+use App\Config\SortConfig;
 use PDO;
 
 class AppointmentRepository {
@@ -68,15 +69,16 @@ class AppointmentRepository {
         return $row ? $this->formatAppointmentRow($row) : null;
     }
 
-    public function findByPatient(int $patientId): array {
-        $sql = $this->getBaseSelect() . " WHERE a.patient_id = ? ORDER BY a.appointment_date DESC, a.start_time DESC ";
+    public function findByPatient(int $patientId, ?string $sort = null, ?string $order = null): array {
+        $orderBy = SortConfig::buildOrderBy('appointments', $sort, $order, SortConfig::APPOINTMENTS_PATIENT_ALL);
+        $sql = $this->getBaseSelect() . " WHERE a.patient_id = ? ORDER BY " . $orderBy;
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$patientId]);
         $rows = $stmt->fetchAll();
         return array_map([$this, 'formatAppointmentRow'], $rows);
     }
 
-    public function findByDoctor(int $doctorId, ?string $status = null): array {
+    public function findByDoctor(int $doctorId, ?string $status = null, ?string $sort = null, ?string $order = null): array {
         $sql = $this->getBaseSelect() . " WHERE a.doctor_id = ? ";
         $params = [$doctorId];
 
@@ -85,7 +87,18 @@ class AppointmentRepository {
             $params[] = $status;
         }
 
-        $sql .= " ORDER BY a.appointment_date ASC, a.start_time ASC ";
+        $defaultOrder = SortConfig::APPOINTMENTS_DOCTOR_UPCOMING;
+        if ($status !== null) {
+            $s = strtolower(trim($status));
+            if ($s === 'pending') {
+                $defaultOrder = SortConfig::APPOINTMENTS_DOCTOR_REQUESTS;
+            } elseif (in_array($s, ['completed', 'cancelled', 'rejected'], true)) {
+                $defaultOrder = SortConfig::APPOINTMENTS_DOCTOR_HISTORY;
+            }
+        }
+
+        $orderBy = SortConfig::buildOrderBy('appointments', $sort, $order, $defaultOrder);
+        $sql .= " ORDER BY " . $orderBy;
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -93,7 +106,7 @@ class AppointmentRepository {
         return array_map([$this, 'formatAppointmentRow'], $rows);
     }
 
-    public function findAll(?string $status = null, ?string $date = null, ?int $doctorId = null): array {
+    public function findAll(?string $status = null, ?string $date = null, ?int $doctorId = null, ?string $sort = null, ?string $order = null): array {
         $sql = $this->getBaseSelect() . " WHERE 1=1 ";
         $params = [];
 
@@ -110,7 +123,8 @@ class AppointmentRepository {
             $params[] = $doctorId;
         }
 
-        $sql .= " ORDER BY a.appointment_date DESC, a.start_time DESC ";
+        $orderBy = SortConfig::buildOrderBy('appointments', $sort, $order, SortConfig::APPOINTMENTS_ADMIN);
+        $sql .= " ORDER BY " . $orderBy;
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);

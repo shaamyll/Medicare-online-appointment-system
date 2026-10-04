@@ -3,6 +3,7 @@
 namespace App\Modules\Doctor;
 
 use App\Config\Database;
+use App\Config\SortConfig;
 use PDO;
 
 class DoctorRepository {
@@ -12,7 +13,7 @@ class DoctorRepository {
         $this->db = Database::getConnection();
     }
 
-    public function findAllApproved(?int $departmentId = null, ?string $search = null): array {
+    public function findAllApproved(?int $departmentId = null, ?string $search = null, ?string $sort = null, ?string $order = null): array {
         $sql = "
             SELECT 
                 dp.id AS profile_id,
@@ -60,7 +61,8 @@ class DoctorRepository {
             $params[] = $like;
         }
 
-        $sql .= " ORDER BY u.name ASC ";
+        $orderBy = SortConfig::buildOrderBy('doctors', $sort, $order, SortConfig::PUBLIC_DOCTORS);
+        $sql .= " ORDER BY " . $orderBy;
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);

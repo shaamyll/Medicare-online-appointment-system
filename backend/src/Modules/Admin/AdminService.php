@@ -3,6 +3,7 @@
 namespace App\Modules\Admin;
 
 use App\Config\Database;
+use App\Config\SortConfig;
 use App\Modules\Notification\NotificationService;
 use App\Modules\Notification\NotificationTypes;
 use Exception;
@@ -132,7 +133,7 @@ class AdminService {
         ];
     }
 
-    public function getAllDoctors(?string $status = null): array {
+    public function getAllDoctors(?string $status = null, ?string $sort = null, ?string $order = null): array {
         $sql = "
             SELECT 
                 u.id, u.name, u.email, u.phone, u.status, u.created_at AS createdAt,
@@ -152,7 +153,8 @@ class AdminService {
             $params[] = $status;
         }
 
-        $sql .= " ORDER BY u.created_at DESC ";
+        $orderBy = SortConfig::buildOrderBy('doctors', $sort, $order, SortConfig::ADMIN_DOCTORS);
+        $sql .= " ORDER BY " . $orderBy;
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -234,7 +236,8 @@ class AdminService {
         ];
     }
 
-    public function getPatients(): array {
+    public function getPatients(?string $sort = null, ?string $order = null): array {
+        $orderBy = SortConfig::buildOrderBy('doctors', $sort, $order, SortConfig::ADMIN_PATIENTS);
         $stmt = $this->db->query("
             SELECT u.id, u.name, u.email, u.phone, u.status, u.created_at AS createdAt,
                    COUNT(a.id) AS appointmentCount
@@ -242,7 +245,7 @@ class AdminService {
             LEFT JOIN appointments a ON a.patient_id = u.id
             WHERE u.role = 'patient'
             GROUP BY u.id
-            ORDER BY u.created_at DESC
+            ORDER BY {$orderBy}
         ");
         $rows = $stmt->fetchAll();
 

@@ -26,8 +26,10 @@ class AdminController {
 
     public function doctors(Request $request): void {
         $status = $request->getQuery('status');
+        $sort = $request->getQuery('sort');
+        $order = $request->getQuery('order');
         try {
-            $doctors = $this->service->getAllDoctors($status);
+            $doctors = $this->service->getAllDoctors($status, $sort, $order);
             Response::success($doctors);
         } catch (Exception $e) {
             Response::error($e->getMessage(), 400);
@@ -46,8 +48,10 @@ class AdminController {
     }
 
     public function doctorRequests(Request $request): void {
+        $sort = $request->getQuery('sort');
+        $order = $request->getQuery('order');
         try {
-            $pending = $this->service->getAllDoctors('pending');
+            $pending = $this->service->getAllDoctors('pending', $sort, $order);
             Response::success($pending);
         } catch (Exception $e) {
             Response::error($e->getMessage(), 400);
@@ -95,8 +99,10 @@ class AdminController {
     }
 
     public function patients(Request $request): void {
+        $sort = $request->getQuery('sort');
+        $order = $request->getQuery('order');
         try {
-            $patients = $this->service->getPatients();
+            $patients = $this->service->getPatients($sort, $order);
             Response::success($patients);
         } catch (Exception $e) {
             Response::error($e->getMessage(), 400);

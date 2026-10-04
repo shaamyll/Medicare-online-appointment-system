@@ -92,7 +92,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
           onChange={handleChange}
           placeholder={placeholder}
           className={cn(
-            'h-10 w-full rounded-lg pl-11 pr-11 text-sm transition-colors duration-150',
+            'h-10 w-full rounded-lg pl-11 pr-11 text-sm transition-all duration-150 shadow-xs focus:shadow-sm',
             'border border-gray-200 text-gray-900 placeholder:text-gray-400',
             variant === 'gray' ? 'bg-gray-50 focus:bg-white' : 'bg-white',
             'focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20'

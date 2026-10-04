@@ -30,7 +30,7 @@ export const Card: React.FC<CardProps> = ({
   return (
     <div
       className={cn(
-        'rounded-xl transition-all duration-150',
+        'rounded-2xl transition-all duration-200',
         variants[variant],
         paddings[padding],
         hover && 'hover:shadow-md hover:border-gray-300',
@@ -90,7 +90,7 @@ export const CardFooter: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({
 }) => (
   <div
     className={cn(
-      'flex items-center justify-between bg-gray-50 border-t border-gray-100 px-6 py-3 rounded-b-xl -mx-6 -mb-6 mt-6',
+      'flex items-center justify-between bg-gray-50 border-t border-gray-100 px-6 py-3 rounded-b-2xl -mx-6 -mb-6 mt-6',
       className
     )}
     {...props}

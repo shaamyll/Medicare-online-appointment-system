@@ -84,7 +84,7 @@ class NotificationRepository
         $querySql = "
             SELECT * FROM notifications
             {$whereSql}
-            ORDER BY created_at DESC
+            ORDER BY created_at DESC, id DESC
             LIMIT ? OFFSET ?
         ";
         $stmt = $this->db->prepare($querySql);

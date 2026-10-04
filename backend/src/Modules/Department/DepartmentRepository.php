@@ -3,6 +3,7 @@
 namespace App\Modules\Department;
 
 use App\Config\Database;
+use App\Config\SortConfig;
 use PDO;
 
 class DepartmentRepository {
@@ -12,7 +13,7 @@ class DepartmentRepository {
         $this->db = Database::getConnection();
     }
 
-    public function findAll(bool $onlyActive = true): array {
+    public function findAll(bool $onlyActive = true, ?string $sort = null, ?string $order = null): array {
         $sql = "
             SELECT d.id, d.name, d.description, d.icon, d.is_active AS isActive, d.created_at AS createdAt,
                    COUNT(dp.id) AS doctorCount
@@ -23,7 +24,9 @@ class DepartmentRepository {
         if ($onlyActive) {
             $sql .= " WHERE d.is_active = 1 ";
         }
-        $sql .= " GROUP BY d.id ORDER BY d.name ASC ";
+        $defaultSort = $onlyActive ? SortConfig::PUBLIC_DEPARTMENTS : SortConfig::ADMIN_DEPARTMENTS;
+        $orderBy = SortConfig::buildOrderBy('departments', $sort, $order, $defaultSort);
+        $sql .= " GROUP BY d.id ORDER BY " . $orderBy;
 
         $stmt = $this->db->query($sql);
         $results = $stmt->fetchAll();
@@ -96,6 +99,17 @@ class DepartmentRepository {
         $sql = "UPDATE departments SET " . implode(', ', $fields) . " WHERE id = ?";
         $stmt = $this->db->prepare($sql);
         return $stmt->execute($params);
+    }
+
+    public function getDoctorCount(int $id): int {
+        $stmt = $this->db->prepare("
+            SELECT COUNT(dp.id) AS count
+            FROM doctor_profiles dp
+            JOIN users u ON u.id = dp.user_id AND u.status = 'active'
+            WHERE dp.department_id = ?
+        ");
+        $stmt->execute([$id]);
+        return (int)$stmt->fetchColumn();
     }
 
     public function delete(int $id): bool {

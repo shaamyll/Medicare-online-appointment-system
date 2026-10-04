@@ -410,6 +410,7 @@ The seeder creates working demo accounts for each role so you can test all workf
 | Role | Email | Password (from seeder) | Sign-In Portal & Purpose |
 | :--- | :--- | :--- | :--- |
 | **Admin** | `admin@medicare.com` | *From `BE/.env`* | Signs in via `/login` &rarr; redirected to `/admin/dashboard` |
+| **Admin (Secondary)**| `admin123@medicare.com` | `123456` | Signs in via `/login` &rarr; redirected to `/admin/dashboard` |
 | **Approved Doctor** | `dr.sarah@medicare.com` | `Doctor123!` | Signs in via `/doctor/login` &rarr; access clinical schedules & appointments |
 | **Pending Doctor** | `dr.michael@medicare.com` | `Doctor123!` | Signs in via `/doctor/login` &rarr; test pending approval verification block |
 | **Patient** | `patient@medicare.com` | `Patient123!` | Signs in via `/login` &rarr; browse doctors, book slots, cancel visits |
@@ -460,17 +461,20 @@ All API endpoints are hosted by `BE/` and prefixed with `/api` (or accessed dire
 | `POST` | `/api/auth/register` | Public | Register patient account (creates `patient` role only) |
 | `POST` | `/api/auth/doctor/register` | Public | Submit doctor application (creates doctor with `pending` status) |
 | `GET` | `/api/auth/me` | Authenticated | Retrieve current user profile and doctor metadata |
+| `GET` | `/api/patient/profile` | Patient | Retrieve patient profile (name, email, phone, gender, date of birth, age) |
+| `PUT` | `/api/patient/profile` | Patient | Update personal info (name, phone, gender, date of birth; email read-only, no photo) |
+| `PUT` | `/api/patient/profile/password` | Patient | Update password with current password verification (`password_verify`) |
 | `GET` | `/api/health` | Public | Verify backend availability and system timestamp |
 
 ### 🏥 Departments & Doctors
 | Method | Endpoint | Role Required | Description |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/api/departments` | Public | List all active departments (`?all=true` for admin) |
+| `GET` | `/api/departments` | Public | List active departments (or all when `?all=true` for admin) sorted by name/created_at |
 | `GET` | `/api/departments/{id}` | Public | Retrieve a single department by ID |
 | `POST` | `/api/departments` | Admin | Create a new department |
-| `PUT` | `/api/departments/{id}` | Admin | Update department name, description, or icon |
-| `DELETE`| `/api/departments/{id}` | Admin | Delete / deactivate a department |
-| `GET` | `/api/doctors` | Public | Browse approved doctors (filters: `departmentId`, `search`) |
+| `PUT` | `/api/departments/{id}` | Admin | Update department name, description, icon, or active status |
+| `DELETE`| `/api/departments/{id}` | Admin | Delete department (blocked if assigned doctor count > 0; prompts to deactivate) |
+| `GET` | `/api/doctors` | Public | Browse approved doctors sorted by `rating_avg DESC, name ASC, id ASC` |
 | `GET` | `/api/doctors/{id}` | Public | Detailed doctor profile including weekly schedule |
 
 ### 📅 Appointments, Status Flow & Rescheduling
@@ -497,13 +501,14 @@ All API endpoints are hosted by `BE/` and prefixed with `/api` (or accessed dire
 - Patient reschedule on an approved appointment returns status to `pending` so the doctor re-confirms.
 - Doctor reschedule keeps current status.
 - Rescheduling is permitted at least 2 hours before the appointment and max 2 times per booking.
+- Fixed doctor booking: All appointment bookings are initiated strictly from a `DoctorCard` or Doctor Profile; standalone doctor selectors are disabled.
 
 | Method | Endpoint | Role Required | Description |
 | :--- | :--- | :--- | :--- |
 | `GET` | `/api/appointments/slots` | Public / All | Get generated 30-min slots for a doctor & date (`?doctorId=&date=`) |
-| `GET` | `/api/appointments` | Authenticated | Retrieve appointments (scoped to patient, doctor, or all for admin) |
+| `GET` | `/api/appointments` | Authenticated | Retrieve appointments (supports `?sort=` and `?order=` with whitelist validation) |
 | `GET` | `/api/appointments/{id}` | Authenticated | Get full appointment details, payment, feedback, and reschedule history |
-| `POST` | `/api/appointments` | Patient | Book a specific appointment slot (auto-creates unpaid payment record) |
+| `POST` | `/api/appointments` | Patient | Book a specific appointment slot with fixed doctor (auto-creates unpaid payment) |
 | `PATCH`| `/api/appointments/{id}/reschedule` | Patient / Doctor | Reschedule appointment date and slot with row locking (max 2 times, >= 2h prior) |
 | `POST` | `/api/appointments/{id}/cancel` | Authenticated | Cancel an appointment with optional reason; refunds payment if paid |
 | `PATCH`| `/api/appointments/{id}/status` | Doctor | Update status (`approved`, `completed`, `cancelled`, `rejected`) with optional reason |
@@ -519,9 +524,11 @@ All API endpoints are hosted by `BE/` and prefixed with `/api` (or accessed dire
 | Method | Endpoint | Role Required | Description |
 | :--- | :--- | :--- | :--- |
 | `POST` | `/api/appointments/{id}/feedback`| Owning Patient | Submit 1–5 star rating and comment for completed appointment (once only) |
+| `PUT` | `/api/appointments/{id}/feedback`| Owning Patient | Update review within 7-day edit window; sets `is_edited=true` |
+| `DELETE`| `/api/appointments/{id}/feedback`| Owning Patient | Delete review within 7-day window; atomically recalculates doctor rating |
 | `GET` | `/api/doctors/{id}/feedback` | Public | Paginated reviews & rating distribution for a doctor (privacy-masked patient name) |
 | `GET` | `/api/doctor/feedback` | Doctor | Doctor's own ratings, 1-5 star distribution, and paginated patient reviews |
-| `GET` | `/api/admin/feedback` | Admin | Moderation list of all reviews with filters (`?doctorId=&rating=&page=`) |
+| `GET` | `/api/admin/feedback` | Admin | Moderation list of all reviews sorted by `created_at DESC, id DESC` |
 | `DELETE`| `/api/admin/feedback/{id}` | Admin | Moderation removal of review; recalculates doctor average rating |
 
 ### 🩺 Doctor Workspace
@@ -529,22 +536,23 @@ All API endpoints are hosted by `BE/` and prefixed with `/api` (or accessed dire
 | :--- | :--- | :--- | :--- |
 | `GET` | `/api/doctor/schedule` | Doctor | Retrieve the authenticated doctor's weekly timetable |
 | `PUT` | `/api/doctor/schedule` | Doctor | Save/update weekly schedule availability |
-| `GET` | `/api/doctor/profile` | Doctor | Retrieve authenticated doctor's profile |
-| `PUT` | `/api/doctor/profile` | Doctor | Update bio, room number, fee, qualification, specialization |
+| `GET` | `/api/doctor/profile` | Doctor | Retrieve authenticated doctor's profile (including `clinic_address`) |
+| `PUT` | `/api/doctor/profile` | Doctor | Update bio, clinic address, room number, fee, qualification, specialization |
 | `GET` | `/api/doctor/feedback` | Doctor | View doctor's own patient ratings and reviews |
 
 ### 🛡️ Administrator Operations
 | Method | Endpoint | Role Required | Description |
 | :--- | :--- | :--- | :--- |
 | `GET` | `/api/admin/stats` | Admin | Aggregate dashboard counters, recent appointments, and payment revenue |
-| `GET` | `/api/admin/doctors` | Admin | List all doctors (supports filter `?status=`) |
+| `GET` | `/api/admin/doctors` | Admin | List all doctors sorted by `created_at DESC, id DESC` (supports filter `?status=`) |
+| `GET` | `/api/admin/doctors/{id}` | Admin | Full doctor dossier modal: profile, stats, 7-day schedule, appointments, reviews |
 | `GET` | `/api/admin/doctor-requests`| Admin | Retrieve pending doctor registrations awaiting approval |
 | `POST` | `/api/admin/doctors/{id}/approve` | Admin | Approve a pending doctor account |
 | `POST` | `/api/admin/doctors/{id}/reject` | Admin | Reject a pending doctor account |
 | `PATCH`| `/api/admin/doctors/{id}/status` | Admin | Change doctor status (`active`, `inactive`, `rejected`) |
 | `GET` | `/api/admin/doctors/{id}/delete-impact` | Admin | Return total & upcoming appointments affected by doctor deletion |
 | `DELETE`| `/api/admin/doctors/{id}` | Admin | Hard delete doctor, schedules, consultation notes, appointments, user, and avatar files |
-| `GET` | `/api/admin/patients` | Admin | List all registered patients with appointment counts |
+| `GET` | `/api/admin/patients` | Admin | List all registered patients sorted by `created_at DESC, id DESC` |
 | `GET` | `/api/admin/reports` | Admin | Distribution analytics (appointments by status, revenue, doctors per dept) |
 | `GET` | `/api/admin/feedback` | Admin | Moderation review list with filtering and pagination |
 | `DELETE`| `/api/admin/feedback/{id}` | Admin | Delete a patient review and recompute rating aggregates |
@@ -552,7 +560,7 @@ All API endpoints are hosted by `BE/` and prefixed with `/api` (or accessed dire
 ### 🔔 Notifications (All Authenticated Roles)
 | Method | Endpoint | Role Required | Description |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/api/notifications` | Authenticated | List paginated notifications (`?page=1&limit=10&filter=all\|unread`) |
+| `GET` | `/api/notifications` | Authenticated | List notifications sorted by `created_at DESC, id DESC` (`?page=1&limit=10&filter=all\|unread`) |
 | `GET` | `/api/notifications/unread-count` | Authenticated | Get real-time unread notifications count |
 | `PATCH`| `/api/notifications/{id}/read` | Authenticated | Mark a single notification as read (scoped to current user) |
 | `POST` | `/api/notifications/read-all` | Authenticated | Mark all notifications as read for current user |
@@ -561,7 +569,37 @@ All API endpoints are hosted by `BE/` and prefixed with `/api` (or accessed dire
 
 ---
 
-## 13. File Uploads & Static Assets
+## 13. Data Ordering & Server-Side Sorting (`SortConfig`)
+
+To guarantee deterministic, consistent lists and avoid unstable pagination, Medi-Care implements a centralized server-side sorting architecture governed by `BE/src/Config/SortConfig.php`.
+
+### Ordering Rules & Whitelist Specifications
+
+| Context / Surface | Endpoint | Allowed Sort Keys | Default Sort Order | Primary Key Tie-Breaker |
+| :--- | :--- | :--- | :--- | :--- |
+| **Admin All Appointments** | `GET /api/appointments` | `created_at`, `appointment_date`, `patient_name`, `doctor_name`, `status` | `created_at DESC` | `a.id DESC` |
+| **Doctor Booking Requests** | `GET /api/appointments?status=pending` | `created_at`, `appointment_date` | `created_at DESC` (newest first) | `a.id DESC` |
+| **Doctor Upcoming Visits** | `GET /api/appointments?tab=upcoming` | `appointment_date`, `start_time` | `appointment_date ASC, start_time ASC` | `a.id ASC` |
+| **Doctor Past History** | `GET /api/appointments?tab=history` | `appointment_date`, `start_time` | `appointment_date DESC, start_time DESC` | `a.id DESC` |
+| **Patient Appointments** | `GET /api/appointments` | `created_at`, `appointment_date`, `status` | `created_at DESC` | `a.id DESC` |
+| **Admin Doctor Roster** | `GET /api/admin/doctors` | `created_at`, `name`, `status` | `created_at DESC` | `u.id DESC` |
+| **Admin Doctor Requests** | `GET /api/admin/doctor-requests`| `created_at` | `created_at DESC` (oldest pending first or newest) | `u.id DESC` |
+| **Admin Patient Directory**| `GET /api/admin/patients` | `created_at`, `name` | `created_at DESC` | `u.id DESC` |
+| **Admin Departments** | `GET /api/departments?all=true` | `created_at`, `name` | `created_at DESC` | `d.id DESC` |
+| **Public Departments** | `GET /api/departments` | `name` | `name ASC` (alphabetical A-Z) | `d.id ASC` |
+| **Public Doctor Directory**| `GET /api/doctors` | `rating_avg`, `name`, `experience_years` | `rating_avg DESC, u.name ASC` | `u.id ASC` |
+| **Notifications** | `GET /api/notifications` | `created_at` | `created_at DESC` | `id DESC` |
+| **Feedback / Reviews** | `GET /api/admin/feedback` | `created_at`, `rating` | `created_at DESC` | `f.id DESC` |
+
+### Security & Whitelisting
+- Every incoming query parameter `?sort=` and `?order=` is strictly validated against `SortConfig::$whitelists`.
+- Unrecognized or malicious column names are safely discarded and replaced with the safe context default.
+- The direction `?order=` is restricted to `ASC` or `DESC` (case-insensitive).
+- All queries append the table's primary key (`id DESC` or `id ASC`) to resolve identical timestamps deterministically.
+
+---
+
+## 14. File Uploads & Static Assets
 
 Doctor profile photos and thumbnails are processed and managed entirely on the backend:
 
@@ -589,7 +627,7 @@ Doctor profile photos and thumbnails are processed and managed entirely on the b
 
 ---
 
-## 14. Database Schema & Columns
+## 15. Database Schema & Columns
 
 The relational database (`medicare_appointment_db`) contains the following tables and columns:
 
@@ -631,6 +669,7 @@ The relational database (`medicare_appointment_db`) contains the following table
 | `consultation_fee`| `DECIMAL(10,2)` | DEFAULT 0.00 |
 | `bio` | `TEXT` | NULL |
 | `room_number` | `VARCHAR(50)` | NULL |
+| `clinic_address` | `TEXT` | NULL (Physical practice or clinic address) |
 | `created_at` | `DATETIME` | DEFAULT CURRENT_TIMESTAMP |
 | `updated_at` | `DATETIME` | DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP |
 
@@ -727,7 +766,7 @@ The relational database (`medicare_appointment_db`) contains the following table
 
 ---
 
-## 15. Real-Time Notification System & WebSocket Architecture
+## 16. Real-Time Notification System & WebSocket Architecture
 
 Medi-Care features an enterprise-grade, event-driven real-time notification subsystem shared seamlessly across all three roles (**Patient**, **Doctor**, and **Admin**).
 
@@ -785,7 +824,7 @@ The WebSocket server runs as an independent daemon process alongside Apache and 
 
 ---
 
-## 16. Project Scope
+## 17. Project Scope
 
 To ensure high performance, security, and a focused clinical appointment lifecycle, the following features are **intentionally out of scope**:
 
@@ -798,7 +837,7 @@ To ensure high performance, security, and a focused clinical appointment lifecyc
 
 ---
 
-## 17. Troubleshooting
+## 18. Troubleshooting
 
 ### 1. Apache Stripping the Authorization Header in XAMPP
 **Issue**: Requests fail with `401 Unauthorized: Missing authentication token` even though a Bearer token is sent in the header.
@@ -848,7 +887,7 @@ To ensure high performance, security, and a focused clinical appointment lifecyc
 
 ---
 
-## 18. Author & License
+## 19. Author & License
 
 - **Author**: Medi-Care Engineering Team
 - **Repository**: [https://github.com/shaamyll/Medicare-online-appointment-system](https://github.com/shaamyll/Medicare-online-appointment-system)

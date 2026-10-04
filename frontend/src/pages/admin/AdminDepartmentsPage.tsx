@@ -1,14 +1,37 @@
-import React, { useState } from 'react';
-import { Building2, Plus, Edit2, Trash2, LayoutGrid, List } from 'lucide-react';
-import { Card, CardContent, CardFooter } from '@/components/ui/Card';
+import React, { useState, useMemo } from 'react';
+import {
+  Building2,
+  Plus,
+  Edit2,
+  Trash2,
+  Power,
+  PowerOff,
+  Users,
+  AlertCircle,
+  Activity,
+  Heart,
+  Stethoscope,
+  Brain,
+  Bone,
+  Eye,
+  Baby,
+  Pill,
+  Microscope,
+  Syringe,
+  Sparkles,
+  ShieldAlert,
+} from 'lucide-react';
+import { Card } from '@/components/ui/Card';
 import { Button, IconButton } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { StatusBadge } from '@/components/ui/Badge';
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableHeadSerial, TableCellSerial } from '@/components/ui/Table';
-import { LoadingState } from '@/components/ui/LoadingState';
+import { FilterBar } from '@/components/ui/FilterBar';
+import { SearchInput } from '@/components/ui/SearchInput';
+import { Select } from '@/components/ui/Select';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { useToast } from '@/components/ui/Toast';
 import { useDepartments } from '@/features/departments/hooks/useDepartments';
 import {
@@ -16,27 +39,72 @@ import {
   useUpdateDepartment,
   useDeleteDepartment,
 } from '@/features/admin/hooks/useAdmin';
+import { cn } from '@/lib/utils';
+
+// Supported Lucide icon tokens for departments
+const ICON_COMPONENTS: Record<string, React.ElementType> = {
+  Activity,
+  Heart,
+  Stethoscope,
+  Brain,
+  Bone,
+  Eye,
+  Baby,
+  Pill,
+  Microscope,
+  Syringe,
+  Sparkles,
+  ShieldAlert,
+  Building2,
+};
+
+const AVAILABLE_ICONS = [
+  'Activity',
+  'Heart',
+  'Stethoscope',
+  'Brain',
+  'Bone',
+  'Eye',
+  'Baby',
+  'Pill',
+  'Microscope',
+  'Syringe',
+  'Sparkles',
+  'ShieldAlert',
+  'Building2',
+];
 
 export const AdminDepartmentsPage: React.FC = () => {
   const { toast } = useToast();
-  const { data: departments, isLoading } = useDepartments();
+  // Fetch all departments including inactive for administrative management
+  const { data: departments, isLoading, isError, refetch } = useDepartments(true);
   const createMutation = useCreateDepartment();
   const updateMutation = useUpdateDepartment();
   const deleteMutation = useDeleteDepartment();
 
-  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  // Filters state
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+
+  // Modal form state
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [deletingDept, setDeletingDept] = useState<{ id: number; name: string } | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [icon, setIcon] = useState('Activity');
+  const [isActive, setIsActive] = useState(true);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  // Delete modal state
+  const [deletingDept, setDeletingDept] = useState<{ id: number; name: string; doctorCount: number } | null>(null);
 
   const openCreateModal = () => {
     setEditingId(null);
     setName('');
     setDescription('');
     setIcon('Activity');
+    setIsActive(true);
+    setFormError(null);
     setIsModalOpen(true);
   };
 
@@ -45,27 +113,53 @@ export const AdminDepartmentsPage: React.FC = () => {
     setName(dept.name);
     setDescription(dept.description || '');
     setIcon(dept.icon || 'Activity');
+    setIsActive(dept.isActive !== false);
+    setFormError(null);
     setIsModalOpen(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) {
-      toast('Department name is required', 'error');
+    setFormError(null);
+
+    const trimmed = name.trim();
+    if (!trimmed) {
+      setFormError('Department name is required.');
       return;
     }
 
     try {
       if (editingId) {
-        await updateMutation.mutateAsync({ id: editingId, data: { name, description, icon } });
+        await updateMutation.mutateAsync({
+          id: editingId,
+          data: { name: trimmed, description: description.trim(), icon, isActive },
+        });
         toast('Department updated successfully', 'success');
       } else {
-        await createMutation.mutateAsync({ name, description, icon });
+        await createMutation.mutateAsync({
+          name: trimmed,
+          description: description.trim(),
+          icon,
+        });
         toast('Department created successfully', 'success');
       }
       setIsModalOpen(false);
     } catch (err: any) {
-      toast(err.message || 'Operation failed', 'error');
+      const msg = err.response?.data?.message || err.message || 'Operation failed';
+      setFormError(msg);
+      toast(msg, 'error');
+    }
+  };
+
+  const handleToggleActive = async (dept: any) => {
+    try {
+      await updateMutation.mutateAsync({
+        id: dept.id,
+        data: { isActive: !dept.isActive },
+      });
+      toast(`Department "${dept.name}" ${dept.isActive ? 'deactivated' : 'activated'} successfully`, 'success');
+    } catch (err: any) {
+      toast(err.response?.data?.message || err.message || 'Failed to update department status', 'error');
     }
   };
 
@@ -73,212 +167,278 @@ export const AdminDepartmentsPage: React.FC = () => {
     if (!deletingDept) return;
     try {
       await deleteMutation.mutateAsync(deletingDept.id);
-      toast(`Department "${deletingDept.name}" removed`, 'info');
+      toast(`Department "${deletingDept.name}" removed successfully`, 'info');
       setDeletingDept(null);
     } catch (err: any) {
-      toast(err.message || 'Failed to delete department', 'error');
+      const msg = err.response?.data?.message || err.message || 'Failed to delete department';
+      toast(msg, 'error');
     }
   };
 
-  if (isLoading) {
-    return <LoadingState message="Loading medical specialties & departments..." />;
-  }
+  // Filtered department list
+  const filteredDepartments = useMemo(() => {
+    if (!departments) return [];
+    return departments.filter((d: any) => {
+      const matchesSearch =
+        search === '' ||
+        d.name.toLowerCase().includes(search.toLowerCase()) ||
+        (d.description && d.description.toLowerCase().includes(search.toLowerCase()));
+
+      const matchesStatus =
+        statusFilter === 'all' ||
+        (statusFilter === 'active' && d.isActive) ||
+        (statusFilter === 'inactive' && !d.isActive);
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [departments, search, statusFilter]);
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <PageHeader
-        title="Medical Specialties & Departments"
-        subtitle="Define clinical specialties, practice divisions, and medical categories for provider registration and patient scheduling"
+        title="Clinical Departments & Specialties"
+        subtitle="Manage hospital medical divisions, clinical specialties, and patient-facing department filters"
         actions={
-          <div className="flex items-center gap-3">
-            <div className="flex bg-gray-100 p-0.5 rounded-lg border border-gray-200">
-              <IconButton
-                icon={<List className="w-4 h-4" />}
-                variant={viewMode === 'table' ? 'secondary' : 'ghost'}
-                size="sm"
-                title="Table View"
-                aria-label="Table View"
-                onClick={() => setViewMode('table')}
-                className={viewMode === 'table' ? 'bg-white shadow-xs' : 'text-gray-500'}
-              />
-              <IconButton
-                icon={<LayoutGrid className="w-4 h-4" />}
-                variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
-                size="sm"
-                title="Grid View"
-                aria-label="Grid View"
-                onClick={() => setViewMode('grid')}
-                className={viewMode === 'grid' ? 'bg-white shadow-xs' : 'text-gray-500'}
-              />
-            </div>
-
-            <Button
-              onClick={openCreateModal}
-              leftIcon={<Plus className="w-4 h-4" />}
-            >
-              Add Department
-            </Button>
-          </div>
+          <Button onClick={openCreateModal} leftIcon={<Plus className="w-4 h-4" />}>
+            Add Department
+          </Button>
         }
       />
 
-      {viewMode === 'table' ? (
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHeadSerial />
-                  <TableHead>Department Name</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Doctors Practicing</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right pr-6">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {departments && departments.length > 0 ? (
-                  departments.map((dept: any, idx: number) => (
-                    <TableRow key={dept.id}>
-                      <TableCellSerial index={idx} />
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="h-9 w-9 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 shrink-0">
-                            <Building2 className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <p className="font-semibold text-slate-900 text-sm">{dept.name}</p>
-                            <p className="text-xs text-slate-400">ID #{dept.id}</p>
-                          </div>
-                        </div>
-                      </TableCell>
+      {/* Filter Bar with Search and Status Filter */}
+      <FilterBar>
+        <div className="w-full md:w-80">
+          <SearchInput
+            placeholder="Search departments by name or description..."
+            value={search}
+            onChange={(val) => setSearch(val)}
+            onClear={() => setSearch('')}
+          />
+        </div>
+        <div className="w-full sm:w-48">
+          <Select
+            value={statusFilter}
+            onChange={(val) => setStatusFilter(val as any)}
+            options={[
+              { value: 'all', label: 'All Statuses' },
+              { value: 'active', label: 'Active', dot: 'bg-emerald-500' },
+              { value: 'inactive', label: 'Inactive', dot: 'bg-gray-400' },
+            ]}
+          />
+        </div>
+      </FilterBar>
 
-                      <TableCell className="max-w-md">
-                        <p className="text-xs text-slate-600 truncate">
-                          {dept.description || 'Specialized outpatient clinical care.'}
-                        </p>
-                      </TableCell>
-
-                      <TableCell>
-                        <span className="font-semibold text-xs text-emerald-700">
-                          {dept.doctorCount || 0} Doctors
-                        </span>
-                      </TableCell>
-
-                      <TableCell>
-                        <StatusBadge status={dept.isActive ? 'active' : 'inactive'} />
-                      </TableCell>
-
-                      <TableCell className="text-right pr-6">
-                        <div className="flex items-center justify-end gap-1">
-                          <IconButton
-                            icon={<Edit2 className="w-4 h-4" />}
-                            variant="ghost"
-                            size="sm"
-                            title="Edit Department"
-                            aria-label="Edit Department"
-                            onClick={() => openEditModal(dept)}
-                          />
-                          <IconButton
-                            icon={<Trash2 className="w-4 h-4" />}
-                            variant="ghost"
-                            size="sm"
-                            title="Delete Department"
-                            aria-label="Delete Department"
-                            onClick={() => setDeletingDept({ id: dept.id, name: dept.name })}
-                            className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
-                          />
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-12 text-gray-400 text-xs">
-                      No departments found. Create your first clinical department.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {departments?.map((dept: any) => (
-            <Card key={dept.id} hover className="border-gray-200 flex flex-col justify-between">
-              <div className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="h-12 w-12 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700">
-                    <Building2 className="w-6 h-6" />
-                  </div>
-                  <StatusBadge status={dept.isActive ? 'active' : 'inactive'} />
-                </div>
-
-                <h3 className="text-base font-bold text-gray-900">{dept.name}</h3>
-                <p className="text-xs text-gray-500 mt-2 leading-relaxed min-h-[3rem]">
-                  {dept.description || 'Specialized clinical outpatient and inpatient medical care.'}
-                </p>
-
-                <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-600">
-                  <span className="font-semibold text-emerald-700">
-                    {dept.doctorCount || 0} Doctors practicing
-                  </span>
-                </div>
+      {/* Loading Skeleton Grid */}
+      {isLoading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+            <Card key={i} className="p-6 rounded-2xl border border-gray-200 animate-pulse flex flex-col justify-between h-56">
+              <div className="space-y-3">
+                <div className="h-11 w-11 rounded-xl bg-gray-200" />
+                <div className="h-5 w-3/4 bg-gray-200 rounded" />
+                <div className="h-3 w-full bg-gray-200 rounded" />
+                <div className="h-3 w-5/6 bg-gray-200 rounded" />
               </div>
-
-              <CardFooter className="flex items-center justify-end gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => openEditModal(dept)}
-                  leftIcon={<Edit2 className="w-3.5 h-3.5" />}
-                  className="text-gray-600 hover:text-gray-900 text-xs"
-                >
-                  Edit
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setDeletingDept({ id: dept.id, name: dept.name })}
-                  leftIcon={<Trash2 className="w-3.5 h-3.5" />}
-                  className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 text-xs"
-                >
-                  Delete
-                </Button>
-              </CardFooter>
+              <div className="h-8 w-full bg-gray-100 rounded-xl" />
             </Card>
           ))}
         </div>
+      ) : isError ? (
+        <Card className="p-10 text-center rounded-2xl border-rose-200 bg-rose-50/20">
+          <AlertCircle className="w-10 h-10 text-rose-500 mx-auto mb-3" />
+          <h3 className="text-base font-bold text-gray-900 mb-1">Failed to load departments</h3>
+          <p className="text-xs text-gray-500 max-w-sm mx-auto mb-4">
+            Could not retrieve department data from the server. Please check your connection and try again.
+          </p>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            Retry
+          </Button>
+        </Card>
+      ) : filteredDepartments.length === 0 ? (
+        <Card className="p-12 text-center rounded-2xl border border-gray-200 shadow-xs">
+          <EmptyState
+            title={search || statusFilter !== 'all' ? 'No Matching Departments' : 'No Departments Found'}
+            description={
+              search || statusFilter !== 'all'
+                ? 'Try adjusting your search criteria or clearing filters to see existing specialties.'
+                : 'Get started by creating your hospital’s clinical departments and medical divisions.'
+            }
+            actionLabel="Add Department"
+            onAction={openCreateModal}
+          />
+        </Card>
+      ) : (
+        /* Responsive Card Grid: 1 col on mobile, 2 on sm, 3 on lg, 4 on 2xl */
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
+          {filteredDepartments.map((dept: any) => {
+            const IconComponent = ICON_COMPONENTS[dept.icon] || Building2;
+            return (
+              <Card
+                key={dept.id}
+                className="bg-white rounded-2xl border border-gray-200 shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between overflow-hidden"
+              >
+                <div className="p-5">
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="h-11 w-11 rounded-xl bg-teal-50 border border-teal-100 flex items-center justify-center text-teal-600 shadow-2xs shrink-0">
+                      <IconComponent className="w-5 h-5" />
+                    </div>
+                    <StatusBadge status={dept.isActive ? 'active' : 'inactive'} />
+                  </div>
+
+                  <h3 className="text-base font-bold text-gray-900 truncate" title={dept.name}>
+                    {dept.name}
+                  </h3>
+                  <p
+                    className="text-xs text-gray-500 line-clamp-2 mt-1.5 leading-relaxed min-h-[2.5rem]"
+                    title={dept.description}
+                  >
+                    {dept.description || 'Specialized outpatient and inpatient clinical care.'}
+                  </p>
+                </div>
+
+                {/* Footer Strip on bg-gray-50 */}
+                <div className="p-3 px-4 bg-gray-50/90 rounded-b-2xl border-t border-gray-100 flex items-center justify-between">
+                  <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700">
+                    <Users className="w-3.5 h-3.5 text-gray-400" />
+                    <span>
+                      {dept.doctorCount || 0} {dept.doctorCount === 1 ? 'doctor' : 'doctors'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <IconButton
+                      icon={<Edit2 className="w-3.5 h-3.5" />}
+                      variant="ghost"
+                      size="sm"
+                      title="Edit department"
+                      aria-label="Edit department"
+                      onClick={() => openEditModal(dept)}
+                      className="border border-blue-200 text-blue-600 hover:bg-blue-50 shadow-2xs rounded-lg"
+                    />
+                    <IconButton
+                      icon={dept.isActive ? <PowerOff className="w-3.5 h-3.5" /> : <Power className="w-3.5 h-3.5" />}
+                      variant="ghost"
+                      size="sm"
+                      title={dept.isActive ? 'Deactivate department' : 'Activate department'}
+                      aria-label={dept.isActive ? 'Deactivate department' : 'Activate department'}
+                      onClick={() => handleToggleActive(dept)}
+                      className={cn(
+                        'border shadow-2xs rounded-lg',
+                        dept.isActive
+                          ? 'border-amber-200 text-amber-600 hover:bg-amber-50'
+                          : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'
+                      )}
+                    />
+                    <IconButton
+                      icon={<Trash2 className="w-3.5 h-3.5" />}
+                      variant="ghost"
+                      size="sm"
+                      title="Delete department"
+                      aria-label="Delete department"
+                      onClick={() =>
+                        setDeletingDept({
+                          id: dept.id,
+                          name: dept.name,
+                          doctorCount: dept.doctorCount || 0,
+                        })
+                      }
+                      className="border border-rose-200 text-rose-600 hover:bg-rose-50 shadow-2xs rounded-lg"
+                    />
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
       )}
 
+      {/* Add / Edit Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingId ? 'Edit Department' : 'Create New Department'}
-        description="Clinical specialties help patients find the right medical care."
+        title={editingId ? 'Edit Clinical Department' : 'Create New Department'}
+        description="Clinical specialties group medical physicians, practice divisions, and patient consultation categories."
       >
         <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
-            label="Department Name"
-            placeholder="e.g. Oncology, Ophthalmology"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-          />
+          {formError && (
+            <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+              <span>{formError}</span>
+            </div>
+          )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
+              Department Name *
+            </label>
+            <Input
+              placeholder="e.g. Cardiology, Neurology, Pediatrics"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
+              Clinical Description
+            </label>
             <textarea
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Overview of medical services offered in this clinic..."
-              className="w-full rounded-lg border border-gray-200 bg-white p-3 text-sm text-gray-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none"
+              placeholder="Brief overview of medical services, specialty clinics, and treatments offered..."
+              className="w-full rounded-lg border border-gray-300 bg-white p-3 text-sm text-gray-900 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none"
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-3">
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wider">
+              Specialty Icon
+            </label>
+            <div className="grid grid-cols-6 sm:grid-cols-7 gap-2 p-2.5 rounded-xl border border-gray-200 bg-gray-50/60 max-h-36 overflow-y-auto">
+              {AVAILABLE_ICONS.map((iconKey) => {
+                const IconComp = ICON_COMPONENTS[iconKey] || Building2;
+                const isSelected = icon === iconKey;
+                return (
+                  <button
+                    key={iconKey}
+                    type="button"
+                    title={iconKey}
+                    onClick={() => setIcon(iconKey)}
+                    className={cn(
+                      'h-10 w-10 rounded-lg flex items-center justify-center transition-all',
+                      isSelected
+                        ? 'border-2 border-teal-600 bg-teal-50 text-teal-700 shadow-2xs scale-105'
+                        : 'border border-gray-200 bg-white text-gray-500 hover:text-gray-900 hover:border-gray-300'
+                    )}
+                  >
+                    <IconComp className="w-4 h-4" />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {editingId && (
+            <div className="pt-2">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={isActive}
+                  onChange={(e) => setIsActive(e.target.checked)}
+                  className="rounded border-gray-300 text-teal-600 focus:ring-teal-500 h-4 w-4"
+                />
+                <span className="text-xs font-semibold text-gray-700">Active Department</span>
+              </label>
+              <p className="text-[11px] text-gray-400 ml-6 mt-0.5">
+                Deactivated departments are hidden from patient-facing doctor directory filters.
+              </p>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 pt-3 border-t border-gray-100">
             <Button variant="outline" type="button" onClick={() => setIsModalOpen(false)}>
               Cancel
             </Button>
@@ -292,17 +452,32 @@ export const AdminDepartmentsPage: React.FC = () => {
         </form>
       </Modal>
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete / Reassign Warning Modal */}
       {deletingDept && (
         <ConfirmModal
           isOpen={!!deletingDept}
           onClose={() => setDeletingDept(null)}
           title="Delete Department"
-          description={`Are you sure you want to permanently remove the department "${deletingDept.name}"? Doctors assigned to this department may need to be reassigned.`}
-          confirmLabel="Delete Department"
-          variant="danger"
-          isLoading={deleteMutation.isPending}
-          onConfirm={confirmDelete}
+          description={
+            deletingDept.doctorCount > 0
+              ? `Cannot delete "${deletingDept.name}" because it currently has ${deletingDept.doctorCount} doctors assigned. Reassign or remove its ${deletingDept.doctorCount} doctors first, or deactivate the department instead.`
+              : `Are you sure you want to permanently delete the department "${deletingDept.name}"? This action cannot be undone.`
+          }
+          confirmLabel={deletingDept.doctorCount > 0 ? 'Deactivate Department Instead' : 'Delete Department'}
+          variant={deletingDept.doctorCount > 0 ? 'warning' : 'danger'}
+          isLoading={deleteMutation.isPending || updateMutation.isPending}
+          onConfirm={async () => {
+            if (deletingDept.doctorCount > 0) {
+              await updateMutation.mutateAsync({
+                id: deletingDept.id,
+                data: { isActive: false },
+              });
+              toast(`Department "${deletingDept.name}" deactivated instead`, 'info');
+              setDeletingDept(null);
+            } else {
+              await confirmDelete();
+            }
+          }}
         />
       )}
     </div>
